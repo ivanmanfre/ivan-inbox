@@ -60,7 +60,7 @@ export type Ctx = {
 export type Planned = {
   echo: Omit<ActionEcho, 'id'>
   // what to run now (done) or on commit (held); returns result + undo payload
-  run?: () => Promise<{ result: unknown; undo?: Record<string, unknown> | null; detail?: string; t3_job?: ActionEcho['t3_job'] }>
+  run?: () => Promise<{ result: unknown; undo?: Record<string, unknown> | null; detail?: string; t3_job?: ActionEcho['t3_job']; label?: string }>
   refuse?: string
   chips?: { label: string; send: string }[]
   /** the action in plain words, for the authorization check */
@@ -68,6 +68,12 @@ export type Planned = {
   /** an explicit command Ivan can tap to ask for exactly this */
   command?: string
   target_id?: string
+  /** the canonical arguments this kind's write consumes (canonArgs): the dedupe key and the journal (Sol r7 #2, #3) */
+  canon?: Record<string, unknown>
+  /** for the verifier: the resolved post's full live opener and every competing post that starts the same way (Sol r7 #1) */
+  context?: string
+  /** when the verifier does not see one post singled out: one server-built chip per candidate */
+  candidates?: { label: string; send: string }[]
 }
 
 export const HOLD_MS = 8000
@@ -124,6 +130,13 @@ function pickChips(act: Act, ds: Draft[], all: Draft[]): { label: string; send: 
   })
 }
 
+/** Every other draft whose first line starts with the same opening words as the quoted excerpt (Sol r7 #1). */
+export function competitorsOf(d: Draft, line: unknown, all: Draft[]): Draft[] {
+  const words = norm(String(line ?? '')).split(' ').filter(Boolean).slice(0, 3).join(' ')
+  if (!words) return []
+  return all.filter((o) => o.id !== d.id && (norm(o.first_line) + ' ').startsWith(words + ' '))
+}
+
 /**
  * Resolve the target (Sol r6 #2): the quoted excerpt is checked against EVERY draft in the brief. It
  * must match exactly one (narrowed by `dated` when he named the day), and that one must carry the
@@ -145,6 +158,8 @@ export function resolveDraft(brief: Rendered, act: Act): { d: Draft; handle: str
   if (!pool.length) return named ? { error: 'line_mismatch', chips: pickChips(act, [named], all) } : { error: 'unknown_draft' }
   const [h, d] = pool[0]
   if (h !== handle) return { error: 'handle_mismatch', chips: pickChips(act, named ? [d, named] : [d], all) }
+  // a day he named is enforced on the resolved draft itself, not only used to narrow (Sol r7 #1)
+  if (dated && dayOf(d) !== dated) return { error: 'dated_mismatch', chips: pickChips(act, [d], all) }
   return { d, handle }
 }
 
@@ -267,12 +282,25 @@ export async function planLive(ctx: Ctx, act: Act): Promise<{ p: Planned; snap: 
     return { p: { echo: { kind: OUT_NAME[act.kind] ?? act.kind, label: 'I could not read its queue, so I did nothing.', state: 'failed', undo: false }, refuse: 'queue_read_failed', target_id: r.d.id }, snap: null }
   }
   if (!live) return { p: { echo: { kind: OUT_NAME[act.kind] ?? act.kind, label: 'That post is gone or no longer in your Review.', state: 'failed', undo: false }, refuse: 'gone', target_id: r.d.id }, snap: null }
+  const all = [...ctx.brief.drafts.values()]
   if (!lineMatches(live.d.first_line, act.line)) {
     return { p: { echo: { kind: OUT_NAME[act.kind] ?? act.kind, label: 'That post was rewritten since, so I did nothing.', state: 'failed', undo: false, detail: 'line_mismatch' }, refuse: 'line_mismatch', target_id: r.d.id,
-      chips: [{ label: short(live.d.first_line, 40), send: `${act.kind} the one that starts "${short(live.d.first_line, 70)}"` }] }, snap: live.snap }
+      chips: pickChips(act, [live.d], all) }, snap: live.snap }
+  }
+  // the day he named holds on the LIVE row too; a conflict does nothing (Sol r7 #1)
+  const dated = typeof act.dated === 'string' && act.dated.trim() ? act.dated.trim() : null
+  if (dated && dayOf(live.d) !== dated) {
+    return { p: { echo: { kind: OUT_NAME[act.kind] ?? act.kind, label: 'That post is not on the day you named, so I did nothing.', state: 'failed', undo: false, detail: 'dated_mismatch' }, refuse: 'dated_mismatch', target_id: r.d.id,
+      chips: pickChips(act, [live.d], all) }, snap: live.snap }
   }
   const p = await plan({ ...ctx, brief: liveBrief(ctx, live.d, live.snap, r.handle) }, act)
   p.target_id = live.d.id
+  // what the verifier must weigh (Sol r7 #1): the whole live opener, and every post that starts the same way
+  const rivals = competitorsOf(live.d, act.line, all)
+  const dayText = (x: Draft) => (dayOf(x) === 'undated' ? 'undated' : `dated ${dayOf(x)}`)
+  p.context = `Target post, full first line: "${live.d.first_line.slice(0, 300)}" (${dayText(live.d)}).` +
+    (rivals.length ? ` Other posts that start the same way: ${rivals.slice(0, 5).map((o) => `"${o.first_line.slice(0, 160)}" (${dayText(o)})`).join('; ')}. Allowed only if his message singles out the target over these.` : '')
+  if (rivals.length) p.candidates = pickChips(act, [live.d, ...rivals], all)
   return { p, snap: live.snap }
 }
 
@@ -309,10 +337,52 @@ export async function planForTarget(ctx: Ctx, act: Act, snap: Snapshot): Promise
 }
 
 export function firstLineOf(body: unknown): string {
-  return (String(body ?? '').split('\n').map((l) => l.trim()).find((l) => l !== '') ?? '').slice(0, 160)
+  return (String(body ?? '').split('\n').map((l) => l.trim()).find((l) => l !== '') ?? '').slice(0, 300)
+}
+
+/**
+ * The canonical arguments each kind's write consumes (Sol r7 #2): built once, used by the write itself
+ * (planCase reads only these), by the dedupe key and by the journal. Model fields a kind does not
+ * consume never appear here.
+ */
+export function canonArgs(kind: string, act: Act, ctx: Pick<Ctx, 'text' | 'attachments' | 'brief'>): Record<string, unknown> {
+  const reason = typeof act.reason === 'string' ? act.reason.replace(/\s+/g, ' ').trim().slice(0, 200) || null : null
+  const photoUrl = () => ctx.attachments.filter((a) => a.kind === 'photo')[Number(act.photo ?? 1) - 1]?.url ?? null
+  switch (kind) {
+    case 'approve': case 'redo': case 'undate': return {}
+    case 'date': return { at: warsawToIso(String(act.at ?? '')) }
+    case 'pull': case 'delete': return { reason }
+    case 'photo_attach': return { url: photoUrl() }
+    case 'photo_stage': return {
+      url: photoUrl(),
+      tags: [...new Set((Array.isArray(act.tags) ? act.tags : []).map((t) => String(t).toLowerCase().trim()).filter(Boolean))].slice(0, 8).sort(),
+      // content_photos.subject is one of selfie | him | no-people (check constraint)
+      subject: ['selfie', 'him', 'no-people'].includes(String(act.subject)) ? String(act.subject) : 'no-people',
+    }
+    case 'idea': return { raw_topic: String(act.text ?? '').trim().slice(0, 500), quote: ivanQuote(act.quote, ctx.text) }
+    case 'link': return { url: String(act.url ?? '').trim(), note: typeof act.note === 'string' && verbatimIn(act.note, ctx.text) ? act.note.trim().slice(0, 500) : null }
+    case 'draft_line': return { line_id: ctx.brief.lines.get(String(act.line_handle ?? '').toUpperCase())?.id ?? null }
+    case 't3': {
+      // normalized ONCE into the action: the verifier and queueT3Job get these exact strings (Sol r4 #2)
+      if (act._t3_normalized !== true) {
+        const raw = String(act.brief ?? '').trim()
+        const n = normT3(String(act.title ?? ''), raw ? `${raw}\n\nIvan's own words: ${ctx.text.slice(0, 2000)}` : '')
+        act.title = n.title; act.brief = n.brief; act._t3_normalized = true
+      }
+      return { title: String(act.title), brief: String(act.brief) }
+    }
+  }
+  return {}
 }
 
 async function planInner(ctx: Ctx, act: Act): Promise<Planned> {
+  const c = canonArgs(act.kind, act, ctx)
+  const p = await planCase(ctx, act, c)
+  p.canon = c
+  return p
+}
+
+async function planCase(ctx: Ctx, act: Act, c: Record<string, unknown>): Promise<Planned> {
   const kind = act.kind
   const needsDraft = ['approve', 'date', 'undate', 'pull', 'delete', 'redo', 'photo_attach'].includes(kind)
   let d: Draft | null = null, handle = ''
@@ -353,7 +423,7 @@ async function planInner(ctx: Ctx, act: Act): Promise<Planned> {
       }
     }
     case 'date': {
-      const iso = warsawToIso(String(act.at ?? ''))
+      const iso = c.at as string | null
       if (!iso) return { echo: { kind, label: 'I could not read the date, so I did nothing.', state: 'failed', undo: false, target }, refuse: 'bad_date' }
       if (d!.status === 'published') return { echo: { kind, label: `${q} is already published.`, state: 'failed', undo: false, target }, refuse: 'published' }
       const id = d!.id, prev = d!.scheduled_at
@@ -375,7 +445,7 @@ async function planInner(ctx: Ctx, act: Act): Promise<Planned> {
       if (!prev) return { echo: { kind, label: `${q} has no date.`, state: 'failed', undo: false, target }, refuse: 'no_date' }
       if (d!.status === 'published') return { echo: { kind, label: `${q} is already published.`, state: 'failed', undo: false, target }, refuse: 'published' }
       const queue = ctx.brief.queueByDraft.get(id)
-      const reason = typeof act.reason === 'string' ? act.reason.replace(/\s+/g, ' ').trim().slice(0, 200) || null : null
+      const reason = (c.reason as string | null | undefined) ?? null
       if (d!.status === 'scheduled') {
         if (kind === 'pull' && !queue) {
           // a pull acts on the exact Next row only (Sol r4 #4); without one it is the calendar's Remove date, asked for as such
@@ -429,7 +499,7 @@ async function planInner(ctx: Ctx, act: Act): Promise<Planned> {
           chips: [{ label: 'Pull it first', send: d!.status === 'scheduled' ? `pull ${qq} off the schedule` : `remove the date from ${qq}` }],
         }
       }
-      const why = typeof act.reason === 'string' ? act.reason.replace(/\s+/g, ' ').trim().slice(0, 200) || null : null
+      const why = (c.reason as string | null) ?? null
       const pinned = d!.updated_at ?? null
       return {
         ...base,
@@ -483,7 +553,16 @@ async function planInner(ctx: Ctx, act: Act): Promise<Planned> {
           } catch { status = 0 }
           if (status >= 400 && status < 500) {
             // an explicit rejection: the writer will not run, so the row goes back if it is still ours
-            try { await deskWrite(ctx, 'desk_redo_release', { p_draft: id, p_started_at: startedAt, p_status: before }) } catch { /* it changed since: leave it */ }
+            // up to 3 tries while the row is busy (lock wait / deadlock); a row that is no longer our claim
+            // needs no release. Still busy after 3: say so plainly (Sol r7 #5)
+            let released = false
+            for (let i = 0; i < 3 && !released; i++) {
+              const { data, error } = await ctx.userDb.rpc('desk_redo_release', { p_draft: id, p_started_at: startedAt, p_status: before })
+              const code = error ? (lockCode(error) ? 'busy' : 'error') : String((data as { ok?: boolean; error?: string } | null)?.ok === true ? 'ok' : (data as { error?: string } | null)?.error ?? 'error')
+              if (code === 'ok' || code === 'changed' || code === 'gone') released = true
+              else await new Promise((res) => setTimeout(res, 150 * (i + 1)))
+            }
+            if (!released) throw new Error('failed_release')
             throw new Error('writer_refused')
           }
           if (status < 200 || status >= 300) {
@@ -495,8 +574,7 @@ async function planInner(ctx: Ctx, act: Act): Promise<Planned> {
       }
     }
     case 'photo_attach': {
-      const n = Number(act.photo ?? 1)
-      const att = ctx.attachments.filter((a) => a.kind === 'photo')[n - 1]
+      const att = c.url ? { url: String(c.url) } : null
       if (!att) return { echo: { kind, label: 'I do not see a photo on your message.', state: 'failed', undo: false, target }, refuse: 'no_photo' }
       const id = d!.id
       return {
@@ -514,13 +592,10 @@ async function planInner(ctx: Ctx, act: Act): Promise<Planned> {
       }
     }
     case 'photo_stage': {
-      const n = Number(act.photo ?? 1)
-      const att = ctx.attachments.filter((a) => a.kind === 'photo')[n - 1]
+      const att = c.url ? { url: String(c.url) } : null
       if (!att) return { echo: { kind, label: 'I do not see a photo on your message.', state: 'failed', undo: false }, refuse: 'no_photo' }
-      const tags = (Array.isArray(act.tags) ? act.tags : []).map((t) => String(t).toLowerCase().trim()).filter(Boolean).slice(0, 8)
-      // content_photos.subject is one of selfie | him | no-people (check constraint); the model
-      // infers it from Ivan's words (it cannot see the picture), else no-people.
-      const subject = ['selfie', 'him', 'no-people'].includes(String(act.subject)) ? String(act.subject) : 'no-people'
+      // the model infers the subject from Ivan's words (it cannot see the picture), else no-people
+      const tags = c.tags as string[], subject = String(c.subject)
       return {
         echo: { kind, label: `Saved your photo to the library${tags.length ? ' (' + tags.join(', ') + ')' : ''} for a later post`, state: 'done', undo: true },
         describe: `save the photo he sent to the photo library${tags.length ? ` tagged ${tags.join(', ')}` : ''} for a later post`,
@@ -537,12 +612,12 @@ async function planInner(ctx: Ctx, act: Act): Promise<Planned> {
       }
     }
     case 'idea': {
-      const text = String(act.text ?? '').trim()
+      const text = String(c.raw_topic ?? '')
       if (!text) return { echo: { kind, label: 'Nothing to save as an idea.', state: 'failed', undo: false }, refuse: 'empty' }
       // Sol r6 #1: the row is built here, once; the verifier reads exactly its Ivan-facing fields and
       // run() inserts exactly this row. A quote is kept only as a verbatim span of THIS message; with
       // none, the evidence carries no quote at all (no fallback to the whole message).
-      const quote = ivanQuote(act.quote, ctx.text)
+      const quote = (c.quote as string | null) ?? null
       const row = {
         source: 'manual', content_type: 'post', status: 'pending', raw_topic: text.slice(0, 500),
         evidence: [{ who: 'Ivan', tier: 'OBSERVATION', ...(quote ? { quote } : {}), instrument: 'content desk', source: 'content_desk', when: new Date().toISOString().slice(0, 10) }],
@@ -561,7 +636,7 @@ async function planInner(ctx: Ctx, act: Act): Promise<Planned> {
       }
     }
     case 'link': {
-      const url = String(act.url ?? '').trim()
+      const url = String(c.url ?? '')
       if (!/^https:\/\//i.test(url)) return { echo: { kind, label: 'That link does not look right, so I did nothing.', state: 'failed', undo: false }, refuse: 'bad_url' }
       // Sol r1: only a link Ivan actually sent, and only social post hosts get fetched.
       if (!urlInMessage(url, ctx.text) && !ctx.attachments.some((a) => a.url === url)) {
@@ -569,7 +644,7 @@ async function planInner(ctx: Ctx, act: Act): Promise<Planned> {
       }
       const post = classifyPostUrl(url)
       // "his note" is attributed to Ivan: only a verbatim span of his message, never model text (Sol r5 B5)
-      const note = typeof act.note === 'string' && verbatimIn(act.note, ctx.text) ? act.note.trim().slice(0, 500) : ''
+      const note = (c.note as string | null) ?? ''
       return {
         echo: { kind, label: post ? `Added the ${post.platform === 'x' ? 'X' : 'LinkedIn'} post as a copy candidate in Ideas` : 'Saved the link as an idea', state: 'done', undo: true },
         // Sol r6 #1: the verifier reads the exact url and the exact note stored as his words
@@ -611,8 +686,7 @@ async function planInner(ctx: Ctx, act: Act): Promise<Planned> {
       }
     }
     case 'draft_line': {
-      const h = String(act.line_handle ?? '').toUpperCase()
-      const line = ctx.brief.lines.get(h)
+      const line = [...ctx.brief.lines.values()].find((l) => l.id === c.line_id)
       if (!line) return { echo: { kind, label: 'I could not find that call line, so I did nothing.', state: 'failed', undo: false }, refuse: 'unknown_line' }
       if (line.draft_id) return { echo: { kind, label: 'That line already has a draft in Review.', state: 'failed', undo: false }, refuse: 'exists' }
       return {
@@ -636,23 +710,18 @@ async function planInner(ctx: Ctx, act: Act): Promise<Planned> {
       }
     }
     case 't3': {
-      // normalized ONCE into the action: the verifier and queueT3Job get these exact strings (Sol r4 #2)
-      if (act._t3_normalized !== true) {
-        const raw = String(act.brief ?? '').trim()
-        const n = normT3(String(act.title ?? ''), raw ? `${raw}\n\nIvan's own words: ${ctx.text.slice(0, 2000)}` : '')
-        act.title = n.title; act.brief = n.brief; act._t3_normalized = true
-      }
-      const title = String(act.title), brief = String(act.brief)
+      const title = String(c.title ?? ''), brief = String(c.brief ?? '')
       if (!title || !brief) return { echo: { kind, label: 'The cloud job had no task, so I did nothing.', state: 'failed', undo: false }, refuse: 'empty' }
       if (!ctx.t3) return { echo: { kind, label: 'Cloud jobs are off right now.', state: 'failed', undo: false }, refuse: 't3_off' }
       return {
-        echo: { kind, label: `Opened a cloud thread on Ivan Cloud: "${short(title, 60)}"`, state: 'done', undo: false },
+        echo: { kind, label: 'Opening a cloud thread on Ivan Cloud.', state: 'done', undo: false },
         describe: `open a coding/research job on his cloud machine: "${short(title, 100)}"`,
         command: `open a cloud job: ${short(title, 100)}`,
         run: async () => {
           const j = await ctx.t3!({ title, brief })
-          if (j.error && j.status === 'failed') throw new Error('t3_queue_failed')
-          return { result: j, t3_job: { id: j.job_id, status: j.status, title } }
+          // opened only once the queue write is confirmed: a job id and status queued (Sol r7 #7)
+          if (!j.job_id || j.status !== 'queued') throw new Error('t3_queue_failed')
+          return { result: j, t3_job: { id: j.job_id, status: j.status, title }, label: `Opened a cloud thread on Ivan Cloud: "${short(title, 60)}"` }
         },
       }
     }
@@ -711,12 +780,9 @@ async function deskWrite(ctx: Pick<Ctx, 'userDb'>, fn: string, args: Record<stri
  * (server-owned "_" keys and the handle/excerpt/day that only locate the target are left out; text is
  * whitespace-collapsed and lowercased). Two actions with one key are one action.
  */
-export function actionKey(act: Act, targetId?: string | null): string {
-  const args = Object.entries(act)
-    .filter(([k]) => !k.startsWith('_') && !['kind', 'draft', 'line', 'dated'].includes(k))
-    .map(([k, v]) => [k, typeof v === 'string' ? v.replace(/\s+/g, ' ').trim().toLowerCase() : v] as [string, unknown])
-    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
-  return JSON.stringify([IN_ALIAS[act.kind] ?? act.kind, targetId ?? null, args])
+export function actionKey(p: Pick<Planned, 'echo' | 'target_id' | 'canon'>): string {
+  const canon = Object.entries(p.canon ?? {}).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+  return JSON.stringify([p.echo.kind, p.target_id ?? null, canon])
 }
 
 /** 55P03 lock_not_available / 40P01 deadlock_detected: Postgres rolled the call back; it is "it changed, nothing done". */

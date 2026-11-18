@@ -23,28 +23,60 @@ function jsonArray(raw: string | null): Record<string, unknown>[] {
 }
 
 /** Plain-prose guard: no em/en dashes reach Ivan, whatever the model did. */
-export function plain(s: string): string {
-  return s
+export function plain(s: string, keepEdges = false): string {
+  const out = s
     .replace(/\s*[—–]\s*/g, (m, off, str) => {
       // "word — word" -> "word, word"; a dash between digits (ranges) -> "-"
       const prev = str[off - 1] ?? '', next = str[off + m.length] ?? ''
       return /\d/.test(prev) && /\d/.test(next) ? '-' : ', '
     })
     .replace(/,\s*,/g, ',')
-    .trim()
+  // a streamed piece keeps its edge spaces (trimming each delta would glue words together)
+  return keepEdges ? out : out.trim()
 }
 
 /**
  * Call-line handles (L1..L12) are for the ACTIONS block only: any that the brief handed out is taken
- * out of the reply text (with a trailing comma), and an emptied "()" goes with it.
+ * out of the reply text (with a trailing comma), and an emptied "()" goes with it. Text inside a
+ * quoted span ("..." or curly quotes, an unclosed quote runs to the end) is never touched: his own
+ * or a post's words stay exactly as written (Sol r7 #8).
  */
 export function stripLineHandles(text: string, handles: Iterable<string>): string {
   const hs = new Set([...handles].map((h) => h.toUpperCase()))
   if (!hs.size) return text
-  return text.replace(/\(?\b(L\d{1,2})\b\)?(,[ \t]*|[ \t]+)?/g, (m, h: string, tail?: string) => {
-    if (!hs.has(h.toUpperCase())) return m
-    return m.startsWith('(') && m.includes(')') ? (tail ?? '') : ''
-  }).replace(/[ \t]{2,}/g, ' ').replace(/ +([,.!?])/g, '$1')
+  return text.split(/("[^"]*"?|\u201c[^\u201d]*\u201d?)/).map((part, i) => {
+    if (i % 2 === 1) return part
+    return part.replace(/\(?\b(L\d{1,2})\b\)?(,[ \t]*|[ \t]+)?/g, (m, h: string, tail?: string) => {
+      if (!hs.has(h.toUpperCase())) return m
+      return m.startsWith('(') && m.includes(')') ? (tail ?? '') : ''
+    }).replace(/[ \t]{2,}/g, ' ').replace(/ +([,.!?])/g, '$1')
+  }).join('')
+}
+
+/**
+ * The same rule for a stream of deltas (Sol r7 #8): only a prefix that ends at whitespace at least
+ * 6 characters before the newest text is released, so a handle split across deltas ("L" then "1")
+ * is never shown. What goes out is always the cleaned text so far; if a later cleaning would rewrite
+ * text already shown, nothing more is released and the final body (cleaned in full) replaces it.
+ */
+export class HandleStream {
+  private acc = ''
+  private sent = ''
+  private readonly hs: string[]
+  constructor(handles: Iterable<string>) { this.hs = [...handles] }
+  push(t: string): string {
+    this.acc += t
+    let cut = -1
+    for (let i = this.acc.length - 7; i >= 0; i--) if (/\s/.test(this.acc[i])) { cut = i; break }
+    return cut > 0 ? this.release(stripLineHandles(this.acc.slice(0, cut), this.hs)) : ''
+  }
+  flush(): string { return this.release(stripLineHandles(this.acc, this.hs)) }
+  private release(clean: string): string {
+    if (!clean.startsWith(this.sent)) return ''
+    const out = clean.slice(this.sent.length)
+    this.sent = clean
+    return out
+  }
 }
 
 /** One text per chip (Sol r5 B1): label = send, both the trimmed, capped send text. */

@@ -511,13 +511,26 @@ Deno.test('r6 #2: an opener shared by two drafts acts on none and shows one chip
   assert('d' in byDay && byDay.d.id === c.id)
 })
 
-Deno.test('r6 #3: one key per (kind, target, normalized args)', () => {
-  const k1 = actionKey({ kind: 'idea', text: 'Cold  brew queues', quote: 'x' })
-  const k2 = actionKey({ kind: 'idea', text: 'cold brew queues ', quote: 'x', _t3_normalized: true })
-  assertEquals(k1, k2)
-  assertEquals(actionKey({ kind: 'delete', draft: '#a', line: 'one', reason: 'r' }, ID1), actionKey({ kind: 'delete', draft: '#b', line: 'two', reason: 'R' }, ID1))
-  assert(actionKey({ kind: 'date', at: '2027-03-09 10:45' }, ID1) !== actionKey({ kind: 'date', at: '2027-03-10 10:45' }, ID1))
-  assertEquals(actionKey({ kind: 'schedule', at: 'x' }, ID1), actionKey({ kind: 'date', at: 'x' }, ID1))
+Deno.test('r6 #3 + r7 #2: the key is the kind, the resolved target and the canonical args its write consumes', async () => {
+  const d = draft(ID1, 'Snow in the park this morning', { updated_at: 'U1' })
+  const r = render(brief([d]))
+  const ctx = { brief: r, attachments: [], text: 'delete the snow one, wrong topic', env: () => undefined } as never
+  const h = r.handleOf.get(ID1)!
+  const a = await plan(ctx, { kind: 'delete', draft: h, line: 'Snow in the park', reason: 'wrong  topic' })
+  // one extra field the delete never consumes, another excerpt and a model note: the same key
+  const b = await plan(ctx, { kind: 'delete', draft: h, line: 'Snow in the park this', reason: 'wrong topic', note: 'x', at: '2027-01-01 10:00', foo: 1 })
+  assertEquals(actionKey({ ...a, target_id: ID1 }), actionKey({ ...b, target_id: ID1 }))
+  assertEquals(a.canon, { reason: 'wrong topic' })
+  // a date consumes only the instant: different times are two actions, the same instant one
+  const d1 = await plan(ctx, { kind: 'date', draft: h, line: 'Snow in the park', at: '2027-03-09 10:45' })
+  const d2 = await plan(ctx, { kind: 'schedule', draft: h, line: 'Snow in the park', at: '2027-03-09 10:45', reason: 'ignored' })
+  const d3 = await plan(ctx, { kind: 'date', draft: h, line: 'Snow in the park', at: '2027-03-10 10:45' })
+  assertEquals(actionKey({ ...d1, target_id: ID1 }), actionKey({ ...d2, target_id: ID1 }))
+  assert(actionKey({ ...d1, target_id: ID1 }) !== actionKey({ ...d3, target_id: ID1 }))
+  // an idea's key is its stored topic and quote; an unused model field changes nothing
+  const i1 = await plan(ctx, { kind: 'idea', text: 'Snow posts', quote: 'wrong topic' })
+  const i2 = await plan(ctx, { kind: 'idea', text: 'Snow posts', quote: 'wrong topic', tags: ['x'] })
+  assertEquals(actionKey(i1), actionKey(i2))
 })
 
 Deno.test('r6 #7: a lock timeout or deadlock from any desk write is "it changed, nothing done"', async () => {
@@ -553,4 +566,76 @@ Deno.test('L-handles never reach the reply text', () => {
   assertEquals(stripLineHandles('Use the pain line (L4) for this week.', hs), 'Use the pain line for this week.')
   assertEquals(stripLineHandles('Take L2 first.', hs), 'Take first.')
   assertEquals(stripLineHandles('An L13 handle not in the brief stays.', hs), 'An L13 handle not in the brief stays.')
+})
+
+// ---- Sol r7 fixes + eval rV3 (made-up data only) -------------------------------
+import { HandleStream } from './parse.ts'
+import { competitorsOf, canonArgs } from './actions.ts'
+import { weekCount } from './brief.ts'
+
+Deno.test('r7 #1: dated is enforced on the resolved draft; rivals that start the same way are listed', async () => {
+  const a = draft(ID1, 'Snow in the park this morning and a long walk home', { scheduled_at: '2026-11-26T09:45:00Z' })
+  const b = draft('bbbbbbbb-0000-4000-8000-000000000002', 'Snow in the city again, trams stuck')
+  const r = render(brief([a, b]))
+  const wrongDay = resolveDraft(r, { kind: 'delete', draft: r.handleOf.get(ID1)!, line: 'Snow in the park this', dated: '2026-11-27' })
+  assert('error' in wrongDay && wrongDay.error === 'dated_mismatch')
+  const ok = resolveDraft(r, { kind: 'delete', draft: r.handleOf.get(ID1)!, line: 'Snow in the park this', dated: '2026-11-26' })
+  assert('d' in ok)
+  assertEquals(competitorsOf(a, 'Snow in the park this', [a, b]).map((x) => x.id), ['bbbbbbbb-0000-4000-8000-000000000002'])
+})
+
+Deno.test('r7 #3: the journal-facing canon holds only what each write consumes', () => {
+  const ctx = { text: 'file https://example.test/a my note here', attachments: [], brief: render(brief([])) } as never
+  assertEquals(canonArgs('link', { kind: 'link', url: 'https://example.test/a', note: 'my note here', extra: 'x' }, ctx), { url: 'https://example.test/a', note: 'my note here' })
+  assertEquals(canonArgs('link', { kind: 'link', url: 'https://example.test/a', note: 'not his words' }, ctx), { url: 'https://example.test/a', note: null })
+  assertEquals(canonArgs('approve', { kind: 'approve', reason: 'x', at: 'y' }, ctx), {})
+})
+
+Deno.test('r7 #5: a writer 4xx with a release that stays busy gives failed_release', async () => {
+  const d = draft(ID1, 'Snow in the park this morning', { status: 'review', updated_at: 'U1' })
+  const r = render(brief([d]))
+  let releases = 0
+  const userDb = { rpc: (n: string) => {
+    if (n === 'desk_redo_claim') return Promise.resolve({ data: { ok: true, type: 'text', topic: 't', title: 't' }, error: null })
+    releases++
+    return Promise.resolve({ data: { ok: false, error: 'busy' }, error: null })
+  } }
+  const ctx = { brief: r, attachments: [], text: '', env: () => undefined, userDb, fetchImpl: () => Promise.resolve(new Response('no', { status: 422 })) } as never
+  const p = await plan(ctx, { kind: 'redo', draft: r.handleOf.get(ID1)!, line: 'Snow in the park' })
+  let err = ''; try { await p.run!() } catch (e) { err = (e as Error).message }
+  assertEquals(err, 'failed_release'); assertEquals(releases, 3)
+})
+
+Deno.test('r7 #7: a cloud job says opened only after the queue write is confirmed', async () => {
+  const r = render(brief([]))
+  for (const [j, want] of [[{ job_id: '', status: 'failed', error: 'x' }, 't3_queue_failed'], [{ job_id: 'j1', status: 'queued' }, 'ok']] as const) {
+    const ctx = { brief: r, attachments: [], text: 'build it', env: () => undefined, t3: async () => j } as never
+    const p = await plan(ctx, { kind: 't3', title: 'Build it', brief: 'Build the thing.' })
+    assert(!p.echo.label.startsWith('Opened'))
+    let got = 'ok'; let label = ''
+    try { label = String((await p.run!()).label ?? '') } catch (e) { got = (e as Error).message }
+    assertEquals(got, want)
+    if (want === 'ok') assert(label.startsWith('Opened a cloud thread'))
+  }
+})
+
+Deno.test('r7 #8: a handle split across deltas is never shown; a quoted L1 is kept', () => {
+  const hs = new HandleStream(['L1', 'L2'])
+  const outs = [hs.push('Post L'), hs.push('1, your call line from Mon'), hs.push(' 2 Nov is the pick.'), hs.flush()]
+  for (const o of outs) assert(!/\bL1\b/.test(o), o)
+  assertEquals(outs.join(''), 'Post your call line from Mon 2 Nov is the pick.')
+  const q = new HandleStream(['L1', 'L2'])
+  const qouts = [q.push('He said "L1 is'), q.push(' the best" and L2'), q.push(' is next.'), q.flush()]
+  assertEquals(qouts.join(''), 'He said "L1 is the best" and is next.')
+  assertEquals(stripLineHandles('Your words: "take L1 off" (L2).', ['L1', 'L2']), 'Your words: "take L1 off".')
+  assertEquals(plain(' a — b ', true), ' a, b ')
+})
+
+Deno.test('eval E8: week counts read "N of 5 originals dated (M open)" from the calendar panel', () => {
+  assertEquals(weekCount({ originals: 4, cap: 5 }), '4 of 5 originals dated (1 open)')
+  assertEquals(weekCount({ originals: 5, cap: 5 }), '5 of 5 originals dated')
+  const txt = render(brief([], { this_monday: '2026-11-16', panel: { quotas: [], week_fill: [{ week_start: '2026-11-16', slots: 4 }, { week_start: '2026-11-23', slots: 4 }, { week_start: '2026-11-30', slots: 2 }] } })).text
+  assert(txt.includes('THIS WEEK (Mon 2026-11-16 to Sun 2026-11-22): 4 of 5 originals dated (1 open)'), txt.slice(0, 600))
+  assert(txt.includes('week after next: 2 of 5 originals dated (3 open)'))
+  assert(!/open slots?: ?\d/.test(txt) && !txt.includes('original slots still open'))
 })

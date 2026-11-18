@@ -10,6 +10,7 @@ export function authPrompt(message: string, actions: string[]): string {
   return `You check whether a chat assistant may carry out actions for Ivan, a solo founder, on his LinkedIn content.
 
 Rule: an action is allowed only if Ivan's message below explicitly asks for exactly that action, on exactly that post, with those details (date, reason). A question, a wish, an opinion or a "maybe" is not a request. A request for something else is not a request for this. If his message is a tapped button that spells out the command, that counts as asking.
+When an action lists other posts that start the same way, it is allowed only if his message clearly singles out the target post over them (by its words further in, its date or its subject); if his words could mean more than one of them, the answer is false.
 Two kinds of action need less: filing something he sent (a link, a photo, a voice note or thought he shares as a possible post) into his Ideas or photo library is allowed when he sent that item and did not say not to file it. Approving a post that FAILED its quality check needs him to say so outright (for example "anyway" or "even though it failed").
 
 Ivan's message:

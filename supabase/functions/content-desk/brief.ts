@@ -126,6 +126,12 @@ export function mergedPosts(drafts: Draft[], posts: PostRow[], links: Record<str
   return rows.sort((a, z) => Date.parse(z.at) - Date.parse(a.at))
 }
 
+/** The one way a week's fill is said (eval E8): "N of 5 originals dated (M open)". */
+export function weekCount(w: { originals: number; cap: number }): string {
+  const open = Math.max(0, w.cap - w.originals)
+  return `${w.originals} of ${w.cap} originals dated${open ? ` (${open} open)` : ''}`
+}
+
 export function render(b: BriefJson, recent: { role: string; origin: string; body: string; created_at: string }[] = [],
   jobs: { title: string; status: string; created_at: string; t3_link: string | null }[] = []): Rendered {
   const drafts = b.drafts ?? []
@@ -153,6 +159,7 @@ export function render(b: BriefJson, recent: { role: string; origin: string; bod
   const quotas = Array.isArray((b.panel as { quotas?: unknown }).quotas) ? (b.panel as { quotas: { slot_kind: string; per_week: number | string | null; every_n_weeks: number | null; vehicle: string | null; belief: number | null; note: string }[] }).quotas : []
   const cap = quotas.filter((q) => q.slot_kind !== 'outlier_copy_extra' && (q.every_n_weeks ?? 1) === 1 && q.per_week != null)
     .reduce((a, q) => a + Number(q.per_week), 0) || 5
+  const weekFill = Array.isArray((b.panel as { week_fill?: unknown }).week_fill) ? (b.panel as { week_fill: { week_start: string; slots?: number }[] }).week_fill : []
   for (const [i, label] of [[0, 'THIS WEEK'], [7, 'NEXT WEEK'], [14, 'WEEK AFTER NEXT']] as const) {
     const ws = addDays(b.this_monday, i)
     const we = addDays(ws, 7)
@@ -173,21 +180,23 @@ export function render(b: BriefJson, recent: { role: string; origin: string; bod
       }
     }).sort((a, z) => a.at.localeCompare(z.at))
     const orig = dated.filter((x) => !x.copy)
+    // the calendar panel's own count of dated originals wins (eval E8: week_fill.slots), else ours
+    const wf = weekFill.find((x) => x.week_start === ws)
     const beliefs: Record<string, number> = { '1': 0, '2': 0, '3': 0, '4': 0, '5': 0 }
     for (const x of orig) if (x.belief) beliefs[String(x.belief)]++
     const w: WeekFill = {
-      week_start: ws, label, dated, originals: orig.length, cap,
+      week_start: ws, label, dated, originals: typeof wf?.slots === 'number' ? wf.slots : orig.length, cap,
       events: orig.filter((x) => x.event).length, poland: orig.filter((x) => x.poland).length,
       selling: orig.filter((x) => x.selling).length, beliefs,
       missing_beliefs: [1, 2, 3, 4, 5].filter((n) => beliefs[String(n)] === 0), open: [],
     }
-    if (w.originals < cap) w.open.push(`${cap - w.originals} of ${cap} original slots still open (the brief does not say which day)`)
+    if (w.originals < cap) w.open.push(`${weekCount(w)} (the brief does not say which day)`)
     const unlabeledV = orig.filter((x) => !x.vehicle).length
     if (w.poland < 1) w.open.push(unlabeledV ? `no dated original is LABELED as the Poland-with-him post (belief 5); ${unlabeledV} originals have no vehicle label, so this is not certain` : 'Poland-with-him post (belief 5) not dated')
     weeks.push(w)
   }
   for (const w of weeks) {
-    L.push('', `${w.label} (Mon ${w.week_start} to Sun ${addDays(w.week_start, 6)}): ${w.originals} originals dated of ${w.cap}, ${w.dated.length - w.originals} ${w.dated.length - w.originals === 1 ? 'copy' : 'copies'} (extras).`)
+    L.push('', `${w.label} (Mon ${w.week_start} to Sun ${addDays(w.week_start, 6)}): ${weekCount(w)}, ${w.dated.length - w.originals} ${w.dated.length - w.originals === 1 ? 'copy' : 'copies'} (extras).`)
     for (const x of w.dated) {
       const q = queueByDraft.get(byHandle.get(x.handle)!.id)
       L.push(`- ${warsaw(x.at)} ${x.handle} [${x.status}${q ? ', queued ' + q.origin : ''}] calendar belief ${x.belief ?? '-'} calendar vehicle ${x.vehicle ?? '-'}${x.copy ? ' COPY' : ''}${x.poland ? ' POLAND' : ''}${x.event ? ' EVENT' : ''}${x.selling ? ' SELLING' : ''}: "${clip(x.first_line, 110)}"`)
@@ -215,7 +224,7 @@ export function render(b: BriefJson, recent: { role: string; origin: string; bod
     S.push(`Review: ${rv.length} drafts, ${rv.filter((d) => d.recipe === 'cp17').length} of them from the new writer recipe; ${rv.filter((d) => d.scheduled_at).length} dated.`)
     S.push(`(Only if he asks:) Review also has ${rv.filter((d) => d.is_copy).length} copies and ${rv.filter((d) => d.brain).length} brain drafts that take Keep/Drop.`)
     S.push(`All live drafts by status: ${Object.entries(byStatus).map(([k, v]) => `${k} ${v}`).join(', ')}.`)
-    for (const w of weeks) S.push(`${w.label.toLowerCase()}: ${w.originals} of ${w.cap} originals dated, ${w.dated.length - w.originals} ${w.dated.length - w.originals === 1 ? 'copy' : 'copies'}, ${w.dated.filter((x) => x.status === 'published').length} already published.`)
+    for (const w of weeks) S.push(`${w.label.toLowerCase()}: ${weekCount(w)}, ${w.dated.length - w.originals} ${w.dated.length - w.originals === 1 ? 'copy' : 'copies'}, ${w.dated.filter((x) => x.status === 'published').length} already published.`)
     // one list, measured posts and published drafts the metrics have not caught yet, newest first;
     // the same call (same inputs) builds RECENT PUBLISHED POSTS below, so its first row is this line (Sol r4 #8)
     const merged = mergedPosts(drafts, (b.posts as { posts?: PostRow[] }).posts ?? [], b.post_links)

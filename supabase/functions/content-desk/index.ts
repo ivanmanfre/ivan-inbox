@@ -16,7 +16,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { render, applyVisibility, warsaw, type BriefJson, type Rendered } from './brief.ts'
 import { buildPrompt } from './prompt.ts'
-import { parse, plain, shortParagraphs, oneText, stripLineHandles, type Act } from './parse.ts'
+import { parse, plain, shortParagraphs, oneText, stripLineHandles, HandleStream, type Act } from './parse.ts'
 import { askDesk, askDeskStream, LlmError, DESK_MODEL } from './llm.ts'
 import { planLive, planForTarget, runUndo, UndoRefused, stillSame, actionKey, type ActionEcho, type Ctx, type Planned, type Snapshot } from './actions.ts'
 import { authorize } from './auth.ts'
@@ -84,7 +84,8 @@ function failText(e: unknown): string {
     no_queue_row: 'Its queued copy is no longer there, so I pulled nothing.', queue_changed: 'Its queued copy changed since, so I pulled nothing.',
     write_failed: 'The write did not confirm. Check the post before trying again.', queue_still_live: 'It still has a queued copy, so I deleted nothing.',
     gone: 'That post is gone or no longer in your Review.', queue_read_failed: 'I could not read its queue, so I did nothing.',
-    brain_draft: 'Brain drafts take Keep or Drop in Review.', not_saved: 'That answer was never saved, so this action cannot run.',
+    brain_draft: 'Brain drafts take Keep or Drop in Review.', failed_release: 'The writer did not run, and the draft may show as generating. Open it in Review.',
+    dated_mismatch: 'That post is not on the day you named, so I did nothing.', not_saved: 'That answer was never saved, so this action cannot run.',
     posting_now: 'It is being published right now, so I left it.', next_changed: 'Its queued copy changed since, so I pulled nothing.',
     next_gone: 'It is no longer scheduled, so I pulled nothing.', next_busy: 'It is being changed right now, so I did nothing. Try again in a minute.',
     calendar_busy: 'The calendar is busy right now, so I did nothing. Try again in a minute.', duplicate_photo: 'That photo is already on the post.',
@@ -389,10 +390,14 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
         // the phone as it is written. Otherwise the whole answer goes out the moment it exists.
         const streaming = env('DESK_STREAM') === '1'
         let streamed = false
+        // call-line handles are stripped BEFORE a delta goes out: a short tail is held back across
+        // delta boundaries so a split "L" + "1" is never shown (Sol r7 #8)
+        const hs = new HandleStream(r.lines.keys())
         const onReply = (t: string) => {
           if (!t) return
           if (!streamed) { streamed = true; timings.ttft_ms = Date.now() - t0 }
-          emit('delta', { text: plain(t) })
+          const out = hs.push(t)
+          if (out) emit('delta', { text: plain(out, true) })
         }
         const ask = (p: string) => streaming ? askDeskStream(p, onReply) : askDesk(p)
         const m1 = await ask(prompt)
@@ -413,9 +418,11 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
           parsed = parse(again.text)
         }
         const reply = parsed.reply || (parsed.actions.length ? 'On it.' : 'I could not put an answer together. Send it again?')
+        { const tail = hs.flush(); if (tail) emit('delta', { text: plain(tail, true) }) }
         if (!streamed) {
           timings.ttft_ms = Date.now() - t0
-          for (let i = 0; i < reply.length; i += 400) emit('delta', { text: reply.slice(i, i + 400) })
+          const shown = stripLineHandles(reply, r.lines.keys())
+          for (let i = 0; i < shown.length; i += 400) emit('delta', { text: shown.slice(i, i + 400) })
         }
 
         // insert the assistant row now so actions can reference it
@@ -444,21 +451,15 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
         //    authorization, so the verifier sees the real state and every write is pinned to it
         const planned: { act: Act; p: Planned; snap: Snapshot | null }[] = []
         const seenKeys = new Set<string>()
-        let t3s = 0
         for (const act of parsed.actions.slice(0, 6)) {
           toolCalls++
           // resolve the handle, then plan from the LIVE row: what the verifier reads is what runs (Sol r3 P1a)
           const { p, snap } = await planLive(ctx, act)
-          // Sol r6 #3: one action per (kind, target, normalized args), before authorization and journaling;
-          // a repeat is dropped, never verified, journaled or run twice
-          const key = actionKey(act, p.target_id)
+          // one action per (kind, resolved target, the canonical args that kind's write consumes), before
+          // authorization and journaling; a repeat is dropped, never verified, journaled or run (Sol r6 #3, r7 #2)
+          const key = actionKey(p)
           if (seenKeys.has(key)) continue
           seenKeys.add(key)
-          // and at most one cloud job per turn
-          if (act.kind === 't3' && p.run && ++t3s > 1) {
-            p.run = undefined; p.refuse = 'one_t3'
-            p.echo = { ...p.echo, state: 'failed', undo: false, label: 'One cloud job per message, so I opened only the first.' }
-          }
           planned.push({ act, p, snap })
         }
         // 2) one reasoned check: did Ivan's own message ask for exactly this, with these values? (Sol r1 #1, r2 #1)
@@ -471,9 +472,10 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
             const n = Number(x.act.photo ?? 1); const att = attachments.filter((a) => a.kind === 'photo')[n - 1]
             parts.push(`photo: attachment ${n}${att?.name ? ` (${att.name})` : ''}`)
           }
-          // plan() normalized these once (normT3); the verifier reads the exact strings queueT3Job stores (Sol r4 #2)
-          if (x.act.kind === 't3') parts.push(`job title: ${String(x.act.title ?? '')}; job brief: ${String(x.act.brief ?? '')}`)
-          if (x.act.kind === 'link') parts.push(`url: ${String(x.act.url ?? '')}`)
+          // the canonical args (canonArgs) are what the write consumes: the verifier reads exactly those
+          if (x.act.kind === 't3') parts.push(`job title: ${String(x.p.canon?.title ?? '')}; job brief: ${String(x.p.canon?.brief ?? '')}`)
+          if (x.act.kind === 'link') parts.push(`url: ${String(x.p.canon?.url ?? '')}`)
+          if (x.p.context) parts.push(x.p.context)
           return parts.join(' ')
         }
         const verdicts = await authorize(text, writable.map(describe))
@@ -483,12 +485,24 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
             if (x.act.kind === 'approve' && x.snap?.status === 'error') x.act._qa_override = true
             return
           }
+          // fixed text only, never the proposal or the verifier description; no chip carries the
+          // rejected payload. Only when other posts start the same way: one server-built chip per candidate (Sol r7 #1, #3)
           x.p.run = undefined
           x.p.refuse = 'not_asked'
+          const which = !!x.p.candidates?.length
           x.p.echo = { ...x.p.echo, state: 'failed', undo: false, hold_ms: undefined, detail: 'not_asked',
-            label: `Not done: ${x.p.describe ?? 'that'}. Tap below if you want it.` }
-          if (x.p.command) chips = [{ label: `Do it: ${x.p.command}`.slice(0, 60), send: x.p.command }, ...chips].slice(0, 3)
+            label: which ? 'I did not do that: your message does not single out one post.' : 'I did not do that: you did not ask for it in this message.' }
+          if (which) chips = [...x.p.candidates!, ...chips].slice(0, 3)
         })
+        // at most one cloud job per turn, chosen among the AUTHORIZED ones (Sol r7 #7)
+        let t3s = 0
+        for (const x of writable) {
+          if (x.act.kind !== 't3' || !x.p.run) continue
+          if (++t3s > 1) {
+            x.p.run = undefined; x.p.refuse = 'one_t3'
+            x.p.echo = { ...x.p.echo, state: 'failed', undo: false, label: 'I did not do that: one cloud job per message.' }
+          }
+        }
         timings.auth_ms = Date.now() - t0
         // 3) a durable journal row first ('pending'), then the guarded write, then the terminal state
         for (const { act, p, snap } of planned) {
@@ -496,7 +510,10 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
           const immediate = !!p.run && p.echo.state === 'done'
           const { data: aRec, error: recErr } = await svc.from('desk_actions').insert({
             user_id: userId, message_id: messageId, kind: p.echo.kind, target_id: p.target_id ?? null,
-            args: { ...act, ...(snap ? { _snapshot: snap } : {}), ...(mode.fixtures ? { _fixtures: true } : {}), ...(mode.dry ? { _dry: true } : {}) },
+            // only the canonical args the write consumes, plus what a held commit re-plans from (Sol r7 #3)
+            args: { kind: act.kind, ...(p.canon ?? {}), ...(act._qa_override === true ? { _qa_override: true } : {}),
+              ...(typeof act.dated === 'string' && act.dated.trim() ? { dated: act.dated.trim() } : {}),
+              ...(snap ? { _snapshot: snap } : {}), ...(mode.fixtures ? { _fixtures: true } : {}), ...(mode.dry ? { _dry: true } : {}) },
             result: { state: immediate ? 'pending' : p.echo.state, refuse: p.refuse ?? null, ...(p.echo.state === 'held' ? { hold_ms: p.echo.hold_ms ?? 8000 } : {}) },
           }).select('id').single()
           if (recErr || !aRec?.id) {
@@ -514,14 +531,17 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
               wrote = true
               if (res.detail) echo.detail = res.detail
               if (res.t3_job) echo.t3_job = res.t3_job
+              if (res.label) echo.label = res.label
               if (!res.undo) echo.undo = false
               undo = res.undo ?? null
               terminal = { state: 'done', value: res.result ?? null }
             } catch (e) {
               echo.state = 'failed'; echo.undo = false
-              echo.label = `Could not do it: ${failText(e)}`
+              const stuck = e instanceof Error && e.message === 'failed_release'
+              // a writer that refused but left the claim in place gets its own line and journal state (Sol r7 #5)
+              echo.label = stuck ? failText(e) : `Could not do it: ${failText(e)}`
               console.error('desk action failed', echo.kind)
-              terminal = { state: 'failed', error: failText(e) }
+              terminal = { state: stuck ? 'failed_release' : 'failed', error: failText(e) }
             }
             if (!await retry3(() => svc.from('desk_actions').update({ result: terminal, undo }).eq('id', echo.id))) {
               // the write happened; only its record failed: never invite a repeat (Sol r3 lost receipt)
@@ -597,8 +617,22 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
           if (!errRow) { const { data: cur } = await svc.from('desk_messages').select('*').eq('id', assistantId).maybeSingle(); errRow = cur ?? null }
         } else {
           const { data } = await svc.from('desk_messages').insert({ user_id: userId, role: 'assistant', origin: 'desk', ...errFields }).select('*').single()
-          // one answer per user message (unique index): if another answer won, that row is the record
-          errRow = data ?? await answerFor(svc, userRow.id)
+          errRow = data ?? null
+          if (!errRow) {
+            // one answer per user message (unique index) refused the insert: reread the row that holds it (Sol r7 #6)
+            const won = await answerFor(svc, userRow.id)
+            const wm = (won?.meta ?? {}) as { turn_token?: string }
+            if (won && won.status === 'streaming' && wm.turn_token === turnToken) {
+              // our own answer row whose insert response was lost: close it with the status+token CAS
+              const { data: closed } = await svc.from('desk_messages').update(errFields).eq('id', won.id).eq('status', 'streaming')
+                .filter('meta->>turn_token', 'eq', turnToken).select('*').maybeSingle()
+              errRow = closed ?? await answerFor(svc, userRow.id)
+            } else if (won && won.status === 'streaming') {
+              // another worker's live turn: say so, and send no final
+              emit('error', { error: 'turn_in_progress' })
+              return
+            } else errRow = won
+          }
         }
         emit('error', { error: code, detail })
         if (errRow) emit('final', { message: forClient(errRow) })
@@ -644,6 +678,7 @@ async function recoverTurn(svc: any, prior: Record<string, any>): Promise<Record
     const st = a.result?.state ?? ''
     if (st === 'done') return { id: a.id, kind: a.kind, state: 'done', undo: false, label: 'Done (recorded).' }
     if (st === 'failed') return { id: a.id, kind: a.kind, state: 'failed', undo: false, label: 'Not done.' }
+    if (st === 'failed_release') return { id: a.id, kind: a.kind, state: 'failed', undo: false, label: failText('failed_release') }
     if (st === 'cancelled' || st === 'undone') return { id: a.id, kind: a.kind, state: st, undo: false, label: st === 'cancelled' ? 'Cancelled. Nothing changed.' : 'Undone.' }
     return { id: a.id, kind: a.kind, state: 'failed', undo: false, detail: 'unconfirmed', label: 'Not confirmed: check before repeating it.' }
   })
