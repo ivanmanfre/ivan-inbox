@@ -758,3 +758,10 @@ Deno.test('round 9 #5: a Poland post row carries its weekly quota from the panel
   const row = txt.split('RECENT PUBLISHED POSTS')[1].split('\n').find((l) => l.includes('speak English'))!
   assert(row.includes('Poland post (quota: 1 a week with him in it; copies are extras)'), row)
 })
+
+Deno.test('round 9 #5: the Poland quota also reaches an older post through its labeled vehicle', () => {
+  const posts = [{ url: 'https://www.linkedin.com/posts/p-2', first_line: 'I came to Poland for a few weeks', posted_at: '2026-10-25T10:00:00Z', impressions: 151 }]
+  const txt = render(brief([], { posts: { posts }, post_links: {}, post_vehicles: { 'https://www.linkedin.com/posts/p-2': 'poland_place' },
+    panel: { quotas: [{ slot_kind: 'poland_with_him', per_week: 1, every_n_weeks: 1, vehicle: 'poland_place', belief: 5, note: '' }] } })).text
+  assert(txt.includes('I came to Poland for a few weeks": 151 impressions') && txt.includes('Poland post (quota: 1 a week with him in it; copies are extras)'))
+})

@@ -31,6 +31,8 @@ export type BriefJson = {
   ideas: { reviewing: number; newest: { id: string; source: string; topic: string; at: string }[] }
   /** published draft id -> the published post URLs linked to it (own_posts.clickup_task_id); null = could not be read */
   post_links?: Record<string, string[]> | null
+  /** published post URL -> its labeled vehicle (post labeler) */
+  post_vehicles?: Record<string, string>
 }
 export type PostRow = { url?: string; first_line?: string; posted_at?: string; impressions?: number | null; likes?: number | null; comments?: number | null; worked?: boolean; too_new?: boolean; boosted?: boolean; times_median?: number | null }
 
@@ -273,15 +275,15 @@ export function render(b: BriefJson, recent: { role: string; origin: string; bod
   }
   L.push('', `RECENT PUBLISHED POSTS (last 31 days; "worked" = 1.5x his organic median, bar ${bar ?? '?'} impressions; boosted never counts; "early read" = its numbers were read before its 48h mark and may still be low; each row states its own 48h window):`)
   // the lane's quota sits next to the posts it governs (content_plan_quotas via the panel)
-  const lane = (d: Draft | null) => {
-    const v = d ? vehicleOf(d) : null
+  const lane = (d: Draft | null, url?: string) => {
+    const v = (url ? b.post_vehicles?.[url] : undefined) ?? (d ? vehicleOf(d) : null)
     const qv = v ? quotas.find((x) => x.vehicle === v && x.per_week != null) : undefined
     return qv && v === 'poland_place' ? `; Poland post (quota: ${Number(qv.per_week)} a week with him in it; copies are extras)` : ''
   }
   for (const m of mergedPosts(drafts, posts, b.post_links)) {
     const p = m.p
     if (!p) { L.push(`- ${warsaw(m.at)} "${clip(m.first_line, 90)}": (no numbers yet; ${win(m.at)})${lane(m.d)}`); continue }
-    L.push(`- ${warsaw(p.posted_at)} "${clip(p.first_line, 90)}": ${p.impressions ?? '?'} impressions, ${p.likes ?? 0} likes, ${p.comments ?? 0} comments, ${p.times_median ?? '?'}x median${p.boosted ? ', BOOSTED' : ''}${p.too_new ? ', early read' : p.worked ? ', WORKED' : ''}; ${win(p.posted_at)}${lane(m.d)}`)
+    L.push(`- ${warsaw(p.posted_at)} "${clip(p.first_line, 90)}": ${p.impressions ?? '?'} impressions, ${p.likes ?? 0} likes, ${p.comments ?? 0} comments, ${p.times_median ?? '?'}x median${p.boosted ? ', BOOSTED' : ''}${p.too_new ? ', early read' : p.worked ? ', WORKED' : ''}; ${win(p.posted_at)}${lane(m.d, p.url)}`)
   }
   const pv = Array.isArray((b.panel as { pv48?: unknown }).pv48) ? (b.panel as { pv48: { posted_at: string; first_line: string; contacted_viewers_48h: number | null; contacted_fit_viewers_48h: number | null; baseline_per_48h: number | null; window_open: boolean }[] }).pv48 : []
   if (pv.length) {

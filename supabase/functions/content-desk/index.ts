@@ -138,6 +138,7 @@ async function loadBrief(svc: any, fixtures: boolean, force = false): Promise<{ 
   const pubIds = (json.drafts ?? []).filter((d) => d.status === 'published').map((d) => d.id)
   if (pubIds.length) json.post_links = await postLinks(svc, pubIds)
   else json.post_links = {}
+  json.post_vehicles = await postVehicles(svc, ((json.posts as { posts?: { url?: string }[] }).posts ?? []).map((p) => p.url).filter((u): u is string => !!u))
   if (panelFresh) json.panel = panelCache!.panel
   else if ((json.panel as { ok?: boolean })?.ok !== false) panelCache = { at: Date.now(), panel: json.panel }
   briefCache = { at: Date.now(), fixtures, stamp, json }
@@ -145,6 +146,27 @@ async function loadBrief(svc: any, fixtures: boolean, force = false): Promise<{ 
 }
 
 function invalidate() { briefCache = null }
+
+/**
+ * Published post URL -> its labeled vehicle (the post labeler, cp17_post_labels, newest label), so a
+ * lane's quota can sit next to the posts it governs (round 9 #5). Any failed read gives {}: no label.
+ */
+// deno-lint-ignore no-explicit-any
+async function postVehicles(svc: any, urls: string[]): Promise<Record<string, string>> {
+  if (!urls.length) return {}
+  const { data: own, error } = await svc.from('own_posts').select('id, linkedin_url').in('linkedin_url', urls.slice(0, 60))
+  if (error || !Array.isArray(own) || !own.length) return {}
+  const urlOf = new Map<string, string>(own.map((o: { id: string; linkedin_url: string }) => [String(o.id), o.linkedin_url]))
+  const { data: labels, error: lErr } = await svc.from('cp17_post_labels').select('own_post_id, vehicle, labeled_at').in('own_post_id', [...urlOf.keys()])
+    .order('labeled_at', { ascending: false })
+  if (lErr || !Array.isArray(labels)) return {}
+  const out: Record<string, string> = {}
+  for (const l of labels as { own_post_id: string; vehicle: string | null }[]) {
+    const u = urlOf.get(String(l.own_post_id))
+    if (u && l.vehicle && !(u in out)) out[u] = l.vehicle
+  }
+  return out
+}
 
 /**
  * Published draft id -> the URLs of its published post, by two links: own_posts.clickup_task_id = the
