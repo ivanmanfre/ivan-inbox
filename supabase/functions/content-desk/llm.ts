@@ -138,7 +138,10 @@ export async function askDeskStream(prompt: string, onReply: (t: string) => void
       const r = await f(`${base}/v1/messages`, {
         method: 'POST',
         headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json',
-          'x-proxy-thinking': 'off', 'x-proxy-caller': 'content-desk', 'x-proxy-stream': '1' },
+          'x-proxy-thinking': 'off', 'x-proxy-caller': 'content-desk', 'x-proxy-stream': '1',
+          // Planning questions reasoned silently for 9-14 s at the proxy's fixed effort "high"
+          // (measured 11-18); the desk asks for its own level on the stream path.
+          ...(env('DESK_EFFORT') ? { 'x-proxy-effort': env('DESK_EFFORT')! } : {}) },
         body: JSON.stringify({ model, max_tokens: opts.maxTokens ?? 900, stream: true, messages: [{ role: 'user', content: prompt }] }),
         signal: AbortSignal.any([ctl.signal, AbortSignal.timeout(opts.timeoutMs ?? 60_000)]),
       })
