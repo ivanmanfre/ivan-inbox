@@ -1,10 +1,12 @@
 // The desk's hands. Every write goes through the same table write or RPC the
 // app's own button uses, made with IVAN'S OWN session (the user JWT client), so
 // the database applies exactly the checks it applies to a tap in the app:
-//   approve      -> carousel_drafts update (approveDraft) / cb39_verdict_set keep for a brain draft
+// Every draft write goes through a desk SQL function (db/20261118m_content_desk_r6.sql) that first takes
+// the publisher's locks (account, queue rows, draft), checks the authorized revision, then runs the app's write:
+//   approve      -> desk_approve (approveDraft's UPDATE) / desk_keep -> cb39_verdict_set keep for a brain draft
 //   date, undate -> desk_set_date -> operator_set_schedule_date('clientops', …)  (WhenEditor / Calendar)
-//   pull         -> content_next_pull(queue, slot_at, reason)    (Next rows)
-//   delete       -> deleteDraft (reason stamp, delete, archive fallback); never a brain draft (Keep/Drop in Review)
+//   pull         -> desk_pull -> content_next_pull(queue, slot_at, reason) (Next rows) / the calendar's Remove date
+//   delete       -> desk_delete (reason stamp, delete, archive fallback); never a brain draft (Keep/Drop in Review)
 //   redo         -> regenerateDraft (status generating + post-gen-v2 webhook)
 //   photo_attach -> desk_set_photos -> operator_set_draft_photos('clientops', …)    (PictureRow)
 //   draft_line   -> lm-curator-decide approve                    (Ideas approve, with ideaDecidable)
@@ -69,7 +71,6 @@ export type Planned = {
 }
 
 export const HOLD_MS = 8000
-const GATE = 'clientops'
 const POSTGEN = 'https://n8n.ivanmanfredi.com/webhook/post-gen-v2'
 
 const norm = (s: string) => s.toLowerCase().normalize('NFKD').replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim()
@@ -125,21 +126,6 @@ export function warsawToIso(s: string): string | null {
   return new Date(t).toISOString()
 }
 
-function rpcOk(data: unknown, error: { message?: string } | null): Record<string, unknown> {
-  if (error) throw new Error(error.message ?? 'rpc failed')
-  const r = (data ?? {}) as Record<string, unknown>
-  if (r.ok !== true) throw new Error(typeof r.error === 'string' ? r.error : 'refused')
-  return r
-}
-
-function stampTaxonomy(t: unknown, marks: Record<string, unknown>): Record<string, unknown> {
-  let parsed = t
-  if (typeof t === 'string') { try { parsed = JSON.parse(t) } catch { parsed = t } }
-  if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return { ...(parsed as Record<string, unknown>), ...marks }
-  if (typeof parsed === 'string' && parsed.trim()) return { structure_used: parsed.trim(), ...marks }
-  return { ...marks }
-}
-
 /** The app's ideaDecidable (src/lib/content.ts): only Ivan's own workspace and no campaign. */
 export function ideaDecidable(i: { workspace_type?: string | null; campaign_id?: string | null }): boolean {
   const w = (i.workspace_type ?? '').trim().toLowerCase()
@@ -170,6 +156,8 @@ export type Snapshot = {
   queue: { queue_id: string; slot_at: string; status: string } | null
   /** the exact eligible Next row (linkedin, pending, not a repost, in the future): what a pull acts on */
   next: { queue_id: string; slot_at: string } | null
+  /** every live queue row id (pending / queued_v2 / posting), sorted: desk_pull requires this exact set (Sol r5 B2) */
+  queue_ids?: string[]
 }
 
 /** Read the live row (Ivan's lane) and its live queue rows. Null when the draft is gone or not his. */
@@ -188,6 +176,7 @@ export async function loadLive(ctx: Pick<Ctx, 'svc'> & Partial<Pick<Ctx, 'userDb
   if (qErr) throw new QueueReadError()   // a queue we cannot read is never assumed empty: fail closed
   const rows = (Array.isArray(q) ? q : []) as { id: string; scheduled_at: string; status: string; platform: string | null; is_repost: boolean | null }[]
   const anyLive = rows[0] ?? null
+  const queueIds = rows.map((r) => r.id).sort()
   const next = rows.find((r) => r.platform === 'linkedin' && r.status === 'pending' && !r.is_repost && Date.parse(r.scheduled_at) > Date.now()) ?? null
   const firstLine = firstLineOf(row.post_body)
   const tax = (row.taxonomy && typeof row.taxonomy === 'object' && !Array.isArray(row.taxonomy)) ? row.taxonomy as Record<string, unknown> : {}
@@ -204,13 +193,14 @@ export async function loadLive(ctx: Pick<Ctx, 'svc'> & Partial<Pick<Ctx, 'userDb
     is_copy: tax.outlier_copy === 'true' || tax.outlier_copy === true, photos: Array.isArray(row.image_urls) ? row.image_urls.length : 0,
     brain: member, human_edited: String(tax.human_edited ?? '') === 'true',
     slot_kind: null, selling: false, chars: String(row.post_body ?? '').length, created_at: row.created_at,
-    fixture: (tax.desk_eval_fixture as string) ?? null, updated_at: row.updated_at,
+    fixture: (tax.desk_eval_fixture as string) ?? null, updated_at: row.updated_at, queue_ids: queueIds,
   }
   const snap: Snapshot = {
     target_id: row.id, updated_at: row.updated_at, status: row.status, first_line_sha: await sha256Hex(firstLine),
     scheduled_at: row.scheduled_at, image_urls: Array.isArray(row.image_urls) ? row.image_urls.filter((u: unknown) => typeof u === 'string') : [],
     queue: anyLive ? { queue_id: anyLive.id, slot_at: anyLive.scheduled_at, status: anyLive.status } : null,
     next: next ? { queue_id: next.id, slot_at: next.scheduled_at } : null,
+    queue_ids: queueIds,
   }
   return { d, snap, tax }
 }
@@ -267,6 +257,8 @@ export async function planForTarget(ctx: Ctx, act: Act, snap: Snapshot): Promise
   }
   if (!live) return { refuse: 'gone' }
   if (String(live.snap.updated_at) !== String(snap.updated_at) || live.snap.status !== snap.status || live.snap.first_line_sha !== snap.first_line_sha) return { refuse: 'changed' }
+  // the queue set the action was authorized on (Sol r5 B2); desk_pull checks it again under the locks
+  if (JSON.stringify(snap.queue_ids ?? null) !== JSON.stringify(live.snap.queue_ids ?? null)) return { refuse: 'queue_changed' }
   if ((IN_ALIAS[act.kind] ?? act.kind) === 'pull') {
     // the held pull acts on the very Next row it was proposed for (Sol r4 #4): same queue id and slot, or nothing
     const a = snap.next, b = live.snap.next
@@ -307,7 +299,7 @@ async function planInner(ctx: Ctx, act: Act): Promise<Planned> {
       // A post that failed its quality check is approved only when Ivan says so outright; the
       // authorization check sees these words and decides (no keyword list).
       const failedCheck = d!.status === 'error'
-      const id = d!.id, brain = d!.brain
+      const id = d!.id, brain = d!.brain, pinned = d!.updated_at ?? null
       return {
         ...base,
         echo: { kind, label: `Approving ${q}${failedCheck ? ' (it failed its check)' : ''}`, state: 'held', undo: true, hold_ms: HOLD_MS, target },
@@ -315,15 +307,8 @@ async function planInner(ctx: Ctx, act: Act): Promise<Planned> {
         command: `approve ${qq}${failedCheck ? ' even though it failed its check' : ''}`,
         run: async () => {
           if (failedCheck && act._qa_override !== true) throw new Error('qa_override_missing')
-          if (brain) {
-            const { data, error } = await ctx.userDb.rpc('cb39_verdict_set', { p_draft: id, p_verdict: 'keep', p_reasons: [], p_note: null, p_invocation: null, p_ms_to_verdict: null })
-            if (error) throw new Error(error.message)
-            return { result: data }
-          }
-          const { data, error } = await ctx.userDb.from('carousel_drafts').update({ status: 'approved' }).eq('id', id).is('client_id', null).select('id')
-          if (error) throw new Error(error.message)
-          if (!data?.length) throw new Error('This post could not be updated from here.')
-          return { result: { approved: id } }
+          // the authorized revision only, under the publisher's locks; Brain Keep then calls the app's keep RPC (Sol r5 B3)
+          return { result: await deskWrite(ctx, brain ? 'desk_keep' : 'desk_approve', { p_draft: id, p_expected_updated_at: pinned, p_expected_status: d!.status }) }
         },
       }
     }
@@ -366,15 +351,15 @@ async function planInner(ctx: Ctx, act: Act): Promise<Planned> {
             : `remove the date from ${qq}, which takes it off the schedule (it is scheduled for ${warsaw(prev)})`,
           command: `pull ${qq} off the schedule`,
           run: async () => {
-            if (kind === 'pull') {
-              // a held pull acts on the exact Next row it was proposed for (planForTarget compared it), never another path (Sol r4 #4)
-              if (!queue) throw new Error('no_queue_row')
-              const { data, error } = await ctx.userDb.rpc('content_next_pull', { p_queue: queue.queue_id, p_slot_at: queue.slot_at, p_reason: reason })
-              return { result: rpcOk(data, error) }
-            }
-            // "remove the date" on a scheduled post is the calendar's own Remove date (an owner pull)
-            const { data, error } = await ctx.userDb.rpc('operator_set_schedule_date', { p_gate: GATE, p_draft_id: id, p_scheduled_at: null })
-            return { result: rpcOk(data, error) }
+            // the exact queue set (and for a pull the exact Next row) it was authorized on, checked again
+            // under the publisher's locks before the app's own pull runs (Sol r4 #4, r5 B2)
+            if (kind === 'pull' && !queue) throw new Error('no_queue_row')
+            if (!Array.isArray(d!.queue_ids)) throw new Error('changed')
+            return { result: await deskWrite(ctx, 'desk_pull', {
+              p_draft: id, p_expected_updated_at: d!.updated_at ?? null, p_queue_ids: d!.queue_ids,
+              p_next_queue: kind === 'pull' ? queue!.queue_id : null, p_next_slot: kind === 'pull' ? queue!.slot_at : null,
+              p_reason: kind === 'pull' ? reason : null,
+            }) }
           },
         }
       }
@@ -412,29 +397,10 @@ async function planInner(ctx: Ctx, act: Act): Promise<Planned> {
         describe: `delete ${qq}${why ? `, reason: "${why}"` : ', no reason given'}`,
         command: `delete ${qq}${why ? `, reason: ${why}` : ''}`,
         run: async () => {
-          const { data: live, error: qErr } = await ctx.svc.from('scheduled_posts').select('id')
-            .eq('clickup_task_id', id).in('status', ['pending', 'queued_v2', 'posting']).limit(1)
-          if (qErr) throw new Error('queue_check_failed')
-          if (live?.length) throw new Error('queue_still_live')
+          // undated, review/error, no live queue copy, the authorized revision: all checked under the
+          // publisher's locks in desk_delete, which then stamps the reason and deletes (or archives)
           if (!pinned) throw new Error('changed')
-          // every statement carries the full predicate: same row, his lane, still undated, still
-          // review/error, unchanged since it was authorized; zero rows = it changed, nothing deleted
-          const guard = (qb: Db, at: string) => qb.eq('id', id).is('client_id', null).is('scheduled_at', null).in('status', ['review', 'error']).eq('updated_at', at)
-          let at = pinned
-          const { data: row } = await ctx.userDb.from('carousel_drafts').select('taxonomy').eq('id', id).maybeSingle()
-          let tax = row?.taxonomy
-          if (why) {
-            tax = stampTaxonomy(tax, { delete_reason: why })
-            const st = await guard(ctx.userDb.from('carousel_drafts').update({ taxonomy: tax }), at).select('updated_at')
-            if (st.error || !st.data?.length) throw new Error('changed')
-            at = st.data[0].updated_at
-          }
-          const del = await guard(ctx.userDb.from('carousel_drafts').delete(), at).select('id')
-          if (!del.error && del.data?.length) return { result: { outcome: 'deleted' } }
-          const upd = await guard(ctx.userDb.from('carousel_drafts')
-            .update({ status: 'disqualified', taxonomy: stampTaxonomy(tax, { deleted_by_operator: true, deleted_at: new Date().toISOString() }) }), at).select('id')
-          if (upd.error || !upd.data?.length) throw new Error('changed')
-          return { result: { outcome: 'disqualified' } }
+          return { result: await deskWrite(ctx, 'desk_delete', { p_draft: id, p_expected_updated_at: pinned, p_reason: why }) }
         },
       }
     }
@@ -539,7 +505,8 @@ async function planInner(ctx: Ctx, act: Act): Promise<Planned> {
     }
     case 'idea': {
       const text = String(act.text ?? '').trim()
-      const quote = String(act.quote ?? ctx.text).trim()
+      // attributed to Ivan, so only his exact words: a verbatim span of THIS message, else the message itself (Sol r5 B5)
+      const quote = ivanWords(act.quote, ctx.text)
       if (!text) return { echo: { kind, label: 'Nothing to save as an idea.', state: 'failed', undo: false }, refuse: 'empty' }
       return {
         echo: { kind, label: `Saved as an idea: "${short(text, 70)}". The scorer picks it up next.`, state: 'done', undo: true },
@@ -565,7 +532,8 @@ async function planInner(ctx: Ctx, act: Act): Promise<Planned> {
         return { echo: { kind, label: 'I only file links you send me.', state: 'failed', undo: false }, refuse: 'url_not_in_message' }
       }
       const post = classifyPostUrl(url)
-      const note = typeof act.note === 'string' ? act.note.trim().slice(0, 500) : ''
+      // "his note" is attributed to Ivan: only a verbatim span of his message, never model text (Sol r5 B5)
+      const note = typeof act.note === 'string' && verbatimIn(act.note, ctx.text) ? act.note.trim().slice(0, 500) : ''
       return {
         echo: { kind, label: post ? `Added the ${post.platform === 'x' ? 'X' : 'LinkedIn'} post as a copy candidate in Ideas` : 'Saved the link as an idea', state: 'done', undo: true },
         describe: post ? `file the ${post.platform} post he sent as a copy candidate in Ideas` : `file the link he sent as a post idea in Ideas`,
@@ -689,6 +657,26 @@ export function normT3(title: string, brief: string): { title: string; brief: st
     title: title.replace(/\s+/g, ' ').trim().slice(0, MAX_TITLE_CHARS).trim(),
     brief: brief.trim().slice(0, MAX_BRIEF_CHARS).trim(),
   }
+}
+
+/** A desk SQL write (db/20261118m_content_desk_r6.sql): locks, checks, then the app's own write; a refusal is a code. */
+async function deskWrite(ctx: Pick<Ctx, 'userDb'>, fn: string, args: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const { data, error } = await ctx.userDb.rpc(fn, args)
+  if (error) throw new Error('write_failed')
+  const r = (data ?? {}) as Record<string, unknown>
+  if (r.ok !== true) throw new Error(typeof r.error === 'string' ? r.error : 'refused')
+  return r
+}
+
+/** The text is an exact span of Ivan's message (trimmed, non-empty). */
+export function verbatimIn(s: unknown, text: string): boolean {
+  const q = typeof s === 'string' ? s.trim() : ''
+  return q.length > 0 && text.includes(q)
+}
+
+/** What may be stored as Ivan's own words: the model's quote only if it is a verbatim span of his message, else his whole message (capped). */
+export function ivanWords(quote: unknown, text: string, cap = 1200): string {
+  return (verbatimIn(quote, text) ? String(quote).trim() : text.trim()).slice(0, cap)
 }
 
 /** The queue could not be read: never assumed empty (Sol r4 #4). */

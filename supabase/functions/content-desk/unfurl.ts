@@ -14,27 +14,35 @@ export function allowedHost(url: string): boolean {
 const PAIRS: Record<string, string> = { '(': ')', '[': ']', '<': '>', '"': '"', "'": "'", '\u201c': '\u201d', '\u2018': '\u2019' }
 const TRAIL = /[,;:!?.]+$/
 
-/**
- * The URL is one of the whitespace-separated tokens of his message (Sol r4 #10): the raw token is
- * compared first, so a URL that really ends in a comma or bracket matches verbatim. Only then is a
- * trailing run of , ; : ! ? . dropped, and ONE level of a matched wrapper pair ((), [], <>, quotes)
- * removed (with its own trailing punctuation). An unmatched closing character is never stripped.
- */
-export function urlInMessage(url: string, text: string): boolean {
-  if (!url) return false
-  return text.split(/\s+/).some((t) => tokenForms(t).includes(url))
+function isUrl(t: string): boolean {
+  if (!/^https:\/\//i.test(t)) return false
+  try { return new URL(t).protocol === 'https:' } catch { return false }
 }
 
-export function tokenForms(t: string): string[] {
-  const out = [t]
+/**
+ * The ONE URL a message token stands for (Sol r5 B8), or null:
+ * - a token that is itself a valid https URL is its own and only canonical value (so
+ *   "https://example.test/resource." authorizes exactly that, never also the path without the dot);
+ * - otherwise trailing , ; : ! ? . outside a wrapper are dropped, and one level of a matched wrapper
+ *   pair ((), [], <>, quotes) is removed; the inside must then be a valid URL as it stands.
+ * An unmatched closer is never stripped. One token gives at most one URL.
+ */
+export function canonicalUrl(t: string): string | null {
+  if (isUrl(t)) return t
   const bare = t.replace(TRAIL, '')
-  out.push(bare)
+  if (bare !== t && isUrl(bare)) return bare
   const close = PAIRS[bare[0]]
   if (close && bare.length > 2 && bare.endsWith(close)) {
     const inner = bare.slice(1, -1)
-    out.push(inner, inner.replace(TRAIL, ''))
+    return isUrl(inner) ? inner : null
   }
-  return out
+  return null
+}
+
+/** The URL is the canonical URL of one of the whitespace-separated tokens of his message. */
+export function urlInMessage(url: string, text: string): boolean {
+  if (!url) return false
+  return text.split(/\s+/).some((t) => canonicalUrl(t) === url)
 }
 
 function og(html: string, prop: string): string | undefined {

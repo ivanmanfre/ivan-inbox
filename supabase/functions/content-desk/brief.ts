@@ -14,6 +14,7 @@ export type Draft = {
   is_copy: boolean; photos: number; brain: boolean; human_edited: boolean
   slot_kind: string | null; selling: boolean; chars: number; created_at: string; fixture: string | null
   updated_at?: string | null  // set only on a live row read (actions.ts loadLive), never from the brief
+  queue_ids?: string[]        // the live queue set (pending/queued_v2/posting ids, sorted); live row read only
 }
 export type QueueRow = { queue_id: string; draft_id: string; slot_at: string; origin: string; first_line: string }
 export type CallLine = { id: string; ingested_at: string; status: string; topic: string; said: string; when: string | null; belief: string | null; vehicle: string | null; score: number | null; draft_id: string | null }
@@ -28,6 +29,8 @@ export type BriefJson = {
   rulings: { note: string; at: string; rule: string }[]
   autopilot: { ran_at: string; week_start: string; mode: string; picked: number; scheduled: number; open_before: number; outcome: string; summary: string }[]
   ideas: { reviewing: number; newest: { id: string; source: string; topic: string; at: string }[] }
+  /** published draft id -> the published post URLs linked to it (own_posts.clickup_task_id); null = could not be read */
+  post_links?: Record<string, string[]> | null
 }
 export type PostRow = { url?: string; first_line?: string; posted_at?: string; impressions?: number | null; likes?: number | null; comments?: number | null; worked?: boolean; too_new?: boolean; boosted?: boolean; times_median?: number | null }
 
@@ -102,19 +105,23 @@ export function applyVisibility(b: BriefJson, visible: Map<string, boolean> | nu
   }
 }
 
-const normLine = (s: string | null | undefined) => (s ?? '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim().slice(0, 50)
-
-/** Published drafts the metrics read has not caught up with yet (newest first). */
-export function unmeasured(drafts: Draft[], posts: PostRow[]): Draft[] {
-  const seen = new Set(posts.map((p) => normLine(p.first_line)))
-  return drafts.filter((d) => d.status === 'published' && d.published_at && !seen.has(normLine(d.first_line)))
+/**
+ * Published drafts the metrics read has not caught up with yet (newest first). A draft counts as
+ * measured only when one of its LINKED published URLs (own_posts.clickup_task_id = the draft id) is a
+ * row of the metrics list: never by matching text, so two posts with the same opener stay two posts
+ * (Sol r5 B7). Without the link map nothing is guessed: no unmeasured rows are added.
+ */
+export function unmeasured(drafts: Draft[], posts: PostRow[], links: Record<string, string[]> | null | undefined): Draft[] {
+  if (!links) return []
+  const urls = new Set(posts.map((p) => p.url).filter((u): u is string => !!u))
+  return drafts.filter((d) => d.status === 'published' && d.published_at && !(links[d.id] ?? []).some((u) => urls.has(u)))
     .sort((a, z) => String(z.published_at).localeCompare(String(a.published_at)))
 }
 
-export function mergedPosts(drafts: Draft[], posts: PostRow[]): { at: string; first_line: string; p: PostRow | null }[] {
+export function mergedPosts(drafts: Draft[], posts: PostRow[], links: Record<string, string[]> | null | undefined): { at: string; first_line: string; p: PostRow | null }[] {
   const rows = [
     ...posts.filter((p) => p.posted_at).map((p) => ({ at: String(p.posted_at), first_line: p.first_line ?? '', p })),
-    ...unmeasured(drafts, posts).map((d) => ({ at: String(d.published_at), first_line: d.first_line, p: null as PostRow | null })),
+    ...unmeasured(drafts, posts, links).map((d) => ({ at: String(d.published_at), first_line: d.first_line, p: null as PostRow | null })),
   ]
   return rows.sort((a, z) => Date.parse(z.at) - Date.parse(a.at))
 }
@@ -156,9 +163,11 @@ export function render(b: BriefJson, recent: { role: string; origin: string; bod
       return day >= ws && day < we
     }).map((d) => {
       const at = (d.status === 'published' ? (d.published_at ?? d.scheduled_at) : d.scheduled_at)!
-      const v = vehicleOf(d)
+      // calendar coverage = the calendar panel's own slot labels only (eval E3): a draft's own tag or the
+      // post labeler never counts as coverage, so the week blocks agree with week_fill/by_vehicle
+      const v = slotOf.get(d.id)?.vehicle ?? null
       return {
-        handle: handleOf.get(d.id)!, at, status: d.status, belief: beliefOf(d), vehicle: v, copy: d.is_copy,
+        handle: handleOf.get(d.id)!, at, status: d.status, belief: slotOf.get(d.id)?.belief ?? null, vehicle: v, copy: d.is_copy,
         event: !d.selling && (d.slot_kind === 'business_event' || (!d.slot_kind && !!v && EVENT_VEHICLES.has(v))),
         poland: d.slot_kind === 'poland_with_him' || v === 'poland_place', selling: d.selling, first_line: d.first_line,
       }
@@ -181,7 +190,7 @@ export function render(b: BriefJson, recent: { role: string; origin: string; bod
     L.push('', `${w.label} (Mon ${w.week_start} to Sun ${addDays(w.week_start, 6)}): ${w.originals} originals dated of ${w.cap}, ${w.dated.length - w.originals} ${w.dated.length - w.originals === 1 ? 'copy' : 'copies'} (extras).`)
     for (const x of w.dated) {
       const q = queueByDraft.get(byHandle.get(x.handle)!.id)
-      L.push(`- ${warsaw(x.at)} ${x.handle} [${x.status}${q ? ', queued ' + q.origin : ''}] belief ${x.belief ?? '-'} vehicle ${x.vehicle ?? '-'}${x.copy ? ' COPY' : ''}${x.poland ? ' POLAND' : ''}${x.event ? ' EVENT' : ''}${x.selling ? ' SELLING' : ''}: "${clip(x.first_line, 110)}"`)
+      L.push(`- ${warsaw(x.at)} ${x.handle} [${x.status}${q ? ', queued ' + q.origin : ''}] calendar belief ${x.belief ?? '-'} calendar vehicle ${x.vehicle ?? '-'}${x.copy ? ' COPY' : ''}${x.poland ? ' POLAND' : ''}${x.event ? ' EVENT' : ''}${x.selling ? ' SELLING' : ''}: "${clip(x.first_line, 110)}"`)
     }
     if (!w.dated.length) L.push('- nothing dated')
     const unlabeled = w.dated.filter((x) => !x.copy && !x.belief).length
@@ -209,7 +218,7 @@ export function render(b: BriefJson, recent: { role: string; origin: string; bod
     for (const w of weeks) S.push(`${w.label.toLowerCase()}: ${w.originals} of ${w.cap} originals dated, ${w.dated.length - w.originals} ${w.dated.length - w.originals === 1 ? 'copy' : 'copies'}, ${w.dated.filter((x) => x.status === 'published').length} already published.`)
     // one list, measured posts and published drafts the metrics have not caught yet, newest first;
     // the same call (same inputs) builds RECENT PUBLISHED POSTS below, so its first row is this line (Sol r4 #8)
-    const merged = mergedPosts(drafts, (b.posts as { posts?: PostRow[] }).posts ?? [])
+    const merged = mergedPosts(drafts, (b.posts as { posts?: PostRow[] }).posts ?? [], b.post_links)
     if (merged[0]) S.push(`Last post out: ${warsaw(merged[0].at)} "${clip(merged[0].first_line, 70)}" (${merged[0].p ? `${merged[0].p.impressions ?? '?'} impressions so far` : 'no numbers yet'}).`)
     if (best) S.push(`Best post of the last 31 days by impressions: "${clip(best.first_line, 70)}" ${warsaw(best.posted_at, false)}, ${best.impressions} impressions.`)
     S.push(`Ideas waiting: ${b.ideas?.reviewing ?? 0}. Queue armed (next 21 days): ${(b.queue ?? []).length} posts, ${(b.queue ?? []).filter((x) => x.origin === 'autopilot').length} picked by the autopilot.`)
@@ -230,7 +239,7 @@ export function render(b: BriefJson, recent: { role: string; origin: string; bod
   // ---- review
   const review = drafts.filter((d) => d.status === 'review' || d.status === 'error' || d.status === 'generating' || d.status === 'approved')
     .slice().sort((a, z) => String(z.created_at).localeCompare(String(a.created_at)))
-  L.push('', `DRAFTS NOT YET SCHEDULED OR PUBLISHED (${review.length}), NEWEST FIRST. Format: handle [status] date | belief | vehicle | recipe | flags: first line`)
+  L.push('', `DRAFTS NOT YET SCHEDULED OR PUBLISHED (${review.length}), NEWEST FIRST. Format: handle [status] date | draft's own belief tag | draft's own vehicle tag | recipe | flags: first line. These tags are NOT calendar coverage; coverage is only the week blocks above.`)
   for (const d of review) {
     const flags = [d.is_copy && 'copy', d.brain && 'brain(keep/drop)', d.human_edited && 'hand-edited', d.photos ? `${d.photos} photo` : 'no photo'].filter(Boolean).join(',')
     L.push(`- ${handleOf.get(d.id)} [${d.status}${d.qa_verdict ? '/' + d.qa_verdict : ''}] ${d.scheduled_at ? warsaw(d.scheduled_at) : 'undated'} | B${beliefOf(d) ?? '-'} | ${vehicleOf(d) ?? '-'} | ${d.recipe ?? '-'} | ${flags}: "${clip(d.first_line, 120)}"`)
@@ -240,7 +249,7 @@ export function render(b: BriefJson, recent: { role: string; origin: string; bod
   const posts = (b.posts as { posts?: PostRow[] }).posts ?? []
   const bar = (b.posts as { bar?: number }).bar
   L.push('', `RECENT PUBLISHED POSTS (last 31 days; "worked" = 1.5x his organic median, bar ${bar ?? '?'} impressions; boosted never counts; under 48h = too new):`)
-  for (const m of mergedPosts(drafts, posts)) {
+  for (const m of mergedPosts(drafts, posts, b.post_links)) {
     const p = m.p
     if (!p) { L.push(`- ${warsaw(m.at)} "${clip(m.first_line, 90)}": (no numbers yet)`); continue }
     L.push(`- ${warsaw(p.posted_at)} "${clip(p.first_line, 90)}": ${p.impressions ?? '?'} impressions, ${p.likes ?? 0} likes, ${p.comments ?? 0} comments, ${p.times_median ?? '?'}x median${p.boosted ? ', BOOSTED' : ''}${p.too_new ? ', too new' : p.worked ? ', WORKED' : ''}`)
@@ -264,7 +273,7 @@ export function render(b: BriefJson, recent: { role: string; origin: string; bod
   }
   const br = Array.isArray((b.panel as { booking_reasons?: unknown }).booking_reasons) ? (b.panel as { booking_reasons: { call_date: string; reason_class: string; quote: string }[] }).booking_reasons : []
   if (br.length) {
-    L.push('', 'WHY PEOPLE BOOKED (prospects\' own words on calls, newest first; never Ivan\'s call lines):')
+    L.push('', 'WHY PEOPLE BOOKED (prospects\' own words on calls, newest first; only for a question about why people book; never Ivan\'s call lines, never a post pick or a reason for one):')
     for (const r of br.slice(0, 8)) L.push(`- ${warsaw(r.call_date, false)} ${r.reason_class}: "${clip(r.quote, 160)}"`)
   }
 

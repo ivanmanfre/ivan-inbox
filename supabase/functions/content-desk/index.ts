@@ -16,7 +16,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { render, applyVisibility, warsaw, type BriefJson, type Rendered } from './brief.ts'
 import { buildPrompt } from './prompt.ts'
-import { parse, plain, shortParagraphs, type Act } from './parse.ts'
+import { parse, plain, shortParagraphs, oneText, type Act } from './parse.ts'
 import { askDesk, askDeskStream, LlmError, DESK_MODEL } from './llm.ts'
 import { planLive, planForTarget, runUndo, UndoRefused, stillSame, type ActionEcho, type Ctx, type Planned, type Snapshot } from './actions.ts'
 import { authorize } from './auth.ts'
@@ -85,6 +85,11 @@ function failText(e: unknown): string {
     write_failed: 'The write did not confirm. Check the post before trying again.', queue_still_live: 'It still has a queued copy, so I deleted nothing.',
     gone: 'That post is gone or no longer in your Review.', queue_read_failed: 'I could not read its queue, so I did nothing.',
     brain_draft: 'Brain drafts take Keep or Drop in Review.', not_saved: 'That answer was never saved, so this action cannot run.',
+    posting_now: 'It is being published right now, so I left it.', next_changed: 'Its queued copy changed since, so I pulled nothing.',
+    next_gone: 'It is no longer scheduled, so I pulled nothing.', next_busy: 'It is being changed right now, so I did nothing. Try again in a minute.',
+    calendar_busy: 'The calendar is busy right now, so I did nothing. Try again in a minute.', duplicate_photo: 'That photo is already on the post.',
+    too_many_photos: 'The post already has the most photos it can take.', not_single_photo: 'That post type does not take a photo.',
+    published: 'It is already published.', refused: 'The app refused it, so nothing changed.',
   }
   // the exact code first (queue_changed must never read as changed), then a code inside a longer message
   if (known[m]) return known[m]
@@ -127,6 +132,15 @@ async function loadBrief(svc: any, fixtures: boolean, force = false): Promise<{ 
   const [{ data, error }, stamp] = await Promise.all([svc.rpc('desk_brief_core', { p_fixtures: fixtures, p_with_panel: !panelFresh }), stampP])
   if (error || !data) throw new Error(`brief failed: ${error?.message ?? 'empty'}`)
   const json = data as BriefJson
+  // published draft -> its published post URLs (own_posts link), so the last-post list matches posts by link, never by text (Sol r5 B7)
+  const pubIds = (json.drafts ?? []).filter((d) => d.status === 'published').map((d) => d.id)
+  if (pubIds.length) {
+    const { data: links, error: lErr } = await svc.from('own_posts').select('clickup_task_id, linkedin_url').in('clickup_task_id', pubIds)
+    json.post_links = lErr ? null : (links ?? []).reduce((m: Record<string, string[]>, r: { clickup_task_id: string; linkedin_url: string | null }) => {
+      if (r.linkedin_url) (m[r.clickup_task_id] ??= []).push(r.linkedin_url)
+      return m
+    }, {})
+  } else json.post_links = {}
   if (panelFresh) json.panel = panelCache!.panel
   else if ((json.panel as { ok?: boolean })?.ok !== false) panelCache = { at: Date.now(), panel: json.panel }
   briefCache = { at: Date.now(), fixtures, stamp, json }
@@ -298,7 +312,7 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
     const { data, error } = await svc.from('desk_messages').insert({ user_id: userId, role: 'user', origin: 'operator', body: text, meta: userMeta, client_key: clientKey }).select('id').single()
     if (!error && data) userRow = data
     else {
-      const { data: again } = await svc.from('desk_messages').select('id, body, meta').eq('user_id', userId).eq('client_key', clientKey).maybeSingle()
+      const { data: again } = await svc.from('desk_messages').select('id, body, meta, created_at').eq('user_id', userId).eq('client_key', clientKey).maybeSingle()
       if (!again) return json({ error: 'desk_failed', detail: CLIENT_TEXT.desk_failed }, 500, origin)
       const prevAtt = ((again.meta as { attachments?: { kind?: string; url?: string; name?: string }[] } | null)?.attachments ?? [])
       const sameAtt = prevAtt.length === attachments.length &&
@@ -306,24 +320,15 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
       if (again.body !== text || !sameAtt) return json({ error: 'key_mismatch' }, 409, origin)
       const { data: prior } = await svc.from('desk_messages').select('*').eq('user_id', userId).eq('role', 'assistant')
         .filter('meta->>reply_to', 'eq', again.id).order('created_at', { ascending: false }).limit(1).maybeSingle()
-      if (!prior) return json({ error: 'turn_in_progress' }, 409, origin)
-      if (prior.status === 'streaming') {
-        // still running, or a turn that died before its final save: after 60 s, rebuild a terminal
-        // reply from the action journal so the key never runs again and nothing is invited twice
-        if (Date.now() - Date.parse(prior.created_at) < 60_000) return json({ error: 'turn_in_progress' }, 409, origin)
-        const { data: acts } = await svc.from('desk_actions').select('id, kind, result').eq('message_id', prior.id)
-        const actions = (acts ?? []).map((a: { id: string; kind: string; result: { state?: string } | null }) => {
-          let st = a.result?.state ?? 'failed'
-          if (st === 'pending' || st === 'committing') st = 'failed'
-          return { id: a.id, kind: a.kind, state: st === 'held' ? 'cancelled' : st, undo: false, label: st === 'done' ? 'Done (recorded).' : 'Not done.' }
-        })
-        for (const a of (acts ?? []) as { id: string; result: Record<string, unknown> | null }[]) if (a.result?.state === 'held') await claimState(svc, a, 'held', 'cancelled')
-        const { data: rebuilt } = await svc.from('desk_messages').update({ status: 'done',
-          body: 'This answer did not finish saving. Here is what was recorded; check before repeating anything.',
-          meta: { ...(prior.meta ?? {}), actions, rebuilt: true }, updated_at: new Date().toISOString() }).eq('id', prior.id).eq('status', 'streaming').select('*').single()
-        if (!rebuilt) return json({ error: 'turn_in_progress' }, 409, origin)
+      // Sol r5 B4: a turn without a terminal answer is "in progress" until no worker can still be alive
+      // (RECOVER_AFTER_MS, far past the edge wall-clock limit). Only then may a same-key replay close it.
+      if (!prior || prior.status === 'streaming') {
+        const born = Date.parse(String((prior ?? again).created_at))
+        if (!(Date.now() - born >= RECOVER_AFTER_MS)) return json({ error: 'turn_in_progress' }, 409, origin)
+        const closed = prior ? await recoverTurn(svc, prior) : await closeUnanswered(svc, userId, again.id, clientKey, mode.evalMode)
+        if (!closed) return json({ error: 'turn_in_progress' }, 409, origin)
         userRow = { id: again.id }
-        replayAnswer = rebuilt
+        replayAnswer = closed
       } else {
         userRow = { id: again.id }
         replayAnswer = prior
@@ -338,6 +343,9 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
       const timings: Record<string, number> = {}
       let toolCalls = 0
       let assistantId: string | null = null
+      // this worker's claim on its answer row: the final and the error save are CAS'd on
+      // (status streaming, this token), and so is recovery's close, so exactly one of them wins (Sol r5 B4)
+      const turnToken = crypto.randomUUID()
       try {
         // the user's row (idempotent on client_key: a retried send is the same message) and the
         // rate cap run alongside the brief read, so the model call starts as early as possible
@@ -389,7 +397,7 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
         // insert the assistant row now so actions can reference it
         const { data: aRow } = await svc.from('desk_messages').insert({
           user_id: userId, role: 'assistant', origin: 'desk', body: reply, status: 'streaming',
-          meta: { model: m1.model, reply_to: userRow.id, client_key: clientKey, ...(mode.evalMode ? { test: true } : {}) },
+          meta: { model: m1.model, reply_to: userRow.id, client_key: clientKey, turn_token: turnToken, ...(mode.evalMode ? { test: true } : {}) },
         }).select('id').single()
         if (!aRow?.id) throw new LlmError('desk_failed', 'answer row')
         const messageId = aRow.id as string
@@ -491,18 +499,20 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
         // The reply streamed before the actions ran. If one failed, say so in the body too, so the
         // text never claims a change that did not happen.
         const failedEchoes = echoes.filter((e) => e.state === 'failed' && !['ambiguous', 'line_mismatch'].includes(e.detail ?? ''))
-        let finalBody = shortParagraphs(reply)
+        let finalBody = reply
         if (failedEchoes.length) {
           const note = failedEchoes.map((e) => e.label).join(' ')
           finalBody = `${reply}\n\nThat did not go through: ${note}`
           emit('delta', { text: `\n\nThat did not go through: ${note}` })
         }
+        finalBody = shortParagraphs(finalBody)
+        const sideEffects = await turnSideEffects(svc, messageId)
         timings.total_ms = Date.now() - t0
         const t3 = echoes.find((e) => e.t3_job)?.t3_job
         const meta = {
           model: m1.model, reply_to: userRow.id, client_key: clientKey, timings, tool_calls: toolCalls, brief_chars: r.text.length,
-          ...(echoes.length ? { actions: echoes } : {}), ...(chips.length ? { chips } : {}), ...(t3 ? { t3_job: t3 } : {}),
-          ...(mode.evalMode ? { test: true } : {}),
+          ...(echoes.length ? { actions: echoes } : {}), ...(chips.length ? { chips: oneText(chips) } : {}), ...(t3 ? { t3_job: t3 } : {}),
+          turn_token: turnToken, side_effects: sideEffects, ...(mode.evalMode ? { test: true } : {}),
         }
         // The final row (with its echoes) is the only thing that lets a hold arm: held_seen and commit
         // both require it (echoDurable). It is written only over this turn's own streaming row (a
@@ -511,12 +521,13 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
         let final: Record<string, unknown> | null = null
         for (let i = 0; i < 3 && !final; i++) {
           const { data } = await svc.from('desk_messages').update({ status: 'done', body: finalBody, meta, updated_at: new Date().toISOString() })
-            .eq('id', messageId).eq('status', 'streaming').select('*').maybeSingle()
+            .eq('id', messageId).eq('status', 'streaming').filter('meta->>turn_token', 'eq', turnToken).select('*').maybeSingle()
           final = data ?? null
           if (!final) {
             const { data: cur } = await svc.from('desk_messages').select('*').eq('id', messageId).maybeSingle()
-            if (cur?.status === 'done' && !(cur.meta as { rebuilt?: boolean } | null)?.rebuilt && cur.body === finalBody) final = cur
-            else if (cur?.status === 'done') break   // a replay rebuilt this turn: its record stands
+            const cm = (cur?.meta ?? {}) as { recovered?: boolean; turn_token?: string }
+            if (cur?.status === 'done' && !cm.recovered && cm.turn_token === turnToken && cur.body === finalBody) final = cur
+            else if (cur && cur.status !== 'streaming') break   // recovery closed this turn: its record stands
           }
         }
         if (!final) {
@@ -529,7 +540,7 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
             e.state = 'cancelled'; e.undo = false; e.label = 'Cancelled: I could not save this answer.'
           }
           final = { id: messageId, role: 'assistant', origin: 'desk', status: 'done',
-            body: `${finalBody}\n\n(I could not save this answer.${held.length ? ' The held actions were cancelled.' : ''} If an action is listed as done, check before repeating it.)`,
+            body: shortParagraphs(`${finalBody}\n\n(I could not save this answer.${held.length ? ' The held actions were cancelled.' : ''} If an action is listed as done, check before repeating it.)`),
             meta: { ...meta, actions: echoes }, created_at: new Date().toISOString() }
         }
         emit('final', { message: final })
@@ -538,11 +549,20 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
         const detail = CLIENT_TEXT[code]
         console.error('desk turn failed', code)
         // settle the answer row this turn already opened, or open one, so nothing stays "streaming"
+        // side effects of this turn (Sol r5 B11): no answer row yet = no action could have run = 'none'
+        const sideEffects = assistantId ? await turnSideEffects(svc, assistantId) : 'none'
         const errFields = { status: 'error', body: detail,
-          meta: { error: code, client_key: clientKey, reply_to: userRow.id, ...(mode.evalMode ? { test: true } : {}) }, updated_at: new Date().toISOString() }
-        const { data: errRow } = assistantId
-          ? await svc.from('desk_messages').update(errFields).eq('id', assistantId).select('*').single()
-          : await svc.from('desk_messages').insert({ user_id: userId, role: 'assistant', origin: 'desk', ...errFields }).select('*').single()
+          meta: { error: code, client_key: clientKey, reply_to: userRow.id, turn_token: turnToken, side_effects: sideEffects, ...(mode.evalMode ? { test: true } : {}) }, updated_at: new Date().toISOString() }
+        let errRow: Record<string, unknown> | null = null
+        if (assistantId) {
+          const { data } = await svc.from('desk_messages').update(errFields).eq('id', assistantId).eq('status', 'streaming')
+            .filter('meta->>turn_token', 'eq', turnToken).select('*').maybeSingle()
+          errRow = data ?? null
+          if (!errRow) { const { data: cur } = await svc.from('desk_messages').select('*').eq('id', assistantId).maybeSingle(); errRow = cur ?? null }
+        } else {
+          const { data } = await svc.from('desk_messages').insert({ user_id: userId, role: 'assistant', origin: 'desk', ...errFields }).select('*').single()
+          errRow = data ?? null
+        }
         emit('error', { error: code, detail })
         if (errRow) emit('final', { message: errRow })
       } finally {
@@ -555,6 +575,60 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
   })
 }
 
+// ---- turn recovery and side effects (Sol r5 B4, B11) ----------------------------
+/** No worker can still be alive after this (the edge wall-clock limit is far below it). */
+const RECOVER_AFTER_MS = 10 * 60_000
+
+/** 'none' only when the turn's journal has zero entries and no cloud job was queued for it; a failed read is 'unknown'. */
+// deno-lint-ignore no-explicit-any
+async function turnSideEffects(svc: any, messageId: string): Promise<'none' | 'some' | 'unknown'> {
+  try {
+    const [a, j] = await Promise.all([
+      svc.from('desk_actions').select('id', { count: 'exact', head: true }).eq('message_id', messageId),
+      svc.from('desk_t3_jobs').select('id', { count: 'exact', head: true }).eq('message_id', messageId),
+    ])
+    if (a.error || j.error || typeof a.count !== 'number' || typeof j.count !== 'number') return 'unknown'
+    return a.count === 0 && j.count === 0 ? 'none' : 'some'
+  } catch { return 'unknown' }
+}
+
+/**
+ * Close a turn whose worker is gone (only called past RECOVER_AFTER_MS): held actions are CAS'd to
+ * cancelled, anything still pending/committing is "Not confirmed", and the row is closed by a CAS on
+ * status = streaming, so a late worker save and this close can never both land.
+ */
+// deno-lint-ignore no-explicit-any
+async function recoverTurn(svc: any, prior: Record<string, any>): Promise<Record<string, unknown> | null> {
+  const { data: acts, error } = await svc.from('desk_actions').select('id, kind, result').eq('message_id', prior.id)
+  if (error) return null
+  for (const a of (acts ?? []) as { id: string; result: Record<string, unknown> | null }[]) if (a.result?.state === 'held') await claimState(svc, a, 'held', 'cancelled')
+  const { data: again } = await svc.from('desk_actions').select('id, kind, result').eq('message_id', prior.id)
+  const actions = ((again ?? acts ?? []) as { id: string; kind: string; result: { state?: string } | null }[]).map((a) => {
+    const st = a.result?.state ?? ''
+    if (st === 'done') return { id: a.id, kind: a.kind, state: 'done', undo: false, label: 'Done (recorded).' }
+    if (st === 'failed') return { id: a.id, kind: a.kind, state: 'failed', undo: false, label: 'Not done.' }
+    if (st === 'cancelled' || st === 'undone') return { id: a.id, kind: a.kind, state: st, undo: false, label: st === 'cancelled' ? 'Cancelled. Nothing changed.' : 'Undone.' }
+    return { id: a.id, kind: a.kind, state: 'failed', undo: false, detail: 'unconfirmed', label: 'Not confirmed: check before repeating it.' }
+  })
+  const sideEffects = await turnSideEffects(svc, String(prior.id))
+  const { data: closed } = await svc.from('desk_messages').update({ status: 'done',
+    body: 'This answer did not finish. Here is what was recorded; check Review before repeating anything.',
+    meta: { ...(prior.meta ?? {}), actions, recovered: true, side_effects: sideEffects }, updated_at: new Date().toISOString() })
+    .eq('id', prior.id).eq('status', 'streaming').select('*').maybeSingle()
+  if (closed) return closed
+  // the worker's own save won after all: that stored answer is the record
+  const { data: cur } = await svc.from('desk_messages').select('*').eq('id', prior.id).maybeSingle()
+  return cur && cur.status !== 'streaming' ? cur : null
+}
+
+/** A turn that died before it opened an answer row: nothing ran (actions need that row), so close it with side_effects 'none'. */
+// deno-lint-ignore no-explicit-any
+async function closeUnanswered(svc: any, userId: string, userMessageId: string, clientKey: string, evalMode: boolean): Promise<Record<string, unknown> | null> {
+  const { data } = await svc.from('desk_messages').insert({ user_id: userId, role: 'assistant', origin: 'desk', status: 'error', body: CLIENT_TEXT.desk_failed,
+    meta: { error: 'desk_failed', reply_to: userMessageId, client_key: clientKey, recovered: true, side_effects: 'none', ...(evalMode ? { test: true } : {}) } }).select('*').single()
+  return data ?? null
+}
+
 // ---- undo / commit / cancel ------------------------------------------------
 /**
  * A hold may arm (held_seen) or commit only once the answer that carries its echo is durably saved:
@@ -564,8 +638,8 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
 async function echoDurable(svc: any, messageId: string, actionId: string): Promise<boolean | null> {
   const { data, error } = await svc.from('desk_messages').select('status, meta').eq('id', messageId).maybeSingle()
   if (error) return null
-  const meta = (data?.meta ?? {}) as { actions?: { id?: string }[]; rebuilt?: boolean }
-  return !!data && data.status === 'done' && !meta.rebuilt && Array.isArray(meta.actions) && meta.actions.some((e) => e?.id === actionId)
+  const meta = (data?.meta ?? {}) as { actions?: { id?: string }[]; recovered?: boolean; rebuilt?: boolean }
+  return !!data && data.status === 'done' && !meta.recovered && !meta.rebuilt && Array.isArray(meta.actions) && meta.actions.some((e) => e?.id === actionId)
 }
 
 /** Compare-and-set on desk_actions.result.state: only one of two racing requests wins (Sol desk-ui r1 #1). */
@@ -696,6 +770,8 @@ async function heldSeen(svc: any, userDb: any, userId: string, ids: string[], ev
 // deno-lint-ignore no-explicit-any
 async function tick(svc: any, opts: { dry: boolean }) {
   const cfg = await flags(svc)
+  // one-flag rollback (Sol r5 B10): desk_enabled off alone stops every proactive message
+  if (cfg.desk_enabled !== true && !opts.dry) return { ok: true, skipped: 'desk_off' }
   if (cfg.triggers_enabled !== true && !opts.dry) return { ok: true, skipped: 'triggers_off' }
   if (!opts.dry) await sweepT3Stalls(svc)
   const b = await loadBrief(svc, false, true)
@@ -721,7 +797,7 @@ async function tick(svc: any, opts: { dry: boolean }) {
     const { data: res, error } = await svc.rpc('desk_fire_trigger', {
       p_kind: p.kind, p_dedupe_key: p.dedupe_key, p_payload: { artifact: p.artifact }, p_cap: cap, p_user: ALLOWED,
       p_body: p.kind === 't3_done' ? null : plain(p.body),
-      p_meta: { trigger: p.kind, artifact: p.artifact, ...(p.chips.length ? { chips: p.chips } : {}) },
+      p_meta: { trigger: p.kind, artifact: p.artifact, ...(p.chips.length ? { chips: oneText(p.chips) } : {}) },
     })
     if (error || !(res as { fired?: boolean } | null)?.fired) continue
     if (p.kind !== 't3_done' && (res as { message_id?: string }).message_id) {

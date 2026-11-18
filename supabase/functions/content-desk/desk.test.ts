@@ -19,7 +19,7 @@ Deno.test('parse: reply, actions, chips; bad JSON dropped, never guessed', () =>
   const p = parse('<reply>\nMoved it — done.\n</reply>\n<actions>[{"kind":"date","draft":"#abcde","line":"Snow in the park","at":"2026-11-26 10:45"}]</actions>\n<chips>[{"label":"A","send":"a"},{"bad":1}]</chips><reads>not json</reads>')
   assertEquals(p.reply, 'Moved it, done.')
   assertEquals(p.actions.length, 1)
-  assertEquals(p.chips, [{ label: 'A', send: 'a' }])
+  assertEquals(p.chips, [{ label: 'a', send: 'a' }])   // one text per chip (Sol r5 B1)
   assertEquals(p.reads, [])
 })
 
@@ -202,7 +202,8 @@ Deno.test('unmeasured: a published draft the metrics have not caught is listed, 
     draft('aaaaaaaa-0000-4000-8000-000000000001', 'Kraków weekend', { status: 'published', published_at: '2026-11-16T13:04:00Z' }),
     draft('bbbbbbbb-0000-4000-8000-000000000002', 'Creators who doubled', { status: 'published', published_at: '2026-11-17T14:34:00Z' }),
   ]
-  const u = unmeasured(ds, [{ first_line: 'Kraków weekend', posted_at: '2026-11-16T13:04:00Z', impressions: 400 }])
+  const u = unmeasured(ds, [{ url: 'https://www.linkedin.com/posts/a-1', first_line: 'Kraków weekend', posted_at: '2026-11-16T13:04:00Z', impressions: 400 }],
+    { 'aaaaaaaa-0000-4000-8000-000000000001': ['https://www.linkedin.com/posts/a-1'] })
   assertEquals(u.map((d) => d.first_line), ['Creators who doubled'])
 })
 
@@ -286,7 +287,7 @@ Deno.test('r4#4 held pull: another queue row, no row or an unreadable queue fail
     taxonomy: {}, qa: null, source_ref: null, image_urls: [], created_at: '2026-11-10T10:00:00Z', updated_at: 'U1', client_id: null }
   const svcWith = (q: unknown) => ({ from: (t: string) => chain(t === 'carousel_drafts' ? { data: row, error: null } : q) })
   const snap = (qid: string | null): Snapshot => ({ target_id: ID1, updated_at: 'U1', status: 'scheduled', first_line_sha: '', scheduled_at: future, image_urls: [],
-    queue: qid ? { queue_id: qid, slot_at: future, status: 'pending' } : null, next: qid ? { queue_id: qid, slot_at: future } : null })
+    queue: qid ? { queue_id: qid, slot_at: future, status: 'pending' } : null, next: qid ? { queue_id: qid, slot_at: future } : null, queue_ids: qid ? [qid] : [] })
   const sha = await sha256Hex('Snow in the park this morning')
   const qB = { data: [{ id: 'q-B', scheduled_at: future, status: 'pending', platform: 'linkedin', is_repost: false }], error: null }
   const rpcs: unknown[][] = []
@@ -298,7 +299,10 @@ Deno.test('r4#4 held pull: another queue row, no row or an unreadable queue fail
   assertEquals(await planForTarget({ ...base, svc: svcWith({ data: null, error: { message: 'down' } }) } as never, { ...act }, { ...snap('q-B'), first_line_sha: sha }), { refuse: 'queue_read_failed' })
   const ok = await planForTarget({ ...base, svc: svcWith(qB) } as never, { ...act }, { ...snap('q-B'), first_line_sha: sha }) as { run?: () => Promise<unknown> }
   await ok.run!()
-  assertEquals(rpcs, [['content_next_pull', { p_queue: 'q-B', p_slot_at: future, p_reason: 'wrong week' }]])
+  assertEquals(rpcs, [['desk_pull', { p_draft: ID1, p_expected_updated_at: 'U1', p_queue_ids: ['q-B'], p_next_queue: 'q-B', p_next_slot: future, p_reason: 'wrong week' }]])
+  // a second live queue row that was not there when it was authorized: refused before any write
+  const qAB = { data: [...qB.data, { id: 'q-C', scheduled_at: future, status: 'queued_v2', platform: 'x', is_repost: false }], error: null }
+  assertEquals(await planForTarget({ ...base, svc: svcWith(qAB) } as never, { ...act }, { ...snap('q-B'), first_line_sha: sha }), { refuse: 'queue_changed' })
   // proposed without a Next row: refused at once with the Remove date chip, nothing held
   const d = draft(ID1, 'Snow in the park this morning', { status: 'scheduled', scheduled_at: future })
   const r = render(brief([d]))
@@ -328,10 +332,10 @@ Deno.test('r4#5 redo: refused while generating; the flip requires an eligible st
 
 Deno.test('r4#8 last post: one time-sorted list; SUMMARY "Last post out" is its first row', () => {
   const ds = [draft(ID1, 'A ferry at dawn and a cold coffee', { status: 'published', published_at: '2026-11-17T15:00:00Z' })]
-  const posts = [{ first_line: 'Two creators doubled their reach', posted_at: '2026-11-17T14:30:00Z', impressions: 900 }]
-  const m = mergedPosts(ds, posts)
+  const posts = [{ url: 'https://www.linkedin.com/posts/b-2', first_line: 'Two creators doubled their reach', posted_at: '2026-11-17T14:30:00Z', impressions: 900 }]
+  const m = mergedPosts(ds, posts, {})
   assertEquals(m.map((x) => x.first_line), ['A ferry at dawn and a cold coffee', 'Two creators doubled their reach'])
-  const txt = render(brief(ds, { posts: { posts } })).text
+  const txt = render(brief(ds, { posts: { posts }, post_links: {} })).text
   const sum = txt.split('\n').find((l) => l.startsWith('- Last post out:'))!
   assert(sum.includes('A ferry at dawn'), sum)
   const list = txt.split('RECENT PUBLISHED POSTS')[1].split('\n').filter((l) => l.startsWith('- '))
@@ -357,7 +361,99 @@ Deno.test('r4#10 urlInMessage: raw token first, one matched wrapper, trailing pu
   assert(urlInMessage('https://example.test/report', 'see [https://example.test/report] now'))
   assert(urlInMessage('https://example.test/report', 'see (https://example.test/report). ok'))
   assert(urlInMessage('https://example.test/report', 'see "https://example.test/report"'))
-  assert(urlInMessage('https://example.test/report', 'see https://example.test/report?'))
   assert(!urlInMessage('https://example.test/report', 'see ((https://example.test/report))'))
   assert(!urlInMessage('https://example.test/report', 'see (https://example.test/report'))
+})
+
+// ---- Sol r5 fixes + eval rV1 items (made-up data only) ---------------------
+import { ivanWords, verbatimIn } from './actions.ts'
+import { canonicalUrl } from './unfurl.ts'
+import { oneText } from './parse.ts'
+
+Deno.test('r5 B1: a chip has one text; the model label is dropped', () => {
+  const p = parse('<reply>ok</reply><chips>[{"label":"Show draft","send":"remove the date from the tram post"},{"label":"x"}]</chips>')
+  assertEquals(p.chips, [{ label: 'remove the date from the tram post', send: 'remove the date from the tram post' }])
+  assertEquals(oneText([{ label: 'Pull it first', send: '  pull it  ' }]), [{ label: 'pull it', send: 'pull it' }])
+})
+
+Deno.test('r5 B2/B3: approve, Brain Keep and delete go only through the locked desk functions with the authorized revision', async () => {
+  const calls: unknown[][] = []
+  const userDb = { rpc: (n: string, a: unknown) => { calls.push([n, a]); return Promise.resolve({ data: { ok: true }, error: null }) }, from: () => { throw new Error('no direct table write') } }
+  for (const brain of [false, true]) {
+    const d = draft(ID1, 'Snow in the park this morning', { updated_at: 'U7', brain })
+    const r = render(brief([d]))
+    const p = await plan({ brief: r, attachments: [], text: '', env: () => undefined, userDb, svc: forbidden } as never, { kind: 'approve', draft: r.handleOf.get(ID1)!, line: 'Snow in the park' })
+    await p.run!()
+  }
+  const d = draft(ID1, 'Snow in the park this morning', { updated_at: 'U7' })
+  const r = render(brief([d]))
+  const pd = await plan({ brief: r, attachments: [], text: '', env: () => undefined, userDb, svc: forbidden } as never, { kind: 'delete', draft: r.handleOf.get(ID1)!, line: 'Snow in the park', reason: 'off topic' })
+  await pd.run!()
+  assertEquals(calls, [
+    ['desk_approve', { p_draft: ID1, p_expected_updated_at: 'U7', p_expected_status: 'review' }],
+    ['desk_keep', { p_draft: ID1, p_expected_updated_at: 'U7', p_expected_status: 'review' }],
+    ['desk_delete', { p_draft: ID1, p_expected_updated_at: 'U7', p_reason: 'off topic' }],
+  ])
+  // a refusal from the locked check is a code, never a write
+  const refuse = { rpc: () => Promise.resolve({ data: { ok: false, error: 'changed' }, error: null }) }
+  const pr = await plan({ brief: r, attachments: [], text: '', env: () => undefined, userDb: refuse, svc: forbidden } as never, { kind: 'approve', draft: r.handleOf.get(ID1)!, line: 'Snow in the park' })
+  let err = ''; try { await pr.run!() } catch (e) { err = (e as Error).message }
+  assertEquals(err, 'changed')
+})
+
+Deno.test('r5 B5: an idea or link note attributed to Ivan is only his exact words', async () => {
+  const text = 'cold brew queues in Warsaw are wild, worth a post'
+  assertEquals(ivanWords('cold brew queues in Warsaw', text), 'cold brew queues in Warsaw')
+  assertEquals(ivanWords('Ivan said his clients love cold brew', text), text)
+  assertEquals(ivanWords(undefined, text), text)
+  assert(!verbatimIn('', text))
+  let inserted: Record<string, unknown> | null = null
+  const svc = { from: () => ({ insert: (row: Record<string, unknown>) => { inserted = row; return chain({ data: { id: 'i1' }, error: null }) } }) }
+  const p = await plan({ brief: render(brief([])), attachments: [], text, env: () => undefined, svc, messageId: 'm1' } as never, { kind: 'idea', text: 'Cold brew queues', quote: 'a private line from somewhere else' })
+  await p.run!()
+  const ev = (inserted!.evidence as { quote: string }[])[0]
+  assertEquals(ev.quote, text)
+  assert(!String(inserted!.raw_context).includes('private line'))
+})
+
+Deno.test('r5 B8: one token gives one canonical URL', () => {
+  assertEquals(canonicalUrl('https://example.test/resource.'), 'https://example.test/resource.')
+  assert(urlInMessage('https://example.test/resource.', 'see https://example.test/resource.'))
+  assert(!urlInMessage('https://example.test/resource', 'see https://example.test/resource.'))
+  assertEquals(canonicalUrl('(https://example.test/a).'), 'https://example.test/a')
+  assertEquals(canonicalUrl('<https://example.test/a>,'), 'https://example.test/a')
+  assertEquals(canonicalUrl('report]'), null)
+  assertEquals(canonicalUrl('((https://example.test/a))'), null)
+})
+
+Deno.test('r5 B7: two posts with the same opener stay two; matching is by linked URL only', () => {
+  const ds = [
+    draft(ID1, 'Three things I learned this week', { status: 'published', published_at: '2026-11-17T15:00:00Z' }),
+    draft('bbbbbbbb-0000-4000-8000-000000000002', 'Three things I learned this week', { status: 'published', published_at: '2026-11-10T15:00:00Z' }),
+  ]
+  const posts = [{ url: 'https://www.linkedin.com/posts/old-1', first_line: 'Three things I learned this week', posted_at: '2026-11-10T15:00:00Z', impressions: 500 }]
+  const links = { 'bbbbbbbb-0000-4000-8000-000000000002': ['https://www.linkedin.com/posts/old-1'] }
+  const m = mergedPosts(ds, posts, links)
+  assertEquals(m.map((x) => [x.at, !!x.p]), [['2026-11-17T15:00:00Z', false], ['2026-11-10T15:00:00Z', true]])
+  assertEquals(unmeasured(ds, posts, null), [])   // no link map: nothing guessed
+})
+
+Deno.test('r5 B9 + E4: abbreviations never cut; lists become one block per bullet; the appended failure line is split too', () => {
+  const dr = 'I met Dr. Smith at the café and we talked about outreach for a long time, more than an hour, with lots of notes. ' +
+    'He said St. Mary is the best spot for a meetup vs. the old town, e.g. Thursdays. No. 5 tram goes there and it is quick.'
+  const out = shortParagraphs(dr)
+  for (const cut of ['Dr.\n\nSmith', 'St.\n\nMary', 'vs.\n\nthe', 'No.\n\n5']) assert(!out.includes(cut), cut)
+  assertEquals(out.replace(/\n\n/g, ' '), dr)
+  const list = 'Five picks for the open slots:\n- "Cold brew at 7am" for belief 5.\n- "Tram 33 at rush hour" for belief 1.\n- "A ferry at dawn" for belief 2.'
+  assertEquals(shortParagraphs(list), 'Five picks for the open slots:\n\n- "Cold brew at 7am" for belief 5.\n\n- "Tram 33 at rush hour" for belief 1.\n\n- "A ferry at dawn" for belief 2.')
+  const failed = 'Sending the tram post back to the writer. It takes a few minutes.\n\nThat did not go through: The writer can\'t take a direction from here yet, so I left "Tram 33 at rush hour is the best market research …" as it is. Say "redo it" to rerun it on the same idea.'
+  for (const b of shortParagraphs(failed).split(/\n\s*\n/)) assert((b.match(/\S+/g) ?? []).length < 40, b)
+})
+
+Deno.test('eval E3: week blocks show only the calendar panel labels as coverage', () => {
+  const thisMon = '2026-11-16'
+  const d = draft(ID1, 'Kraków in the snow and a long train ride', { status: 'scheduled', scheduled_at: '2026-11-19T09:45:00Z', vehicle: 'poland_place', belief: 5 })
+  const txt = render(brief([d], { this_monday: thisMon, panel: { quotas: [], slots: [{ draft_id: ID1, belief: null, vehicle: null }] } })).text
+  const line = txt.split('\n').find((l) => l.includes('Kraków in the snow'))!
+  assert(line.includes('calendar belief -') && line.includes('calendar vehicle -') && !line.includes('POLAND'), line)
 })
