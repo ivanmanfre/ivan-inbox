@@ -23,6 +23,7 @@ import { blockedFollowup, upcomingItems, type FollowupProjection } from './upcom
 import { warsawHm } from '../ui/time'
 import { ComingUp } from './v4/ComingUp'
 import { dismissOwnerEngager, type OwnerEngagerCard } from './ownerEngagers'
+import { WarmDm4Review } from './WarmDm4Review'
 
 export type Mode = 'conversations' | 'email' | 'spam' | 'search'
 
@@ -170,6 +171,7 @@ export function ColumnBody(p: ColumnProps) {
       <ComingUp c={c} folds={folds} due={due} future={future} later={later} failed={Boolean(p.upcoming?.failed)} loaded={Boolean(p.upcoming?.loaded)} at={p.upcoming?.at} onRetry={p.retry?.upcoming} />
 
       <div className="dx-grp" aria-hidden="true">More</div>
+      {seat === 'ivan' && <WarmDm4Review folds={folds} v4 />}
       <SignalsSection p={p} folds={folds} came={came} />
       {v.thrown.length > 0 && <Section id="thrown" foldable defaultOpen={false} label="Discarded, 3 days" n={v.thrown.length} folds={folds}
         rows={v.thrown.map(t => <ThrownRow key={t.prospect_id} t={t} c={c} />)} />}
@@ -215,6 +217,7 @@ export function ColumnBody(p: ColumnProps) {
         : <Row key={i.t.prospect_id} id={i.t.prospect_id} name={i.t.prospect_name} company={i.t.prospect_company}
           line="a follow-up drafts that morning" right={dayMonth(i.at)} rightKind="later" selected={c.selected === i.t.prospect_id} onOpen={() => c.open(i.t)} />)} />}
 
+    {seat === 'ivan' && <WarmDm4Review folds={folds} />}
     <SignalsSection p={p} folds={folds} came={came} />
 
     {v.thrown.length > 0 && <Section id="thrown" foldable defaultOpen={false} label="Discarded, 3 days" n={v.thrown.length} folds={folds}
