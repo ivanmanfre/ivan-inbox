@@ -104,11 +104,10 @@
 .dk-me-keys{margin-left:30px}
 
 /* under an answer: Copy. Always on the phone's newest answer and on desktop hover; quiet otherwise. */
-.dk-ans-keys{display:flex;gap:4px;margin:2px 0 0 -10px}
+.dk-ans-keys{display:flex;gap:4px;margin:0 0 -6px -10px}
 .dk-copy{min-height:44px;display:inline-flex;align-items:center;gap:6px;padding:0 10px;border-radius:999px;color:var(--dk-muted);font:500 12.5px var(--f)}
 .dk-copy svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 .dk-copy:active{background:var(--p2);color:var(--t1)}
-.dk-phone .dk-ans:not(:last-child) .dk-ans-keys{display:none}
 .dk-desktop .dk-copy{min-height:36px;opacity:0;transition:opacity .15s ease}
 .dk-desktop .dk-ans:hover .dk-copy,.dk-desktop .dk-ans:last-child .dk-copy,.dk-desktop .dk-copy:focus-visible{opacity:1}
 
@@ -155,7 +154,7 @@
 .dk-t3-s i{width:7px;height:7px;border-radius:50%;background:var(--lime);animation:dk-pulse 1.2s infinite ease-in-out}
 .dk-t3-k{font:400 12px var(--f);color:var(--dk-muted)}
 .dk-t3 b{font:500 15px/1.4 var(--f);overflow-wrap:anywhere}
-.dk-t3 small{font:400 13px/1.4 var(--f);color:var(--t2)}
+.dk-t3 small{font:400 13px/1.4 var(--f);color:var(--t2);overflow-wrap:anywhere}
 .dk-t3 .dk-pill{justify-self:start;margin-top:4px}
 .dk-live .dk-t3-s{color:var(--t1)}
 .dk-t3-bad .dk-t3-s{color:var(--warn)}
@@ -188,7 +187,7 @@
 .dk-comp-box{border-radius:24px;background:var(--p1);box-shadow:0 0 0 1px var(--line2),var(--ds-shadow-soft,none);padding:4px 6px 4px}
 .dk-comp-box:focus-within{box-shadow:0 0 0 1.5px var(--line-3,var(--t3)),var(--ds-shadow-soft,none)}
 .dk-comp-rec{box-shadow:0 0 0 1.5px var(--lime)}
-.dk-comp textarea{display:block;width:100%;resize:none;min-height:44px;max-height:144px;border:0;background:transparent;color:var(--t1);font:400 16px/21px var(--f);padding:12px 10px 6px;outline:none}
+.dk-comp textarea{display:block;width:100%;resize:none;min-height:44px;max-height:min(144px,22dvh);border:0;background:transparent;color:var(--t1);font:400 16px/21px var(--f);padding:12px 10px 6px;outline:none}
 .dk-comp textarea::placeholder{color:var(--dk-muted)}
 .dk-comp-row{display:flex;align-items:center;gap:2px}
 .dk-comp-gap{flex:1}
@@ -201,7 +200,7 @@
 .dk-rec{color:var(--t1);background:var(--p2)}
 .dk-comp-note{display:flex;align-items:center;gap:8px;font:400 12.5px var(--f);color:var(--t2);padding:8px 10px 0}
 .dk-rec-dot{width:8px;height:8px;border-radius:50%;background:var(--ds-sev-urgent,#FF453A);animation:dk-pulse 1s infinite ease-in-out}
-.dk-comp-ph{display:flex;gap:12px;padding:14px 8px 2px;overflow-x:auto;scrollbar-width:none}
+.dk-comp-ph{display:flex;gap:14px;padding:18px 10px 2px;overflow-x:auto;scrollbar-width:none}
 .dk-comp-thumb{position:relative;flex:none;width:56px;height:56px}
 .dk-comp-thumb img{width:56px;height:56px;object-fit:cover;border-radius:12px;display:block}
 .dk-comp-thumb button::before{content:'';position:absolute;inset:-8px}

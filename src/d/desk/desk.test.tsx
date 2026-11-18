@@ -149,19 +149,22 @@ describe('Desk polish (review of the new layout)', () => {
     expect(screen.getByText('Try again')).toBeTruthy()
   })
 
-  it('an old long answer folds as a real disclosure: the hidden part is inert, the key says Show all / Show less', async () => {
-    const long = 'A made up paragraph about trains. '.repeat(40)
+  it('an old long answer shows a readable preview and a real disclosure (Show all / Show less, aria-expanded)', async () => {
+    const paras = Array.from({ length: 12 }, (_, i) => `Paragraph ${i} about a made up train ride, long enough to count.`)
     vi.mocked(api.readMessages).mockResolvedValueOnce([
-      stored({ id: 'o1', body: long, created_at: '2026-11-17T09:00:00Z' }),
+      stored({ id: 'o1', body: paras.join('\n\n'), created_at: '2026-11-17T09:00:00Z' }),
       ...['a', 'b', 'c', 'd'].map((k, i) => stored({ id: `n${k}`, body: `Short ${k}.`, created_at: `2026-11-17T10:0${i}:00Z` })),
     ])
     const { container } = render(<Desk layout="desktop" />)
     const key = await screen.findByText('Show all')
     expect(key.getAttribute('aria-expanded')).toBe('false')
-    expect(container.querySelector('#dk-t-o1')!.hasAttribute('inert')).toBe(true)
+    const box = container.querySelector('#dk-t-o1')!
+    expect(box.hasAttribute('inert')).toBe(false)
+    expect(box.textContent).toContain('Paragraph 0')
+    expect(box.textContent).not.toContain('Paragraph 11')
     fireEvent.click(key)
     expect(screen.getByText('Show less').getAttribute('aria-expanded')).toBe('true')
-    expect(container.querySelector('#dk-t-o1')!.hasAttribute('inert')).toBe(false)
+    expect(container.querySelector('#dk-t-o1')!.textContent).toContain('Paragraph 11')
   })
 
   it('a long list of choices shows six, then Show N more', async () => {
@@ -173,17 +176,29 @@ describe('Desk polish (review of the new layout)', () => {
     expect(document.querySelectorAll('.dk-chip')).toHaveLength(10)
   })
 
-  it('the newest read-only answer offers Try again, which asks the same question as a new turn', async () => {
-    vi.mocked(api.readMessages).mockResolvedValueOnce([
-      stored({ id: 'q1', role: 'user', origin: 'operator', body: 'how did my last post do', client_key: 'k-q1', created_at: '2026-11-17T10:00:00Z' }),
-      stored({ id: 'r1', body: 'It did fine.', created_at: '2026-11-17T10:00:05Z' }),
-    ])
+  it('an answer beside a change card drops only what the card says and keeps the rest', async () => {
+    const label = 'Proposed (ref 1a2b3c4d): move "A made up post about trains in the rain." to Thu 26 Nov, 09:30 (UTC+01:00).'
+    vi.mocked(api.readMessages).mockResolvedValueOnce([stored({ id: 'p1',
+      body: `${label}\n\nNo post matches "the ferry one", so I left it.\n\nIt runs only when you tap Do it now.`,
+      meta: { actions: [{ id: 'act-p', kind: 'date', label, state: 'held', undo: false, target: { kind: 'draft', handle: '#a1b2c', first_line: 'A made up post about trains in the rain.' } }] } })])
     render(<Desk layout="phone" />)
-    await screen.findByText('It did fine.')
-    fireEvent.click(screen.getByLabelText('Ask that again'))
-    await waitFor(() => expect(sent).toHaveLength(1))
-    expect((sent[0].body as { text: string; client_key: string })).toMatchObject({ text: 'how did my last post do' })
-    expect((sent[0].body as { client_key: string }).client_key).not.toBe('k-q1')
+    await screen.findByText(/No post matches/)
+    expect(screen.queryByText(/It runs only when you tap/)).toBeNull()
+    expect(screen.getByText('Move this post to Thu 26 Nov, 09:30 (UTC+01:00).')).toBeTruthy()
+  })
+
+  it('Retry waits while another turn runs', async () => {
+    vi.mocked(api.readMessages).mockResolvedValueOnce([stored({ id: 'h4', body: 'Ready.' })])
+    vi.mocked(api.sendDesk).mockImplementationOnce(async (_b, h) => { h.onError?.('offline', 'No connection. Your message is kept.'); return 'error' })
+    render(<Desk layout="phone" />)
+    await screen.findByText('Ready.')
+    type('first try')
+    const retry = await screen.findByText('Retry')
+    expect((retry as HTMLButtonElement).disabled).toBe(false)
+    type('second message')
+    await waitFor(() => expect((screen.getByText('Retry') as HTMLButtonElement).disabled).toBe(true))
+    await act(async () => { streamGate?.() })
+    await waitFor(() => expect((screen.getByText('Retry') as HTMLButtonElement).disabled).toBe(false))
   })
 
   it('a change card shows the server sentence once, without a ref or a doubled state word', async () => {

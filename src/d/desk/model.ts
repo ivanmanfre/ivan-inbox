@@ -215,8 +215,9 @@ export function newKey(): string {
 
 /** The server writes most labels as whole sentences that already say what happened ("Moved "…" to Tue 9 Mar",
  *  "Undone.", "Done (ref 1a2b3c4d): approve "…""). The card's eyebrow names the state, so a label is shown
- *  cleaned (no ref, no UTC offset, the post's own text as "this post" when the card shows the post below) and
+ *  cleaned (no ref, the post's own text as "this post" when the card shows the post below) and
  *  without a second state word in front of it. An imperative label ("Approve the trains post") keeps its prefix. */
+// The UTC offset stays: on the autumn change day 02:30 happens twice, and the card must say which one.
 const STATED = /^(done|undone|cancelled|not done|not confirmed|could not|couldn't|moved|removed|saved|added|rewriting|opened|proposed|failed|nothing|back|i |i'|the |this |that |["“])/i
 
 function quotedPost(label: string, firstLine: string): [number, number] | null {
@@ -234,7 +235,7 @@ function quotedPost(label: string, firstLine: string): [number, number] | null {
 
 export function cleanLabel(label: string, target?: { first_line: string } | null): { text: string; stated: boolean } {
   let t = label.replace(/\s+/g, ' ').trim()
-  t = t.replace(/\s*\(ref [0-9a-f]{6,}\)/gi, '').replace(/\s*\(UTC[+-]\d\d:\d\d\)/g, '').replace(/\s*\(no date\)/gi, '')
+  t = t.replace(/\s*\(ref [0-9a-f]{6,}\)/gi, '').replace(/\s*\(no date\)/gi, '')
   if (target?.first_line) {
     const q = quotedPost(t, target.first_line)
     if (q) t = `${t.slice(0, q[0])}this post${t.slice(q[1])}`

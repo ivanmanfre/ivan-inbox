@@ -61,7 +61,12 @@ export function Desk({ layout, onBack }: { layout: 'phone' | 'desktop'; onBack?:
     const covers = !!app && !!host && !app.contains(host)
     if (covers) app.setAttribute('inert', '')
     title.current?.focus({ preventScroll: true })
-    return () => { if (covers) app.removeAttribute('inert'); if (opener?.isConnected) opener.focus({ preventScroll: true }) }
+    return () => {
+      if (covers) app.removeAttribute('inert')
+      // The opener may have unmounted on the way in (the Chats page): its remounted twin takes the focus back.
+      const back = opener?.isConnected ? opener : document.querySelector<HTMLElement>('[data-verb="open-desk"]')
+      back?.focus({ preventScroll: true })
+    }
   }, [layout])
   // One turn at a time: a photo still uploading counts as a turn, so a chip, a starter or a retry waits for it.
   const [uploading, setUploading] = useState(false)
@@ -69,7 +74,7 @@ export function Desk({ layout, onBack }: { layout: 'phone' | 'desktop'; onBack?:
   const last = desk.messages[desk.messages.length - 1]
   const quiet = !!last && !locked && !last.meta.chips?.length && !last.meta.actions?.some(a => a.state === 'held')
     && (desk.messages.length < 6 || Date.now() - Date.parse(last.created_at) > QUIET_MS)
-  const status = desk.readFailed ? 'Offline, showing the saved copy' : desk.fromCache ? 'Saved copy, checking for new' : desk.busy ? 'Answering' : 'Knows your week, drafts and calls'
+  const status = desk.readFailed ? (desk.messages.length ? 'Offline, showing the saved copy' : 'Offline') : desk.fromCache ? 'Saved copy, checking for new' : desk.busy ? 'Answering' : 'Knows your week, drafts and calls'
   return (
     <section ref={root} className={`dk dk-${layout}`} data-desk aria-labelledby="dk-title">
       <header className="dk-head">
@@ -109,21 +114,39 @@ function DeskList({ desk, locked, layout }: { desk: DeskHandle; locked: boolean;
     const el = list.current
     if (sentKey && followed.current !== sentKey) { followed.current = sentKey; pinned.current = true; setAway(false) }
     if (el && pinned.current) el.scrollTop = el.scrollHeight
-  }, [messages.length, last?.body, last?.status, last?.meta, sentKey])
+    else { keepAnchor(); takeAnchor() }
+  }, [messages.length, last?.body, last?.status, last?.meta, sentKey]) // eslint-disable-line react-hooks/exhaustive-deps
   // Anything that changes the height (the keyboard, the composer growing, a T3 card finishing, a photo loading)
   // keeps the newest line in view while Ivan is at the bottom (Sol desk-ui r1 #8; polish review: content too).
   useEffect(() => {
     const el = list.current
     if (!el || typeof ResizeObserver === 'undefined') return
-    const ro = new ResizeObserver(() => { if (pinned.current) el.scrollTop = el.scrollHeight })
+    const ro = new ResizeObserver(() => { if (pinned.current) el.scrollTop = el.scrollHeight; else { keepAnchor(); takeAnchor() } })
     ro.observe(el)
     if (content.current) ro.observe(content.current)
     return () => ro.disconnect()
   }, [])
+  // Reading back: the first row in view and its offset are kept, so growth above it (a card finishing, an image
+  // loading, an older answer opening) never moves what Ivan is reading. Safari has no scroll anchoring of its own.
+  const anchor = useRef<{ el: Element; top: number } | null>(null)
+  const keepAnchor = () => {
+    const el = list.current, a = anchor.current
+    if (!el || pinned.current || !a || !a.el.isConnected) return
+    const moved = a.el.getBoundingClientRect().top - a.top
+    if (Math.abs(moved) >= 1) el.scrollTop += moved
+  }
+  const takeAnchor = () => {
+    const el = list.current
+    if (!el || pinned.current) { anchor.current = null; return }
+    const top = el.getBoundingClientRect().top
+    const row = [...el.querySelectorAll('[data-msg]')].find(r => r.getBoundingClientRect().bottom > top + 1)
+    anchor.current = row ? { el: row, top: row.getBoundingClientRect().top } : null
+  }
   const onScroll = () => {
     const el = list.current
     if (!el) return
     pinned.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80
+    takeAnchor()
     const far = el.scrollHeight - el.scrollTop - el.clientHeight > 400
     if (far !== away) setAway(far)
   }
@@ -134,16 +157,22 @@ function DeskList({ desk, locked, layout }: { desk: DeskHandle; locked: boolean;
     setAway(false)
     el.scrollTo({ top: el.scrollHeight, behavior: reducedMotion() ? 'auto' : 'smooth' })
   }
-  // A stored answer is announced once (the log itself stays quiet while it streams, so no partial chunk is read).
-  const answered = [...messages].reverse().find(m => m.role === 'assistant' && !m.answers && m.status === 'done')
-  // "Try again" for the newest read-only answer: the question it answered, sent again as a new turn.
-  const againFor = (i: number): string | null => {
-    const m = messages[i]
-    if (i !== messages.length - 1 || m.role !== 'assistant' || m.answers || m.status !== 'done' || m.origin !== 'desk') return null
-    if (m.meta.actions?.length || m.meta.t3_job || m.meta.chips?.length) return null
-    const q = messages[i - 1]
-    return q && q.role === 'user' && !q.local && q.body.trim() && !q.meta.attachments?.length ? q.body : null
-  }
+  // Each NEW stored reply is announced once (the log itself stays quiet while it streams, so no partial chunk is
+  // read); what was already there on opening is not. The line is cleared and set again, so two replies in the
+  // same minute are both announced.
+  const [said, setSaid] = useState('')
+  const seenReplies = useRef<Set<string> | null>(null)
+  const newest = [...messages].reverse().find(m => m.role === 'assistant' && !m.answers && m.status === 'done')
+  useEffect(() => {
+    if (!desk.loaded) return
+    if (!seenReplies.current) { seenReplies.current = new Set(messages.filter(m => m.role === 'assistant').map(m => m.id)); return }
+    if (!newest || seenReplies.current.has(newest.id)) return
+    seenReplies.current.add(newest.id)
+    const line = newest.origin === 'proactive' ? 'The desk wrote first.' : newest.origin === 't3' ? 'A result came back from T3.' : 'The desk answered.'
+    setSaid('')
+    const raf = requestAnimationFrame(() => setSaid(line))
+    return () => cancelAnimationFrame(raf)
+  }, [newest?.id, desk.loaded]) // eslint-disable-line react-hooks/exhaustive-deps
   const lastUser = (() => { for (let i = messages.length - 1; i >= 0; i--) if (messages[i].role === 'user') return i; return -1 })()
   let day = ''
   let prevRole: DeskMessage['role'] | null = null
@@ -164,11 +193,11 @@ function DeskList({ desk, locked, layout }: { desk: DeskHandle; locked: boolean;
             day = d
             prevRole = m.role
             return [head, <Row key={m.answers ? `a-${m.answers}` : m.id} m={m} desk={desk} fresh={fresh} locked={locked}
-              recent={i >= messages.length - 4} again={againFor(i)} editable={i === lastUser && layout === 'desktop'} />]
+              recent={i >= messages.length - 4} editable={i === lastUser && layout === 'desktop'} />]
           })}
         </div>
       </div>
-      <div className="dk-sr" role="status" aria-live="polite">{answered ? `The desk answered at ${warsawHm(answered.created_at)}.` : ''}</div>
+      <div className="dk-sr" role="status" aria-live="polite">{said}</div>
       {/* In its own lane under the conversation, never over it: nothing it covers can be a held change's Undo. */}
       {away && <div className="dk-jumpbar"><button type="button" className="dk-jump" onClick={toLatest}>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6" /></svg>Latest
@@ -190,10 +219,21 @@ function Hero({ busy, onPick }: { busy: boolean; onPick: (t: string) => void }) 
   )
 }
 
-/** Long answers outside the last few messages fold to a few lines. The fold is a real disclosure: the hidden part
- *  is inert (nothing in it takes focus), the key says Show all / Show less, and an opened answer stays open. */
+/** Long answers outside the last few messages show a preview: their first paragraphs (whole, readable, focusable)
+ *  up to about FOLD_AT characters, then Show all. The key is a real disclosure (aria-expanded) and an opened answer
+ *  stays open. */
 const FOLD_AT = 720
 const opened = new Set<string>()
+function preview(text: string): string {
+  const paras = text.split(/\n\s*\n/)
+  let out = ''
+  for (const p of paras) {
+    if (out && out.length + p.length > FOLD_AT * 0.6) break
+    out = out ? `${out}\n\n${p}` : p
+  }
+  if (out.length > FOLD_AT * 0.75) out = `${out.slice(0, Math.round(FOLD_AT * 0.6)).replace(/\s+\S*$/, '')}…`
+  return out
+}
 function Body({ id, text, recent }: { id: string; text: string; recent: boolean }) {
   const [open, setOpen] = useState(() => opened.has(id))
   const long = !recent && text.length > FOLD_AT
@@ -201,16 +241,16 @@ function Body({ id, text, recent }: { id: string; text: string; recent: boolean 
   const toggle = () => { const next = !open; if (next) opened.add(id); else opened.delete(id); setOpen(next) }
   return (
     <div className="dk-text-w">
-      <div className={`dk-text${fold ? ' dk-fold' : ''}`} id={`dk-t-${id}`} inert={fold}>
-        <Markdown text={text} />
+      <div className={`dk-text${fold ? ' dk-fold' : ''}`} id={`dk-t-${id}`}>
+        <Markdown text={fold ? preview(text) : text} />
       </div>
       {long && <button type="button" className="dk-more" aria-expanded={open} aria-controls={`dk-t-${id}`} onClick={toggle}>{open ? 'Show less' : 'Show all'}</button>}
     </div>
   )
 }
 
-/** Copy the answer's text (the markdown as written), and Try again for a read-only answer. */
-function AnswerKeys({ text, again, onAgain, locked }: { text: string; again: boolean; onAgain: () => void; locked: boolean }) {
+/** Copy the answer's text (the markdown as written), with a moment of "Copied". */
+function CopyKey({ text }: { text: string }) {
   const [done, setDone] = useState<'ok' | 'no' | null>(null)
   useEffect(() => {
     if (!done) return
@@ -221,16 +261,13 @@ function AnswerKeys({ text, again, onAgain, locked }: { text: string; again: boo
     try { await navigator.clipboard.writeText(text); setDone('ok') } catch { setDone('no') }
   }
   return (
-    <div className={`dk-ans-keys${again ? ' dk-ans-keys-last' : ''}`}>
+    <div className="dk-ans-keys">
       <button type="button" className="dk-copy" onClick={() => void copy()} aria-label={done === 'ok' ? 'Copied' : 'Copy the answer'}>
         {done === 'ok'
           ? <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
           : <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8.5" y="8.5" width="11" height="11" rx="2.5" /><path d="M15.5 5.5h-8a2 2 0 0 0-2 2v8" /></svg>}
         <span>{done === 'ok' ? 'Copied' : done === 'no' ? 'Could not copy' : 'Copy'}</span>
       </button>
-      {again && <button type="button" className="dk-copy" disabled={locked} onClick={onAgain} aria-label="Ask that again">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12a7 7 0 1 1-2.05-4.95M19 4.5V9h-4.5" /></svg><span>Try again</span>
-      </button>}
     </div>
   )
 }
@@ -244,14 +281,28 @@ function Byline({ m, live }: { m: DeskMessage; live?: boolean }) {
   )
 }
 
-/** The answer only restates the change its card shows (the server's "Proposed (ref …): move "…" … It runs only when
- *  you tap Do it now.", or the card's own sentence): the card says it once, with the post and the keys. */
-function repeatsCard(m: DeskMessage): boolean {
+/** The answer minus the paragraphs its change cards already say: the server's "Proposed (ref …): move "…" …"
+ *  sentence, its "It runs only when you tap Do it now." line, and a paragraph that is a card's own sentence. Every
+ *  other paragraph stays (a second request it could not match, a warning that something was not saved). */
+function bodyBesideCards(m: DeskMessage): string {
   const acts = m.meta.actions
-  if (!acts?.length) return false
-  const body = m.body.replace(/\s+/g, ' ').trim()
-  if (/^Proposed \(ref [0-9a-f]{6,}\)/i.test(body)) return true
-  return acts.some(a => { const l = a.label.replace(/\s+/g, ' ').trim(); return l.length > 12 && body.startsWith(l.slice(0, Math.min(40, l.length))) })
+  if (!acts?.length) return m.body
+  const flat = (t: string) => t.replace(/\s+/g, ' ').trim()
+  let paras = m.body.split(/\n\s*\n/)
+  for (const a of acts) {
+    const label = flat(a.label)
+    if (label.length < 12) continue
+    // The leading paragraphs that together spell the card's sentence (a quoted post keeps its own blank lines).
+    let acc = '', used = 0
+    for (let i = 0; i < paras.length; i++) {
+      const next = acc ? `${acc} ${flat(paras[i])}` : flat(paras[i])
+      if (!label.startsWith(next) && !next.startsWith(label)) break
+      acc = next; used = i + 1
+      if (acc.length >= label.length) break
+    }
+    if (used && acc.length >= label.length * 0.9) paras = paras.slice(used)
+  }
+  return paras.filter(p => !/^It runs only when you tap Do it now\.?$/i.test(flat(p))).join('\n\n').trim()
 }
 
 function DraftCard({ d }: { d: DeskDraftCard }) {
@@ -294,8 +345,8 @@ function Chips({ chips, locked, onPick }: { chips: { send: string }[]; locked: b
   )
 }
 
-function Row({ m, desk, fresh, locked, recent, again, editable }: {
-  m: DeskMessage; desk: DeskHandle; fresh: boolean; locked: boolean; recent: boolean; again: string | null; editable: boolean
+function Row({ m, desk, fresh, locked, recent, editable }: {
+  m: DeskMessage; desk: DeskHandle; fresh: boolean; locked: boolean; recent: boolean; editable: boolean
 }) {
   if (m.role === 'user') {
     // Stored, but its answer has not arrived: Check again and a same-key Retry stay until it does.
@@ -315,7 +366,7 @@ function Row({ m, desk, fresh, locked, recent, again, editable }: {
           {/* Retry always resends under the ORIGINAL client_key: the server answers a known key idempotently
               (its stored answer, still working, or key_mismatch), so a send can never run twice (Sol desk-ui
               r3 #4, r4 #2, r6 #2). A refused key (key_mismatch) is never resent: Edit and send only. */}
-          {(m.local === 'failed' || m.local === 'unconfirmed' || waiting) && !m.mismatch && <button type="button" className="dk-pill" disabled={locked && !m.local} onClick={() => desk.retry(m)}>Retry</button>}
+          {(m.local === 'failed' || m.local === 'unconfirmed' || waiting) && !m.mismatch && <button type="button" className="dk-pill" disabled={locked} onClick={() => desk.retry(m)}>Retry</button>}
           {m.mismatch && <button type="button" className="dk-pill" onClick={() => desk.editAndSend(m)}>Edit and send</button>}
         </div>}
       </div>
@@ -335,13 +386,13 @@ function Row({ m, desk, fresh, locked, recent, again, editable }: {
   }
   if (m.status === 'error') return <FailedAnswer m={m} text={m.body || 'The desk could not answer just now.'} desk={desk} />
   const byline = fresh || m.origin !== 'desk'
-  const showBody = !!m.body && !repeatsCard(m)
+  const body = bodyBesideCards(m)
   return (
     <div className={`dk-ans${m.origin === 'proactive' ? ' dk-pro' : ''}${byline ? '' : ' dk-cont'}`} data-msg={m.id}>
       {byline && <Byline m={m} />}
-      {showBody && <Body id={m.id} text={m.body} recent={recent} />}
+      {!!body && <Body id={m.id} text={body} recent={recent} />}
       {/* Copy is for answers worth copying: not a one-line note that sits on a change card. */}
-      {showBody && (m.body.length >= 60 || !!again) && !m.meta.actions?.length && <AnswerKeys text={m.body} again={!!again} locked={locked} onAgain={() => again && desk.send(again)} />}
+      {!!body && body.length >= 60 && !m.meta.actions?.length && <CopyKey text={body} />}
       {!!m.meta.drafts?.length && <div className="dk-cards">{m.meta.drafts.map(d => <DraftCard key={d.handle} d={d} />)}</div>}
       {m.meta.actions?.map(a => <ActionRow key={a.id} a={a} at={m.created_at} desk={desk} />)}
       {m.meta.t3_job && <T3Card job={desk.jobs[m.meta.t3_job.id]} fallback={m.meta.t3_job} />}
@@ -377,20 +428,23 @@ function FailedAnswer({ m, text, desk }: { m: DeskMessage; text: string; desk: D
   )
 }
 
-/** Nothing covers or clips the button: nine points (the centre, the four edge midpoints and the four corners,
- *  one pixel in) all hit it (or a child of it), so a cover over any corner counts as not visible. */
+/** Nothing covers or clips the button: a grid of points every 4 px over the whole pill (inside its rounded ends)
+ *  all hit it (or a child of it), so even a small cover between the old sample points counts as not visible. */
 function undoUncovered(b: HTMLElement): boolean {
   const r = b.getBoundingClientRect()
   if (r.width <= 2 || r.height <= 2) return false
-  const xs = [r.left + 1, r.left + r.width / 2, r.right - 1], ys = [r.top + 1, r.top + r.height / 2, r.bottom - 1]
-  // Pills are round: the corner points sit inside the rounded box, a third of the radius in.
-  const rad = Math.min(r.height / 2, parseFloat(getComputedStyle(b).borderTopLeftRadius) || 0) * 0.3
-  const pts: [number, number][] = []
-  for (const x of xs) for (const y of ys) {
-    const corner = x !== xs[1] && y !== ys[1]
-    pts.push(corner ? [x + (x < xs[1] ? rad : -rad), y + (y < ys[1] ? rad : -rad)] : [x, y])
+  const rad = Math.min(r.height / 2, parseFloat(getComputedStyle(b).borderTopLeftRadius) || 0)
+  const STEP = 4
+  for (let y = r.top + 1; y <= r.bottom - 1; y += STEP) {
+    // Inside the rounded ends: how far in from each side the pill's edge sits on this row.
+    const dy = Math.max(0, Math.abs(y - (r.top + r.height / 2)) - (r.height / 2 - rad))
+    const inset = rad - Math.sqrt(Math.max(0, rad * rad - dy * dy)) + 1
+    for (let x = r.left + inset; x <= r.right - inset; x += STEP) {
+      const hit = document.elementFromPoint(x, y)
+      if (!hit || (hit !== b && !b.contains(hit))) return false
+    }
   }
-  return pts.every(([x, y]) => { const hit = document.elementFromPoint(x, y); return !!hit && (hit === b || b.contains(hit)) })
+  return true
 }
 
 function ActionRow({ a, desk }: { a: DeskAction; at: string; desk: DeskHandle }) {
@@ -430,8 +484,16 @@ function ActionRow({ a, desk }: { a: DeskAction; at: string; desk: DeskHandle })
     }
     document.addEventListener('visibilitychange', onVis)
     // A cover that goes away (a sheet closing, the keyboard dropping) changes no intersection, so while the
-    // button is fully in view the check runs again every 600 ms until the sighting is reported.
-    const again = window.setInterval(() => { if (full) tryReport() }, 600)
+    // button is fully in view the check runs again every 600 ms. It stops once the sighting is recorded, and a
+    // report that failed is tried again only after a growing pause (2 s, 4 s, ... up to a minute).
+    let wait = 0, nextTry = 0
+    const again = window.setInterval(() => {
+      const st = heldSeenStore.get(a.id)?.state
+      if (st && st !== 'failed') { window.clearInterval(again); return }
+      if (!full || Date.now() < nextTry) return
+      if (st === 'failed') { wait = Math.min(60_000, wait ? wait * 2 : 2000); nextTry = Date.now() + wait }
+      tryReport()
+    }, 600)
     return () => { io.disconnect(); window.clearInterval(again); document.removeEventListener('visibilitychange', onVis) }
   }, [isHeld, a.id, undoEl, tapped])
   const seen = heldSeenStore.get(a.id)

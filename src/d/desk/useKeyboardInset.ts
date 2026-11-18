@@ -12,6 +12,11 @@ export function keyboardInset(innerHeight: number, vvHeight: number, vvOffsetTop
   return covered > 40 ? Math.round(covered) : 0
 }
 
+/** The keyboard (or anything like it) takes more than 40 px of the visible height. */
+export function keyboardOpen(innerHeight: number, vvHeight: number): boolean {
+  return innerHeight - vvHeight > 40
+}
+
 export function useKeyboardInset(ref: RefObject<HTMLElement | null>): void {
   useEffect(() => {
     const vv = typeof window !== 'undefined' ? window.visualViewport : null
@@ -21,14 +26,15 @@ export function useKeyboardInset(ref: RefObject<HTMLElement | null>): void {
     const sync = () => {
       cancelAnimationFrame(raf)
       raf = requestAnimationFrame(() => {
+        // The keyboard is up when the visible height drops; the top and bottom insets are measured apart, so a
+        // visual viewport iOS pans up (offsetTop > 0, nothing covered below) still puts the head at its top.
+        const open = keyboardOpen(window.innerHeight, vv.height)
         const kb = keyboardInset(window.innerHeight, vv.height, vv.offsetTop)
         el.style.setProperty('--dk-kb', `${kb}px`)
-        // When iOS pans the visual viewport up instead of only shrinking it, the head follows it, so the layer
-        // is exactly the visible area: head at its top, composer at its bottom.
-        el.style.setProperty('--dk-top', `${kb > 0 ? Math.max(0, Math.round(vv.offsetTop)) : 0}px`)
-        el.toggleAttribute('data-kb', kb > 0)
+        el.style.setProperty('--dk-top', `${open ? Math.max(0, Math.round(vv.offsetTop)) : 0}px`)
+        el.toggleAttribute('data-kb', open)
         // iOS scrolls the whole page to reveal a focused field; the desk already moved the field up.
-        if (kb > 0 && window.scrollY !== 0) window.scrollTo(0, 0)
+        if (open && window.scrollY !== 0) window.scrollTo(0, 0)
       })
     }
     sync()

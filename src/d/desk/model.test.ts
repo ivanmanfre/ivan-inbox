@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { asMessage, cacheable, cleanLabel, holdLeft, holdStart, linksIn, mergeRows, optimisticPair, parseSse, type DeskMessage } from './model'
-import { keyboardInset } from './useKeyboardInset'
+import { keyboardInset, keyboardOpen } from './useKeyboardInset'
 
 const row = (over: Partial<DeskMessage> & { id: string }): DeskMessage => asMessage({ role: 'assistant', origin: 'desk', body: 'x', created_at: '2026-11-18T10:00:00.000Z', ...over })
 
@@ -85,14 +85,18 @@ describe('small helpers', () => {
     expect(keyboardInset(844, 844, 0)).toBe(0)
     expect(keyboardInset(844, 820, 0)).toBe(0)
     expect(keyboardInset(844, 508, 0)).toBe(336)
+    // iOS panned the visual viewport up: nothing covered below, the keyboard is still open.
+    expect(keyboardInset(844, 508, 336)).toBe(0)
+    expect(keyboardOpen(844, 508)).toBe(true)
+    expect(keyboardOpen(844, 820)).toBe(false)
   })
 })
 
 describe('cleanLabel: server sentences read once, with no ref and no duplicated state', () => {
   const tgt = { first_line: 'A made up post about trains in the rain and a long platform wait.' }
-  it('a held proposal drops Proposed, the ref, the UTC offset, and names the post as this post', () => {
+  it('a held proposal drops Proposed and the ref, keeps the UTC offset, and names the post as this post', () => {
     const r = cleanLabel('Proposed (ref 1a2b3c4d): move "A made up post about trains in the rain and a long\n\nplatform wait." (no date) to Tue 9 Mar 2027, 10:45 (UTC+01:00).', tgt)
-    expect(r).toEqual({ text: 'Move this post to Tue 9 Mar 2027, 10:45.', stated: true })
+    expect(r).toEqual({ text: 'Move this post to Tue 9 Mar 2027, 10:45 (UTC+01:00).', stated: true })
   })
   it('a quote inside the post does not cut it short', () => {
     const r = cleanLabel('Proposed (ref 1a2b3c4d): pull "A made up post about trains in the rain, "late again" said the man" (Thu 19 Nov, 18:30).', { first_line: 'A made up post about trains in the rain, "late again" said the man' })
