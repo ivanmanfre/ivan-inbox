@@ -6,11 +6,6 @@ export type Act = Record<string, unknown> & { kind: string }
 export type Chip = { label: string; send: string }
 export type Parsed = { reply: string; actions: Act[]; reads: Act[]; chips: Chip[] }
 
-function block(text: string, tag: string): string | null {
-  const m = text.match(new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`, 'i'))
-  return m ? m[1].trim() : null
-}
-
 function jsonArray(raw: string | null): Record<string, unknown>[] {
   if (!raw) return []
   try {
@@ -73,11 +68,10 @@ export function sanitize(text: string, handles: Iterable<string>, keepEdges = fa
 // tool tags the model may open: a block left unclosed is dropped from its open tag to the end (Sol r8 #6)
 const TOOL_OPEN = /<\/?(?:actions|reads|chips|tool[\w-]*|function[\w-]*|invoke|antml[\w:-]*)\b/i
 
-/** Remove closed tool blocks, then cut at the first open tool tag that is still left. */
+/** The displayable text of a model answer, by the one scanner: the top-level reply, else the loose text. */
 export function dropToolBlocks(text: string): string {
-  const s = text.replace(/<(actions|reads|chips)>[\s\S]*?<\/\1>/gi, '')
-  const open = s.search(TOOL_OPEN)
-  return open >= 0 ? s.slice(0, open) : s
+  const sc = scan(text)
+  return (sc.reply ?? '').trim() ? (sc.reply ?? '') : sc.loose
 }
 
 /**
@@ -117,7 +111,12 @@ export class HandleStream {
     if (lo >= 0 && line.indexOf('\u201d', lo) < 0) end = Math.min(end, lineStart + lo)
     let cut = -1
     for (let i = Math.min(end, this.acc.length - 7); i >= 0; i--) if (/\s/.test(this.acc[i])) { cut = i; break }
-    return Math.min(end, cut)
+    cut = Math.min(end, cut)
+    // a cut inside a complete quoted span moves back to its opening quote (the span is released whole)
+    for (const m of this.acc.slice(0, end).matchAll(new RegExp(QUOTED.source, 'g'))) {
+      if (m.index! < cut && cut < m.index! + m[0].length) { cut = m.index!; break }
+    }
+    return cut
   }
   private release(end: number): string {
     if (end <= 0) return ''
@@ -134,23 +133,85 @@ export function oneText(chips: { label?: unknown; send: unknown }[]): Chip[] {
   return chips.map((c) => plain(String(c.send ?? '')).slice(0, 400)).filter(Boolean).map((t) => ({ label: t, send: t }))
 }
 
-export function parse(text: string): Parsed {
-  let reply = block(text, 'reply')
-  if (reply) reply = dropToolBlocks(reply).trim()
-  else {
-    // No (or an empty, or an unclosed) reply tag: take everything outside the other blocks; an unclosed
-    // tool block is dropped from its open tag to the end (Sol r8 #6)
-    reply = dropToolBlocks(text.replace(/<\/?reply>/gi, '')).trim()
+const TOOL_BLOCK = new Set(['actions', 'reads', 'chips'])
+const OTHER_TOOL = /^(?:tool[\w-]*|function[\w-]*|invoke|antml[\w:-]*)$/i
+
+export type Scan = {
+  /** the first top-level <reply> block's text (to its closer, a tool opener, or the end), null if none */
+  reply: string | null
+  /** top-level text outside every block (the fallback reply) */
+  loose: string
+  actions: string | null; reads: string | null; chips: string | null
+  /** the name of the first top-level opener (e.g. 'actions' when the model acts first) */
+  first: string | null
+  /** an unclosed tool opener cut the rest */
+  cut: boolean
+}
+
+/**
+ * The ONE depth-aware scanner for the stream and the buffered paths (Sol r9 #2). Only top-level
+ * blocks count. Inside a tool block (actions, reads, chips) only its own closer counts: a tag in
+ * its JSON never opens anything. A <reply> ends at its closer or at the first tool opener. After an
+ * unclosed tool opener (any tool tag), everything to the end is discarded.
+ */
+export function scan(text: string): Scan {
+  const out: Scan = { reply: null, loose: '', actions: null, reads: null, chips: null, first: null, cut: false }
+  const TAG = /<(\/?)([A-Za-z][\w:-]*)[^<>]*>/g
+  let pos = 0
+  let inReply = false, replyStart = 0, replyDone = false
+  for (;;) {
+    TAG.lastIndex = pos
+    const m = TAG.exec(text)
+    if (!m) break
+    const [whole, slash, rawName] = m
+    const name = rawName.toLowerCase()
+    const isTool = TOOL_BLOCK.has(name) || OTHER_TOOL.test(name)
+    if (inReply) {
+      if (slash && name === 'reply') { out.reply = text.slice(replyStart, m.index); inReply = false; replyDone = true; pos = m.index + whole.length; continue }
+      if (!slash && isTool) { out.reply = text.slice(replyStart, m.index); inReply = false; replyDone = true }
+      else { pos = m.index + whole.length; continue }
+    } else if (!slash || !isTool) {
+      out.loose += text.slice(pos, m.index)
+    }
+    if (slash) { pos = m.index + whole.length; continue }
+    if (name === 'reply') {
+      if (!out.first) out.first = 'reply'
+      if (!replyDone && out.reply == null) { inReply = true; replyStart = m.index + whole.length }
+      pos = m.index + whole.length
+      continue
+    }
+    if (isTool) {
+      if (!out.first) out.first = name
+      const close = text.toLowerCase().indexOf(`</${name}>`, m.index + whole.length)
+      if (close < 0) { out.cut = true; return out }   // unclosed tool opener: nothing after it counts
+      const body = text.slice(m.index + whole.length, close)
+      if (name === 'actions' && out.actions == null) out.actions = body
+      if (name === 'reads' && out.reads == null) out.reads = body
+      if (name === 'chips' && out.chips == null) out.chips = body
+      pos = close + name.length + 3
+      continue
+    }
+    // any other tag is text
+    out.loose += whole
+    pos = m.index + whole.length
   }
+  if (inReply) out.reply = text.slice(replyStart)
+  else out.loose += text.slice(pos)
+  return out
+}
+
+export function parse(text: string): Parsed {
+  const sc = scan(text)
+  const reply = ((sc.reply ?? '').trim() || sc.loose).trim()
   // Keys starting with "_" are server-owned (overrides, snapshots, flags): never taken from the model.
-  const actions = jsonArray(block(text, 'actions'))
+  const actions = jsonArray(sc.actions?.trim() ?? null)
     .filter((a) => typeof a.kind === 'string')
     .map((a) => Object.fromEntries(Object.entries(a).filter(([k]) => !k.startsWith('_')))) as Act[]
-  const reads = jsonArray(block(text, 'reads'))
+  const reads = jsonArray(sc.reads?.trim() ?? null)
     .filter((a) => typeof a.kind === 'string' && /^read_/.test(a.kind as string)) as Act[]
   // Sol r5 B1: a chip has ONE text. What Ivan sees is exactly what is sent as his message; the model's
   // label is dropped, so a chip can never show one thing and send another.
-  const chips = oneText(jsonArray(block(text, 'chips'))
+  const chips = oneText(jsonArray(sc.chips?.trim() ?? null)
     .filter((c) => typeof c.send === 'string' && c.send.trim())
     .slice(0, 3) as { send: string }[])
   return { reply: plain(reply), actions, reads, chips }

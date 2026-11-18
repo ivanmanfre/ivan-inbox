@@ -27,6 +27,7 @@ import { warsaw, warsawDay } from './brief.ts'
 import type { Act } from './parse.ts'
 import { urlInMessage } from './unfurl.ts'
 import { MAX_BRIEF_CHARS, MAX_TITLE_CHARS } from '../_shared/desk-t3.ts'
+import { identify, words, type IdDraft } from './target.ts'
 
 // deno-lint-ignore no-explicit-any
 type Db = any
@@ -55,8 +56,10 @@ export type Ctx = {
   fetchImpl?: typeof fetch
   t3?: (args: { title: string; brief: string }) => Promise<{ job_id: string; status: string; error?: string }>
   unfurl?: (url: string) => Promise<{ title?: string; description?: string; author?: string } | null>
-  /** eval fixtures mode: desk eval fixture drafts are candidates only then */
+  /** eval fixtures mode: only desk eval fixture drafts are candidates then */
   fixtures?: boolean
+  /** list numbers the previous desk answer displayed -> draft id (its meta.shown_drafts) */
+  shown?: Map<number, string> | null
 }
 
 export type Planned = {
@@ -115,26 +118,30 @@ export function dayOf(d: Draft): string {
 
 /** The shortest opening of the draft's first line that matches no other draft in the brief (else the whole line). */
 export function distinctExcerpt(d: Draft, all: Draft[]): string {
-  const words = d.first_line.split(/\s+/).filter(Boolean)
-  for (let n = 3; n <= Math.min(words.length, 24); n++) {
-    const ex = words.slice(0, n).join(' ')
-    if (all.filter((o) => quoteIn(o.first_line, ex)).length === 1) return ex
+  const ws = d.first_line.split(/\s+/).filter(Boolean)
+  for (let n = 3; n <= Math.min(ws.length, 24); n++) {
+    const ex = ws.slice(0, n).join(' ')
+    // unique under the identity rule itself: only this draft reaches the excerpt's full span
+    const exw = words(ex)
+    if (all.filter((o) => o.id !== d.id && sharedSpanOf(exw, o.first_line) >= exw.length).length === 0) return ex
   }
   return d.first_line
 }
+const sharedSpanOf = (exw: string[], line: string) => { const lw = ` ${words(line).join(' ')} `; return lw.includes(` ${exw.join(' ')} `) ? exw.length : 0 }
 
 // the verb only: a chip carries draft identity and never a rejected argument (no time, no reason) (Sol r8 #3)
+// short verbs: a chip's own boilerplate must never outweigh the excerpt in the span match (target.ts)
 const VERB: Record<string, (ref: string) => string> = {
-  approve: (r) => `approve ${r}`, delete: (r) => `delete ${r}`, redo: (r) => `redo ${r} through the writer, same idea`,
-  date: (r) => `move ${r}`, undate: (r) => `remove the date from ${r}`,
-  pull: (r) => `pull ${r} off the schedule`, photo_attach: (r) => `attach the photo to ${r}`,
+  approve: (r) => `approve ${r}`, delete: (r) => `delete ${r}`, redo: (r) => `redo ${r}`,
+  date: (r) => `move ${r}`, undate: (r) => `undate ${r}`,
+  pull: (r) => `pull ${r}`, photo_attach: (r) => `add photo to ${r}`,
 }
 
 /** One chip per candidate, built from draft identity only: a distinct opener excerpt plus its day. */
 export function pickChips(act: Act, ds: Draft[], all: Draft[]): { label: string; send: string }[] {
   return ds.slice(0, 3).map((d) => {
     const day = dayOf(d)
-    const ref = `the one that starts "${distinctExcerpt(d, all)}" ${day === 'undated' ? 'undated' : `dated ${day}`}`
+    const ref = `"${distinctExcerpt(d, all)}" ${day === 'undated' ? '(no date)' : `(${day})`}`
     const send = (VERB[IN_ALIAS[act.kind] ?? act.kind] ?? ((r: string) => `${act.kind} ${r}`))(ref)
     return { label: send, send }
   })
@@ -153,23 +160,42 @@ const UNFINISHED = new Set(['review', 'approved', 'error', 'generating'])
  * his lane, an eligible status, not published, in his Review when unfinished; dated for undate/pull.
  * Null when it cannot be read: nothing is resolved then.
  */
+/**
+ * Read every row of a query, page by page, in a stable order (Sol r9 #3). The exact count comes with
+ * the first page; anything short of it, an error or a missing count = null (fail closed).
+ */
+// deno-lint-ignore no-explicit-any
+export async function readAll(page: (from: number, to: number) => any, size = 1000): Promise<any[] | null> {
+  const out: unknown[] = []
+  let total: number | null = null
+  for (let from = 0; from < 50_000; from += size) {
+    const { data, error, count } = await page(from, from + size - 1)
+    if (error || !Array.isArray(data)) return null
+    if (total == null) { if (typeof count !== 'number') return null; total = count }
+    out.push(...data)
+    if (out.length >= total || data.length < size) break
+  }
+  return total != null && out.length === total ? out : null
+}
+
 export async function liveCandidates(ctx: Pick<Ctx, 'svc' | 'userDb' | 'fixtures'>, kind: string): Promise<Draft[] | null> {
   const statuses = ELIGIBLE[kind]
   if (!statuses) return []
-  const { data, error } = await ctx.svc.from('carousel_drafts').select('id, status, type, scheduled_at, published_at, post_body, taxonomy, created_at, updated_at')
-    .is('client_id', null).is('published_at', null).in('status', statuses).limit(1000)
-  if (error || !Array.isArray(data)) return null
+  const data = await readAll((from, to) => ctx.svc.from('carousel_drafts')
+    .select('id, status, type, scheduled_at, published_at, post_body, taxonomy, created_at, updated_at', { count: 'exact' })
+    .is('client_id', null).is('published_at', null).in('status', statuses).order('id', { ascending: true }).range(from, to))
+  if (!data) return null
   let visible: Set<string> | null = null
   if (ctx.userDb && data.some((r: { status: string }) => UNFINISHED.has(r.status))) {
-    const { data: vis, error: vErr } = await ctx.userDb.from('cb34_p2_safe_drafts').select('id').limit(5000)
-    if (vErr || !Array.isArray(vis)) return null
+    const vis = await readAll((from, to) => ctx.userDb.from('cb34_p2_safe_drafts').select('id', { count: 'exact' }).order('id', { ascending: true }).range(from, to))
+    if (!vis) return null
     visible = new Set(vis.map((v: { id: string }) => v.id))
   }
   const out: Draft[] = []
   for (const r of data as { id: string; status: string; type: string; scheduled_at: string | null; published_at: string | null; post_body: string | null; taxonomy: unknown; created_at: string; updated_at: string }[]) {
     const tax = (r.taxonomy && typeof r.taxonomy === 'object' && !Array.isArray(r.taxonomy)) ? r.taxonomy as Record<string, unknown> : {}
     const fixture = !!tax.desk_eval_fixture
-    if (fixture && !ctx.fixtures) continue   // eval fixtures are candidates only in fixtures mode
+    if (fixture !== !!ctx.fixtures) continue   // fixtures mode: only eval fixtures; otherwise never a fixture
     if (!fixture && UNFINISHED.has(r.status) && visible && !visible.has(r.id)) continue
     if ((kind === 'undate' || kind === 'pull') && !r.scheduled_at) continue
     out.push({ id: r.id, status: r.status, type: r.type, scheduled_at: r.scheduled_at, published_at: r.published_at, first_line: firstLineOf(r.post_body),
@@ -192,6 +218,8 @@ export function resolveDraft(brief: Rendered, act: Act): { d: Draft; handle: str
   }
   const handle = normHandle(act.draft)
   if (!handle) return { error: 'no_draft' }
+  // the server already resolved the target from his words (planLive, planForTarget): one draft, no model pointer
+  if (handle === '#target' && brief.drafts.size === 1 && brief.drafts.has('#target')) return { d: brief.drafts.get('#target')!, handle }
   const named = brief.drafts.get(handle)
   const byLine = [...brief.drafts.entries()].filter(([, d]) => lineMatches(d.first_line, act.line))
   const dated = typeof act.dated === 'string' && act.dated.trim() ? act.dated.trim() : null
@@ -234,9 +262,13 @@ const IN_ALIAS: Record<string, string> = { attach_photo: 'photo_attach', stage_p
 // The names the echo carries (what the app and the eval call these actions).
 const OUT_NAME: Record<string, string> = { photo_attach: 'attach_photo', photo_stage: 'stage_photo', undate: 'remove_date' }
 
+const KINDS = new Set(['approve', 'date', 'undate', 'pull', 'delete', 'redo', 'photo_attach', 'photo_stage', 'idea', 'link', 'draft_line', 't3'])
+
 export async function plan(ctx: Ctx, act: Act): Promise<Planned> {
   // the same object goes in, so a later flag on it (the authorized QA override) reaches run()
   act.kind = IN_ALIAS[act.kind] ?? act.kind
+  // an unknown kind is a fixed code with a fixed label: model text never reaches a label or the journal (Sol r9 #6)
+  if (!KINDS.has(act.kind)) { act.kind = 'unknown'; return { echo: { kind: 'unknown', label: "I can't do that from here, so I did nothing.", state: 'failed', undo: false }, refuse: 'unknown_kind', canon: {} } }
   const p = await planInner(ctx, act)
   // every draft action records its target UUID, whatever its state (done, held, dry, refused)
   if (!p.target_id && p.echo.target) p.target_id = ctx.brief.drafts.get(p.echo.target.handle)?.id
@@ -319,24 +351,35 @@ export async function planLive(ctx: Ctx, act: Act): Promise<{ p: Planned; snap: 
   const kindOut = OUT_NAME[act.kind] ?? act.kind
   const none = (refuse: string, label: string, chips?: { label: string; send: string }[], target_id?: string) =>
     ({ p: { echo: { kind: kindOut, label, state: 'failed' as const, undo: false, detail: refuse }, refuse, chips, target_id }, snap: null })
-  // Sol r8 #1: the target comes from a FRESH read of every live eligible draft, matched with the one
-  // matcher anywhere in the first line. Exactly one match proceeds; none or several act on none,
-  // with one identity-only chip per match.
-  const cands = await liveCandidates(ctx, act.kind)
+  // Round 10 (Sol r9 #1): the model does NOT choose the target. Its handle, excerpt and day are
+  // ignored; the draft comes from Ivan's CURRENT message alone (target.ts identify), against a fresh,
+  // complete read of every live eligible draft. Exactly one candidate proceeds; otherwise act on none.
+  let cands = await liveCandidates(ctx, act.kind)
   if (!cands) return none('read_failed', 'I could not read your drafts, so I did nothing.')
-  const dated = typeof act.dated === 'string' && act.dated.trim() ? act.dated.trim() : null
-  const byQuote = cands.filter((d) => quoteIn(d.first_line, act.line))
-  const matches = byQuote.length > 1 && dated ? byQuote.filter((d) => dayOf(d) === dated) : byQuote
-  if (matches.length !== 1 || !quoteLongEnough(act.line)) {
-    const shown = matches.length ? matches : byQuote
-    return shown.length
-      ? none(shown.length > 1 ? 'ambiguous' : 'too_short', shown.length > 1 ? `${shown.length} posts match. Pick one.` : 'Say a few more words of its first line, so I know it is this one.', pickChips(act, shown, cands))
-      : none('no_match', 'I could not find a post that starts like that, so I did nothing.')
+  const today = warsawDay(new Date().toISOString())
+  // a date move's named day is the NEW date, never identity (eval C03 "on tuesday 9 march")
+  const idOpts = { today, dayIsArg: act.kind === 'date' }
+  const asId = (ds: Draft[]): IdDraft[] => ds.map((d) => ({ id: d.id, first_line: d.first_line, day: dayOf(d) }))
+  let res = identify(ctx.text, asId(cands), ctx.shown, idOpts)
+  if (ctx.fixtures && !res.ids.length) {
+    // eval fixtures mode: fixtures first; only when no fixture fits his words do his real drafts count
+    const real = await liveCandidates({ ...ctx, fixtures: false }, act.kind)
+    if (!real) return none('read_failed', 'I could not read your drafts, so I did nothing.')
+    cands = real
+    res = identify(ctx.text, asId(cands), ctx.shown, idOpts)
   }
-  const match = matches[0]
-  const handle = normHandle(act.draft)
-  if (!handle || ctx.brief.drafts.get(handle)?.id !== match.id) return none('handle_mismatch', 'I could not tell which post you mean, so I did nothing.', pickChips(act, [match], cands))
-  if (dated && dayOf(match) !== dated) return none('dated_mismatch', 'That post is not on the day you named, so I did nothing.', pickChips(act, [match], cands), match.id)
+  const byId = new Map(cands.map((d) => [d.id, d]))
+  if (res.ids.length !== 1) {
+    const shown = res.ids.map((x) => byId.get(x)!).filter(Boolean)
+    return shown.length
+      ? none('ambiguous', `${shown.length} posts match your words. Pick one.`, pickChips(act, shown, cands))
+      : none('no_match', 'I could not tell which post you mean from your words, so I did nothing.')
+  }
+  const match = byId.get(res.ids[0])!
+  const handle = '#target'
+  // the action now names that draft; the model's own pointers are dropped (never used again, never journaled)
+  act.draft = handle; act.line = match.first_line; delete act.dated
+  const rivals = res.rivals.map((x) => byId.get(x)!).filter(Boolean).slice(0, 5)
   const r = { d: match, handle }
   let live: Awaited<ReturnType<typeof loadLive>>
   try { live = await loadLive(ctx, r.d.id) } catch (e) {
@@ -344,19 +387,18 @@ export async function planLive(ctx: Ctx, act: Act): Promise<{ p: Planned; snap: 
     return { p: { echo: { kind: OUT_NAME[act.kind] ?? act.kind, label: 'I could not read its queue, so I did nothing.', state: 'failed', undo: false }, refuse: 'queue_read_failed', target_id: r.d.id }, snap: null }
   }
   if (!live) return { p: { echo: { kind: OUT_NAME[act.kind] ?? act.kind, label: 'That post is gone or no longer in your Review.', state: 'failed', undo: false }, refuse: 'gone', target_id: r.d.id }, snap: null }
-  if (!lineMatches(live.d.first_line, act.line)) {
+  if (live.d.first_line !== match.first_line) {
+    // rewritten between the two reads: the words he matched are not this row's any more
     return { p: { echo: { kind: kindOut, label: 'That post was rewritten since, so I did nothing.', state: 'failed', undo: false, detail: 'line_mismatch' }, refuse: 'line_mismatch', target_id: r.d.id,
       chips: pickChips(act, [live.d], cands) }, snap: live.snap }
   }
-  // the day he named holds on the LIVE row too; a conflict does nothing (Sol r7 #1)
-  if (dated && dayOf(live.d) !== dated) {
-    return { p: { echo: { kind: kindOut, label: 'That post is not on the day you named, so I did nothing.', state: 'failed', undo: false, detail: 'dated_mismatch' }, refuse: 'dated_mismatch', target_id: r.d.id,
-      chips: pickChips(act, [live.d], cands) }, snap: live.snap }
-  }
+  act.line = live.d.first_line
   const p = await plan({ ...ctx, brief: liveBrief(ctx, live.d, live.snap, r.handle) }, act)
   p.target_id = live.d.id
-  // the verifier reads the resolved post's whole live opener (Sol r7 #1, r8 #1)
-  p.context = `Target post, full first line: "${live.d.first_line.slice(0, 300)}" (${dayOf(live.d) === 'undated' ? 'undated' : `dated ${dayOf(live.d)}`}).`
+  // the verifier reads the resolved post's whole live opener and every rival opener with its day
+  const dayText = (x: Draft) => (dayOf(x) === 'undated' ? 'undated' : `dated ${dayOf(x)}`)
+  p.context = `Target post, found from his words, full first line: "${live.d.first_line.slice(0, 300)}" (${dayText(live.d)}).` +
+    (rivals.length ? ` Other posts that share some of his words: ${rivals.map((o) => `"${o.first_line.slice(0, 300)}" (${dayText(o)})`).join('; ')}. Allowed only if his message means the target, not one of these.` : '')
   return { p, snap: live.snap }
 }
 
@@ -784,7 +826,7 @@ async function planCase(ctx: Ctx, act: Act, c: Record<string, unknown>): Promise
       }
     }
   }
-  return { echo: { kind, label: `I can't do "${kind}" from here.`, state: 'failed', undo: false }, refuse: 'unknown_kind' }
+  return { echo: { kind: 'unknown', label: "I can't do that from here, so I did nothing.", state: 'failed', undo: false }, refuse: 'unknown_kind' }
 }
 
 export function classifyPostUrl(url: string): { platform: 'linkedin' | 'x'; id: string; author?: string } | null {
@@ -840,7 +882,7 @@ async function deskWrite(ctx: Pick<Ctx, 'userDb'>, fn: string, args: Record<stri
  */
 export function actionKey(p: Pick<Planned, 'echo' | 'target_id' | 'canon'>): string {
   // an idea's text is compared casefolded with whitespace collapsed; storage and the verifier keep it exact (Sol r8 #2)
-  const fold = p.echo.kind === 'idea' ? (v: unknown) => (typeof v === 'string' ? v.toLowerCase().replace(/\s+/g, ' ').trim() : v) : (v: unknown) => v
+  const fold = p.echo.kind === 'idea' ? (v: unknown) => (typeof v === 'string' ? v.normalize('NFKC').toUpperCase().toLowerCase().replace(/\s+/g, ' ').trim() : v) : (v: unknown) => v
   const canon = Object.entries(p.canon ?? {}).map(([k, v]) => [k, fold(v)] as [string, unknown]).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
   return JSON.stringify([p.echo.kind, p.target_id ?? null, canon])
 }
@@ -864,7 +906,6 @@ export function verbatimIn(s: unknown, text: string): boolean {
 export function journalArgs(act: Act, p: Pick<Planned, 'run' | 'refuse' | 'canon'>, snap: Snapshot | null, mode: { fixtures?: boolean; dry?: boolean }, text: string): Record<string, unknown> {
   if (p.run) {
     return { kind: act.kind, ...(p.canon ?? {}), ...(act._qa_override === true ? { _qa_override: true } : {}),
-      ...(typeof act.dated === 'string' && act.dated.trim() ? { dated: act.dated.trim() } : {}),
       ...(snap ? { _snapshot: snap } : {}), ...(mode.fixtures ? { _fixtures: true } : {}), ...(mode.dry ? { _dry: true } : {}) }
   }
   const note = p.refuse === 'direction_unsupported' ? ivanSpan(p.canon?.note, text) : null
@@ -873,10 +914,16 @@ export function journalArgs(act: Act, p: Pick<Planned, 'run' | 'refuse' | 'canon
 
 /** The exact span of his message that the quote names, found case-insensitively; null when it is not there. */
 export function ivanSpan(quote: unknown, text: string): string | null {
+  // matched against the ORIGINAL message and sliced from it by index: each window of the original is
+  // compared as a whole, so no length-changing transform ever shifts the slice (Sol r9 #8)
   const q = typeof quote === 'string' ? quote.trim() : ''
   if (!q) return null
-  const i = text.toLowerCase().indexOf(q.toLowerCase())
-  return i >= 0 ? text.slice(i, i + q.length) : null
+  const ql = q.toLowerCase()
+  for (let i = 0; i + q.length <= text.length; i++) {
+    const win = text.slice(i, i + q.length)
+    if (win.toLowerCase() === ql) return win
+  }
+  return null
 }
 
 /** What may be stored as Ivan's own words: the model's quote only if it is a verbatim span of his message, else nothing (Sol r6 #1). */

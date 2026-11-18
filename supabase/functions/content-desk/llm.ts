@@ -4,7 +4,7 @@
 
 const env = (k: string) => (globalThis as { Deno?: { env: { get(k: string): string | undefined } } }).Deno?.env.get(k)
 
-import { dropToolBlocks } from './parse.ts'
+import { dropToolBlocks, scan } from './parse.ts'
 
 export const DESK_MODEL = () => env('DESK_MODEL') || 'claude-sonnet-5-5'
 
@@ -88,27 +88,29 @@ export async function askDesk(prompt: string, opts: { maxTokens?: number; timeou
  */
 export class ReplyStreamer {
   private buf = ''
-  private inReply = false
-  private done = false
-  private emittedUpTo = 0
-  constructor(private onText: (t: string) => void) {}
+  private emitted = 0
+  private write = false
+  /**
+   * The stream side of the ONE scanner (parse.ts scan, Sol r9 #2): only the top-level <reply> text is
+   * streamed; a "<" not yet closed is held back. When the model acts first (its first top-level block
+   * is <actions>), no prose is streamed at all: onWrite fires once and the server's own status line
+   * goes out instead (Sol r9 #4).
+   */
+  constructor(private onText: (t: string) => void, private onWrite?: () => void) {}
   push(chunk: string) {
-    if (this.done) { this.buf += chunk; return }
     this.buf += chunk
-    if (!this.inReply) {
-      const i = this.buf.indexOf('<reply>')
-      if (i < 0) return
-      this.inReply = true
-      this.emittedUpTo = i + '<reply>'.length
+    if (this.write) return
+    const sc = scan(this.buf)
+    if (sc.first && sc.first !== 'reply') {
+      if (sc.first === 'actions') { this.write = true; this.onWrite?.() }
+      return
     }
-    const end = this.buf.indexOf('</reply>', this.emittedUpTo)
-    // hold back a few chars that could be the start of "</reply>"
-    const safe = end >= 0 ? end : Math.max(this.emittedUpTo, this.buf.length - 8)
-    let out = this.buf.slice(this.emittedUpTo, safe)
-    if (this.emittedUpTo === this.buf.indexOf('<reply>') + 7) out = out.replace(/^\s+/, '')
-    if (out) this.onText(out)
-    this.emittedUpTo = safe
-    if (end >= 0) this.done = true
+    if (sc.reply == null) return
+    let r = sc.reply
+    const lt = r.lastIndexOf('<')
+    if (lt >= 0 && r.indexOf('>', lt) < 0) r = r.slice(0, lt)
+    if (this.emitted === 0) { const lead = r.length - r.replace(/^\s+/, '').length; if (lead === r.length) return; this.emitted = lead }
+    if (r.length > this.emitted) { this.onText(r.slice(this.emitted)); this.emitted = r.length }
   }
   get text() { return this.buf }
 }
@@ -120,7 +122,7 @@ export class ReplyStreamer {
  * Any failure before the first delta falls back to the buffered askDesk.
  */
 export async function askDeskStream(prompt: string, onReply: (t: string) => void,
-  opts: { maxTokens?: number; timeoutMs?: number; hedgeMs?: number; fetchImpl?: typeof fetch } = {}): Promise<{ text: string; ms: number; ttft_ms: number | null; model: string; hedged: boolean; streamed: boolean }> {
+  opts: { maxTokens?: number; timeoutMs?: number; hedgeMs?: number; fetchImpl?: typeof fetch; onWrite?: () => void } = {}): Promise<{ text: string; ms: number; ttft_ms: number | null; model: string; hedged: boolean; streamed: boolean }> {
   const base = (env('RAILWAY_CLAUDE_URL') ?? '').replace(/\/$/, '')
   const key = env('RAILWAY_CLAUDE_API_KEY')
   if (!base || !key) throw new LlmError('desk_llm_not_configured', 'The desk model is not configured.')
@@ -135,7 +137,7 @@ export async function askDeskStream(prompt: string, onReply: (t: string) => void
 
   const run = (idx: number) => new Promise<string>((resolve, reject) => {
     const ctl = new AbortController(); ctls[idx] = ctl
-    const streamer = new ReplyStreamer((t) => { if (winner === idx) onReply(t) })
+    const streamer = new ReplyStreamer((t) => { if (winner === idx) onReply(t) }, () => { if (winner === idx) opts.onWrite?.() })
     ;(async () => {
       const r = await f(`${base}/v1/messages`, {
         method: 'POST',
@@ -199,13 +201,15 @@ export async function askDeskStream(prompt: string, onReply: (t: string) => void
     ctls.forEach((c) => c?.abort())
     if (winner >= 0) throw e // it already spoke; a half answer is an error, not a retry
     const b = await askDesk(prompt, { maxTokens: opts.maxTokens, fetchImpl: opts.fetchImpl })
-    onReply(parseReply(b.text))
+    // the same rule on the buffered path: a write turn streams no prose
+    const sc = scan(b.text)
+    if (sc.first === 'actions' || (sc.actions ?? '').trim()) opts.onWrite?.()
+    else onReply(parseReply(b.text))
     return { text: b.text, ms: Date.now() - t0, ttft_ms: Date.now() - t0, model, hedged: b.hedged, streamed: false }
   }
 }
 
 function parseReply(text: string): string {
-  // the same tool-block rule as parse(): an unclosed block is dropped from its open tag (Sol r8 #6)
-  const m = text.match(/<reply>([\s\S]*?)<\/reply>/i)
-  return dropToolBlocks(m ? m[1] : text.replace(/<\/?reply>/gi, '')).trim()
+  // the one scanner: the top-level reply, else the loose text; an unclosed tool block cuts the rest
+  return dropToolBlocks(text).trim()
 }

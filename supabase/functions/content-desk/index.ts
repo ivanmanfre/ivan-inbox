@@ -23,6 +23,7 @@ import { authorize } from './auth.ts'
 import { planTriggers } from './triggers.ts'
 import { queueT3Job, sweepT3Stalls } from '../_shared/desk-t3.ts'
 import { deskUnfurl } from './unfurl.ts'
+import { shownDrafts } from './target.ts'
 import { notify } from '../_shared/notify.ts'
 
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined
@@ -421,7 +422,17 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
           const out = hs.push(t)
           if (out) emit('delta', { text: out })
         }
-        const ask = (p: string) => streaming ? askDeskStream(p, onReply) : askDesk(p)
+        // a write turn shows only server text (Sol r9 #4): the model acts first, no prose streams, and
+        // one fixed status line goes out at once; the final body is the server echo from action results
+        const WORKING = 'Working on it.'
+        let writeShown = false
+        const onWrite = () => {
+          if (writeShown) return
+          writeShown = true
+          if (!streamed) { streamed = true; timings.ttft_ms = Date.now() - t0 }
+          emit('delta', { text: WORKING })
+        }
+        const ask = (p: string) => streaming ? askDeskStream(p, onReply, { onWrite }) : askDesk(p)
         const m1 = await ask(prompt)
         timings.model_ms = m1.ms; if (m1.hedged) timings.hedged = 1
         let parsed = parse(m1.text)
@@ -443,13 +454,16 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
         { const tail = hs.flush(); if (tail) emit('delta', { text: tail }) }
         if (!streamed) {
           timings.ttft_ms = Date.now() - t0
-          const shown = sanitize(reply, r.lines.keys())
-          for (let i = 0; i < shown.length; i += 400) emit('delta', { text: shown.slice(i, i + 400) })
+          if (parsed.actions.length) emit('delta', { text: WORKING })
+          else {
+            const shown = sanitize(reply, r.lines.keys())
+            for (let i = 0; i < shown.length; i += 400) emit('delta', { text: shown.slice(i, i + 400) })
+          }
         }
 
         // insert the assistant row now so actions can reference it
         const { data: aRow } = await svc.from('desk_messages').insert({
-          user_id: userId, role: 'assistant', origin: 'desk', body: sanitize(reply, r.lines.keys()), status: 'streaming',
+          user_id: userId, role: 'assistant', origin: 'desk', body: parsed.actions.length ? WORKING : sanitize(reply, r.lines.keys()), status: 'streaming',
           meta: { model: m1.model, reply_to: userRow.id, client_key: clientKey, turn_token: turnToken, ...(mode.evalMode ? { test: true } : {}) },
         }).select('id').single()
         if (!aRow?.id) throw new LlmError('desk_failed', 'answer row')
@@ -458,6 +472,12 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
 
         const ctx: Ctx = {
           userDb, svc, userId, messageId, brief: r, attachments, text, env, fixtures: mode.fixtures,
+          // list numbers the previous desk answer displayed (its meta.shown_drafts), for "number 2"
+          shown: (() => {
+            const prev = [...recent].reverse().find((m: { role: string }) => m.role === 'assistant') as { meta?: { shown_drafts?: { n: number; id: string }[] } } | undefined
+            const list = Array.isArray(prev?.meta?.shown_drafts) ? prev!.meta!.shown_drafts! : []
+            return new Map(list.filter((x) => typeof x?.n === 'number' && typeof x?.id === 'string').map((x) => [x.n, x.id]))
+          })(),
           unfurl: (u) => deskUnfurl(u),
           t3: mode.t3On ? async ({ title, brief: b }) => {
             const j = mode.t3Test
@@ -576,11 +596,16 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
         // stores the server's own echo lines; the model's prose stays only when every proposed action
         // was done or held. If any was refused or failed, the body is the echo lines alone, and the UI
         // replaces the streamed text with this final body.
+        // Sol r9 #4/#5: a turn with any action stores the server's echo lines only, never model prose.
+        // A held action's line names what was asked with a fixed label that stays true ("Delete:
+        // <opener>, held for Undo"); its live state lives only in the structured echo.
         let finalBody = reply
-        if (planned.length) {
-          const lines = echoes.map((e) => e.label + (e.detail && !/^[a-z_]+$/.test(e.detail) ? ` ${e.detail}` : ''))
-          const allOk = echoes.length > 0 && echoes.every((e) => e.state === 'done' || e.state === 'held')
-          finalBody = allOk ? [reply, ...lines].filter(Boolean).join('\n\n') : lines.join('\n\n')
+        if (parsed.actions.length) {
+          const HELD: Record<string, string> = { approve: 'Approve', delete: 'Delete', pull: 'Pull' }
+          const lines = echoes.map((e) => e.state === 'held'
+            ? `${HELD[e.kind] ?? 'Action'}: "${clipLine(e.target?.first_line ?? '')}", held for Undo`
+            : e.label + (e.detail && !/^[a-z_]+$/.test(e.detail) ? ` ${e.detail}` : ''))
+          finalBody = lines.length ? lines.join('\n\n') : 'I did not do anything.'
         }
         finalBody = shortParagraphs(sanitize(finalBody, r.lines.keys()))
         const sideEffects = await turnSideEffects(svc, messageId)
@@ -590,6 +615,8 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
           model: m1.model, reply_to: userRow.id, client_key: clientKey, timings, tool_calls: toolCalls, brief_chars: r.text.length,
           ...(echoes.length ? { actions: echoes } : {}), ...(chips.length ? { chips: oneText(chips) } : {}), ...(t3 ? { t3_job: t3 } : {}),
           turn_token: turnToken, side_effects: sideEffects, ...(mode.evalMode ? { test: true } : {}),
+          // the drafts this answer shows, in order: a later "number 2" means the second of these (Sol r9 #1a)
+          shown_drafts: shownDrafts(finalBody, [...r.drafts.values()]),
         }
         // The final row (with its echoes) is the only thing that lets a hold arm: held_seen and commit
         // both require it (echoDurable). It is written only over this turn's own streaming row (a
@@ -666,6 +693,8 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
     headers: { ...cors(origin), 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no', 'x-desk-model': DESK_MODEL() },
   })
 }
+
+const clipLine = (s: string, n = 70) => { const t = s.replace(/\s+/g, ' ').trim(); return t.length > n ? t.slice(0, n - 1) + '…' : t }
 
 // ---- turn recovery and side effects (Sol r5 B4, B11) ----------------------------
 /** No worker can still be alive after this (the edge wall-clock limit is far below it). */

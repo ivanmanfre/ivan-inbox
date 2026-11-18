@@ -203,21 +203,26 @@ export function render(b: BriefJson, recent: { role: string; origin: string; bod
     if (w.poland < 1) w.open.push('the Poland-with-him post (quota: 1 a week with him in it, belief 5) has no vehicle label in this week')
     weeks.push(w)
   }
+  // eval F1: the week listings show only the posts; every number of a week lives in PLANNING NUMBERS
   for (const w of weeks) {
-    L.push('', `${w.label} (Mon ${w.week_start} to Sun ${addDays(w.week_start, 6)}): ${weekCount(w)}; ${w.copies} ${w.copies === 1 ? 'copy' : 'copies'} (extras, never counted).`)
+    L.push('', `${w.label} (Mon ${w.week_start} to Sun ${addDays(w.week_start, 6)}), the posts dated:`)
     for (const x of w.dated) {
       const q = queueByDraft.get(byHandle.get(x.handle)!.id)
       L.push(`- ${warsaw(x.at)} ${x.handle} [${x.status}${q ? ', queued ' + q.origin : ''}]${x.copy ? ' COPY' : ''}: "${clip(x.first_line, 110)}"`)
     }
     if (!w.dated.length) L.push('- nothing dated')
+  }
+  const planning: string[] = []
+  for (const w of weeks) {
+    planning.push(`${w.label} (Mon ${w.week_start}): ${weekCount(w)}; ${w.copies} ${w.copies === 1 ? 'copy' : 'copies'} (extras, never counted).`)
     const vk = Object.entries(w.vehicles).filter(([, n]) => Number(n) > 0)
-    L.push(`  vehicles (calendar labels): ${vk.length ? vk.map(([k, n]) => `${k}=${n}`).join(' ') : 'no vehicle labels yet'}`)
+    planning.push(`  vehicles (calendar labels): ${vk.length ? vk.map(([k, n]) => `${k}=${n}`).join(' ') : 'no vehicle labels yet'}`)
     const unlabeled = w.unlabeled
-    L.push(`  belief counts (originals): ${Object.entries(w.beliefs).map(([k, v]) => `B${k}=${v}`).join(' ')}; ` +
+    planning.push(`  belief counts (originals): ${Object.entries(w.beliefs).map(([k, v]) => `B${k}=${v}`).join(' ')}; ` +
       (unlabeled ? `${unlabeled} of ${w.originals} originals have NO belief label. Beliefs not covered by any labeled post: ` : 'missing beliefs: ') +
       (w.missing_beliefs.length ? w.missing_beliefs.map((n) => 'B' + n).join(', ') : 'none') +
       (unlabeled === w.originals && w.originals > 0 ? ' (no post this week has a belief set, so no belief is covered yet)' : ''))
-    if (w.open.length) L.push(`  open quota: ${w.open.join('; ')}`)
+    if (w.open.length) planning.push(`  open quota: ${w.open.join('; ')}`)
   }
   // each quota with its own stored note (content_plan_quotas.note), so a lane question meets the rule in his words
   L.push('', 'QUOTA RULES (weekly, from the calendar; these govern any "more X?" lane question):')
@@ -240,7 +245,6 @@ export function render(b: BriefJson, recent: { role: string; origin: string; bod
     S.push(`(Only if he asks:) Review also has ${rv.filter((d) => d.is_copy).length} copies and ${rv.filter((d) => d.brain).length} brain drafts that take Keep/Drop.`)
     S.push(`All live drafts by status: ${Object.entries(byStatus).map(([k, v]) => `${k} ${v}`).join(', ')}.`)
     // eval E13/E14: the stored form for state answers, the planning form only for planning answers
-    for (const w of weeks) S.push(`${w.label.toLowerCase()}: ${weekCount(w)}; ${w.copies} ${w.copies === 1 ? 'copy' : 'copies'} (extras).`)
     // one list, measured posts and published drafts the metrics have not caught yet, newest first;
     // the same call (same inputs) builds RECENT PUBLISHED POSTS below, so its first row is this line (Sol r4 #8)
     const merged = mergedPosts(drafts, (b.posts as { posts?: PostRow[] }).posts ?? [], b.post_links)
@@ -276,7 +280,8 @@ export function render(b: BriefJson, recent: { role: string; origin: string; bod
   // eval E5: the 48h window is precomputed here, at brief build, for every post (the model never computes it)
   const win = (at: string | null | undefined) => {
     const h = at ? Math.max(0, Math.floor((Date.parse(b.as_of) - Date.parse(at)) / 3600e3)) : null
-    return h == null || Number.isNaN(h) ? '48h window unknown' : `${h}h since posting, 48h window ${h < 48 ? 'OPEN' : 'CLOSED'}`
+    // eval F2: the window state is the fact; the hour count is never shown
+    return h == null || Number.isNaN(h) ? '48h window unknown' : `48h window ${h < 48 ? 'OPEN' : 'CLOSED'}`
   }
   L.push('', `RECENT PUBLISHED POSTS (last 31 days; "worked" = 1.5x his organic median, bar ${bar ?? '?'} impressions; boosted never counts; "early read" = its numbers were read before its 48h mark and may still be low; each row states its own 48h window):`)
   // the lane's quota sits next to the posts it governs (content_plan_quotas via the panel)
@@ -329,6 +334,10 @@ export function render(b: BriefJson, recent: { role: string; origin: string; bod
     L.push('', 'CLOUD JOBS (T3):')
     for (const j of jobs) L.push(`- ${warsaw(j.created_at)} "${clip(j.title, 80)}": ${j.status}`)
   }
+
+  // ---- planning numbers, one section near the end (eval F1): open = 5 - week_fill.slots, clamped at 0
+  // exactly as eval/gold.py does (an overfilled week reads "6 of 5 originals dated, 0 open")
+  L.push('', "PLANNING NUMBERS (only for questions about open slots, gaps or planning, or how many originals or copies a week has):", ...planning)
 
   // ---- recent desk messages
   if (recent.length) {

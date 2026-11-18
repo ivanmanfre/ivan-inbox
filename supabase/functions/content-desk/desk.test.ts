@@ -484,8 +484,10 @@ Deno.test('round 9 #4: week coverage comes only from week_fill; no draft flag ca
   const txt = render(brief([d], { this_monday: '2026-11-16', panel: { quotas: [], slots: [{ draft_id: ID1, belief: 5, vehicle: 'selling' }],
     week_fill: [{ week_start: '2026-11-16', slots: 1, copies: 0, no_belief: 1, by_belief: {}, by_vehicle: {} }] } })).text
   const week = txt.split('THIS WEEK (')[1].split('\n\n')[0]
-  assert(week.includes('vehicles (calendar labels): no vehicle labels yet'), week)
-  assert(!/POLAND|SELLING|EVENT|selling|calendar vehicle/.test(week), week)
+  assert(!/POLAND|SELLING|EVENT|selling|calendar vehicle|originals dated/.test(week), week)   // F1: the listing shows posts only
+  const planning = txt.split('PLANNING NUMBERS')[1]
+  assert(planning.includes('vehicles (calendar labels): no vehicle labels yet'), planning)
+  assert(!/POLAND|SELLING|selling/.test(planning), planning)
 })
 
 // ---- Sol r6 fixes (made-up data only) ----------------------------------------
@@ -498,8 +500,8 @@ Deno.test('r6 #2: an opener shared by two drafts acts on none and shows one chip
   const chips = (res as { chips: { label: string; send: string }[] }).chips
   assertEquals(chips.length, 2)
   for (const c of chips) assertEquals(c.label, c.send)
-  assert(chips[0].send.includes('"Three things I learned this week about cold"') && chips[0].send.includes('dated 2026-11-26'), chips[0].send)
-  assert(chips[1].send.includes('"Three things I learned this week about hiring"') && chips[1].send.includes('undated'), chips[1].send)
+  assert(chips[0].send.includes('"Three things I learned this week about cold"') && chips[0].send.includes('(2026-11-26)'), chips[0].send)
+  assert(chips[1].send.includes('"Three things I learned this week about hiring"') && chips[1].send.includes('(no date)'), chips[1].send)
   // each chip's excerpt names exactly one draft
   for (const d of [a, b]) assertEquals([a, b].filter((o) => lineMatches(o.first_line, distinctExcerpt(d, [a, b]))).length, 1)
   // the longer excerpt resolves, and only with the right handle
@@ -556,11 +558,12 @@ Deno.test('eval E5: each published post row states its own 48h window, computed 
   ]
   const txt = render(brief([], { as_of: '2026-11-18T11:00:00Z', posts: { posts }, post_links: {} })).text
   const lines = txt.split('RECENT PUBLISHED POSTS')[1].split('\n').filter((l) => l.startsWith('- '))
-  assert(lines.find((l) => l.includes('mountains'))!.includes('45h since posting, 48h window OPEN'))
-  assert(lines.find((l) => l.includes('ferry'))!.includes('6h since posting, 48h window OPEN'))
+  assert(lines.find((l) => l.includes('mountains'))!.includes('48h window OPEN'))
+  assert(lines.find((l) => l.includes('ferry'))!.includes('48h window OPEN'))
+  assert(!txt.includes('since posting'))   // F2: the state only, never the hours
   const later = render(brief([], { as_of: '2026-11-18T14:00:00Z', posts: { posts }, post_links: {} })).text
   const m = later.split('RECENT PUBLISHED POSTS')[1].split('\n').find((l) => l.includes('mountains'))!
-  assert(m.includes('48h since posting, 48h window CLOSED') && m.includes('early read') && !m.includes('too new'), m)
+  assert(m.includes('48h window CLOSED') && m.includes('early read') && !m.includes('too new') && !m.includes('since posting'), m)
 })
 
 import { stripLineHandles } from './parse.ts'
@@ -633,40 +636,39 @@ import { sanitize, dropToolBlocks } from './parse.ts'
 const freshCtx = (rows: Draft[], extra: Record<string, unknown> = {}) => {
   const r = render(brief(rows))
   const dbRows = rows.map((d) => ({ id: d.id, status: d.status, type: 'text', scheduled_at: d.scheduled_at, published_at: null, post_body: d.first_line + '\nmore text', taxonomy: {}, created_at: d.created_at, updated_at: 'U1' }))
-  const svc = { from: (t: string) => chain(t === 'carousel_drafts' ? { data: dbRows, error: null } : { data: [], error: null }) }
-  const userDb = { from: () => chain({ data: rows.map((d) => ({ id: d.id })), error: null }) }
-  return { r, ctx: { brief: r, attachments: [], text: '', env: () => undefined, svc, userDb, ...extra } as never }
+  const svc = { from: (t: string) => chain(t === 'carousel_drafts' ? { data: dbRows, error: null, count: dbRows.length } : { data: [], error: null, count: 0 }) }
+  const userDb = { from: () => chain({ data: rows.map((d) => ({ id: d.id })), error: null, count: rows.length }) }
+  return { r, ctx: { brief: r, attachments: [], text: '', env: () => undefined, svc, userDb, ...extra } as Record<string, unknown> }
 }
 
-Deno.test('r8 #1: "delete the snow one" against two drafts with snow mid-opener: two chips, no action', async () => {
+Deno.test('round 10 #1: "delete the snow one" against two drafts with snow mid-opener: two chips, no action; the model pointer is ignored', async () => {
   const a = draft(ID1, 'Fresh snow in the park this morning')
   const b = draft('bbbbbbbb-0000-4000-8000-000000000002', 'Old snow on the tram roof tonight', { scheduled_at: '2026-11-26T09:45:00Z' })
   const { r, ctx } = freshCtx([a, b])
-  for (const line of ['snow', 'Snow']) {
-    const { p } = await planLive(ctx, { kind: 'delete', draft: r.handleOf.get(ID1)!, line })
-    assertEquals(p.run, undefined)
-    assertEquals(p.chips?.length, 2)
-    for (const c of p.chips!) assert(c.send.includes('dated 2026-11-26') || c.send.includes('undated'))
-  }
-  // a quote that appears mid-line in only one fresh draft resolves; the brief's handle must be that draft
-  const one = await planLive(ctx, { kind: 'delete', draft: r.handleOf.get(ID1)!, line: 'snow in the park' })
-  assert(one.p.refuse !== 'ambiguous')
-  const wrong = await planLive(ctx, { kind: 'delete', draft: r.handleOf.get(b.id)!, line: 'snow in the park' })
-  assertEquals(wrong.p.refuse, 'handle_mismatch'); assertEquals(wrong.p.run, undefined)
+  // the model names a and quotes a's words: ignored; his words say only "snow"
+  const { p } = await planLive({ ...ctx, text: 'delete the snow one' } as never, { kind: 'delete', draft: r.handleOf.get(ID1)!, line: 'Fresh snow in the park' })
+  assertEquals(p.run, undefined); assertEquals(p.refuse, 'ambiguous')
+  assertEquals(p.chips?.length, 2)
+  for (const c of p.chips!) assert(c.send.includes('(2026-11-26)') || c.send.includes('(no date)'), c.send)
+  // his own words single out one: it proceeds whatever handle or line the model gave
+  const one = await planLive({ ...ctx, text: 'delete the snow in the park one' } as never, { kind: 'delete', draft: r.handleOf.get(b.id)!, line: 'Old snow on the tram' })
+  assertEquals(one.p.target_id, ID1)
 })
 
-Deno.test('r8 #1: a draft outside the brief still counts as a match (fresh read, no cap)', async () => {
+Deno.test('round 10 #1 + #3: a draft outside the brief still competes; an incomplete or failed read resolves nothing', async () => {
   const a = draft(ID1, 'Fresh snow in the park this morning')
   const hidden = draft('cccccccc-0000-4000-8000-000000000003', 'Fresh snow in the park again today')
   const r = render(brief([a]))
   const dbRows = [a, hidden].map((d) => ({ id: d.id, status: 'review', type: 'text', scheduled_at: null, published_at: null, post_body: d.first_line, taxonomy: {}, created_at: d.created_at, updated_at: 'U1' }))
-  const ctx = { brief: r, attachments: [], text: '', env: () => undefined,
-    svc: { from: () => chain({ data: dbRows, error: null }) }, userDb: { from: () => chain({ data: dbRows.map((x) => ({ id: x.id })), error: null }) } } as never
-  const { p } = await planLive(ctx, { kind: 'approve', draft: r.handleOf.get(ID1)!, line: 'Fresh snow in the park' })
+  const mk = (res: unknown) => ({ brief: r, attachments: [], text: 'approve the fresh snow in the park one', env: () => undefined,
+    svc: { from: () => chain(res) }, userDb: { from: () => chain({ data: dbRows.map((x) => ({ id: x.id })), error: null, count: 2 }) } }) as never
+  const { p } = await planLive(mk({ data: dbRows, error: null, count: 2 }), { kind: 'approve' })
   assertEquals(p.refuse, 'ambiguous'); assertEquals(p.chips?.length, 2)
-  // an unreadable candidate set resolves nothing
-  const bad = { ...(ctx as Record<string, unknown>), svc: { from: () => chain({ data: null, error: { message: 'down' } }) } } as never
-  assertEquals((await planLive(bad, { kind: 'approve', draft: r.handleOf.get(ID1)!, line: 'Fresh snow in the park' })).p.refuse, 'read_failed')
+  assertEquals((await planLive(mk({ data: null, error: { message: 'down' } }), { kind: 'approve' })).p.refuse, 'read_failed')
+  // the exact count says 3 rows but only 2 came back: incomplete, fail closed
+  assertEquals((await planLive(mk({ data: dbRows, error: null, count: 3 }), { kind: 'approve' })).p.refuse, 'read_failed')
+  // no count at all: unknown completeness, fail closed
+  assertEquals((await planLive(mk({ data: dbRows, error: null }), { kind: 'approve' })).p.refuse, 'read_failed')
 })
 
 Deno.test('r8 #2 + #3: idea keys fold case and spaces; disambiguation chips carry identity only', async () => {
@@ -678,7 +680,7 @@ Deno.test('r8 #2 + #3: idea keys fold case and spaces; disambiguation chips carr
   const d = draft(ID1, 'Snow in the park this morning', { scheduled_at: '2026-11-26T09:45:00Z' })
   const chips = pickChips({ kind: 'date', at: '2027-01-01 10:00', reason: 'secret' }, [d], [d])
   assert(!chips[0].send.includes('2027-01-01') && !chips[0].send.includes('secret'), chips[0].send)
-  assertEquals(chips[0].send, 'move the one that starts "Snow in the" dated 2026-11-26')
+  assertEquals(chips[0].send, 'move "Snow in the" (2026-11-26)')
 })
 
 Deno.test('r8 #6: an unclosed tool block is dropped from its open tag in every path', () => {
@@ -695,7 +697,7 @@ Deno.test('r8 #7 + E13/E14: the week counts all come from week_fill and never go
   const dated = draft(ID1, 'Snow in the park this morning', { status: 'scheduled', scheduled_at: '2026-11-17T09:45:00Z' })
   const txt = render(brief([dated], { this_monday: '2026-11-16', panel: { quotas: [], week_fill: [{ week_start: '2026-11-16', slots: 4, copies: 1, no_belief: 4, by_belief: {}, by_vehicle: {} }] } })).text
   assert(!/-\d+ (copy|copies|of)/.test(txt), txt.slice(0, 800))
-  assert(txt.includes('THIS WEEK (Mon 2026-11-16 to Sun 2026-11-22): 4 of 5 originals dated, 1 open; 1 copy (extras, never counted).'), txt.slice(0, 900))
+  assert(txt.includes('THIS WEEK (Mon 2026-11-16): 4 of 5 originals dated, 1 open; 1 copy (extras, never counted).'), txt)
   assert(txt.includes('4 of 4 originals have NO belief label'))
   assert(txt.includes('vehicles (calendar labels): no vehicle labels yet'))
   // round 9 #1: no appended closers about the week fill
@@ -732,8 +734,13 @@ Deno.test('round 9 #2: open = 5 - week_fill.slots, the only count the brief stat
   assertEquals(WEEK_TARGET, 5)
   const txt = render(brief([], { this_monday: '2026-11-16', panel: { quotas: [{ slot_kind: 'business_event', per_week: 2, every_n_weeks: 1, vehicle: null, belief: null, note: '' }],
     week_fill: [{ week_start: '2026-11-23', slots: 4, copies: 0 }] } })).text
-  assert(txt.includes('NEXT WEEK (Mon 2026-11-23 to Sun 2026-11-29): 4 of 5 originals dated, 1 open'))
-  assert(txt.includes('THIS WEEK (Mon 2026-11-16 to Sun 2026-11-22): 0 of 5 originals dated, 5 open'))
+  const planning = txt.split('PLANNING NUMBERS')[1]
+  assert(planning.includes('NEXT WEEK (Mon 2026-11-23): 4 of 5 originals dated, 1 open'))
+  assert(planning.includes('THIS WEEK (Mon 2026-11-16): 0 of 5 originals dated, 5 open'))
+  // round 10 #10: the shared clamp, as eval/gold.py max(0, target - filled): an overfilled week reads 0 open
+  assertEquals(weekCount({ originals: 6, cap: 5 }), '6 of 5 originals dated, 0 open')
+  // F1: the numbers sit only in PLANNING NUMBERS, never in a week listing or the SUMMARY
+  assert(!txt.split('PLANNING NUMBERS')[0].includes('originals dated'))
 })
 
 Deno.test('round 9 #3: a redo journal never lacks the note (direct, dry and held)', () => {
@@ -775,4 +782,79 @@ Deno.test('round 9b: every quota renders with its own stored note (the lane rule
   assert(block.includes('- poland_with_him 1/wk: 1 Poland post with him in it (belief 5).'), block)
   assert(block.includes('- selling_claim 1/wk every 2 wks: The selling claim replaces one business_event post every two weeks.'), block)
   assert(block.includes('Copies are extras, never counted.'), block)
+})
+
+// ---- Round 10 (made-up data only) -------------------------------------------------
+import { identify, listNumber, namedDays, shownDrafts, words, sharedSpan } from './target.ts'
+import { scan } from './parse.ts'
+import { ReplyStreamer } from './llm.ts'
+
+const FX = [
+  { id: 'cold', first_line: 'Cold brew at 7am and a 40 minute queue for a café that opened last week.', day: 'undated' },
+  { id: 'ferry', first_line: 'The Gdańsk ferry to Hel takes about 50 minutes and nobody on it was looking at LinkedIn.', day: 'undated' },
+  { id: 'amber', first_line: 'Amber sellers in Gdańsk old town quote prices like a sales call: anchor high, then a quiet discount.', day: 'undated' },
+  { id: 'tram', first_line: 'Tram 33 at rush hour is the best market research I do all week. Everyone is on their phone.', day: '2027-03-16' },
+]
+
+Deno.test('round 10 #1: the eval command texts resolve from his words alone', () => {
+  const id = (t: string, o: { dayIsArg?: boolean } = {}) => identify(t, FX, null, { today: '2026-11-18', ...o }).ids.sort()
+  assertEquals(id('approve the gdansk one'), ['amber', 'ferry'])                      // C01: act on none, both as chips
+  assertEquals(id('approve the cold brew one'), ['cold'])                              // C02
+  assertEquals(id('put the cold brew one on tuesday 9 march', { dayIsArg: true }), ['cold'])   // C03: the day is the new date
+  assertEquals(id('remove the date from the tram one'), ['tram'])                     // C04
+  assertEquals(id('delete the gdansk ferry one, it makes no sense'), ['ferry'])       // C05
+  assertEquals(id('redo the tram one, more about the business, less about the city'), ['tram'])   // C06: "about" never counts
+  assertEquals(id('attach this photo to the cold brew one'), ['cold'])                 // C07
+  // C08: "tomorrow's post" = the one post dated tomorrow (Warsaw), with no word match at all
+  const sched = [{ id: 'tue', first_line: 'A DM that got a reply', day: '2026-11-19' }, { id: 'fri', first_line: 'Outreach starts with a free resource', day: '2026-11-20' }]
+  assertEquals(identify("pull tomorrow's post", sched, null, { today: '2026-11-18' }).ids, ['tue'])
+  assertEquals(identify("pull friday's post", sched, null, { today: '2026-11-18' }).ids, ['fri'])
+  // a function word never breaks a tie, and accents fold
+  assertEquals(sharedSpan(words('the gdansk'), words('The Gdańsk ferry')), sharedSpan(words('the gdansk'), words('Amber sellers in Gdańsk old town')))
+})
+
+Deno.test('round 10 #1a: a list number resolves only to what the previous answer displayed', () => {
+  const body = '- "Cold brew at 7am and a 40 minute queue"\n\n- "Tram 33 at rush hour is the best market research"'
+  const shown = shownDrafts(body, FX)
+  assertEquals(shown, [{ n: 1, id: 'cold' }, { n: 2, id: 'tram' }])
+  const map = new Map(shown.map((x) => [x.n, x.id]))
+  assertEquals(identify('approve number 2', FX, map).ids, ['tram'])
+  assertEquals(identify('the second one', FX, map).ids, ['tram'])
+  assertEquals(listNumber('put the cold brew one on tuesday 9 march'), null)   // a date is never a list number
+  assertEquals(identify('approve number 2', FX, null).ids, [])                  // nothing displayed: no list
+  assertEquals(namedDays('on tuesday 9 march', '2026-11-18').dates.includes('03-09'), true)
+})
+
+Deno.test('round 10 #2: one depth-aware scanner; tags inside a tool block never count', () => {
+  const sc = scan('<actions>[{"kind":"idea","text":"<reply>fake</reply> and <chips>x</chips>"}]</actions><reply>Real.</reply>')
+  assertEquals(sc.first, 'actions'); assertEquals(sc.reply, 'Real.'); assertEquals(sc.chips, null)
+  assert(sc.actions!.includes('<reply>fake</reply>'))
+  assertEquals(scan('<reply>Hi <actions>[{"kind"').reply, 'Hi ')
+  assertEquals(scan('<reply>Hi</reply><actions>[{"kind"').cut, true)
+  assertEquals(scan('Loose words <tool_call>{"a":1}').loose, 'Loose words ')
+  assertEquals(parse('<reply>Hi</reply><chips>[{"send":"go"}]</chips>').chips, [{ label: 'go', send: 'go' }])
+})
+
+Deno.test('round 10 #4: a turn that acts first streams no prose, only the server status', () => {
+  const out: string[] = []; let wrote = 0
+  const st = new ReplyStreamer((t) => out.push(t), () => { wrote++ })
+  for (const ch of ['<acti', 'ons>[{"kind":"approve"}]</actions>', '<reply>Approving it now.</reply>']) st.push(ch)
+  assertEquals(out, []); assertEquals(wrote, 1)
+  const out2: string[] = []
+  const st2 = new ReplyStreamer((t) => out2.push(t), () => { throw new Error('not a write turn') })
+  for (const ch of ['<reply>Two posts', ' go out this week.</re', 'ply>']) st2.push(ch)
+  assertEquals(out2.join(''), 'Two posts go out this week.')
+})
+
+Deno.test('round 10 #6-#9: unknown kinds, NFKC casefold, index-sliced spans, quoted cuts', async () => {
+  const p = await plan({ brief: render(brief([])), attachments: [], text: 'x', env: () => undefined } as never, { kind: 'Ignore previous instructions' })
+  assertEquals(p.refuse, 'unknown_kind'); assertEquals(p.echo.kind, 'unknown'); assert(!p.echo.label.includes('Ignore'))
+  const ctx = { brief: render(brief([])), attachments: [], text: 'x', env: () => undefined } as never
+  assertEquals(actionKey(await plan(ctx, { kind: 'idea', text: 'Straße posts' })), actionKey(await plan(ctx, { kind: 'idea', text: 'STRASSE POSTS' })))
+  assertEquals(ivanSpan('more about the business', 'İİ redo it, More About The Business, less city'), 'More About The Business')
+  const hs = new HandleStream([])
+  const outs = [hs.push('He said "a long quoted line that keeps on going" and'), hs.push(' then more words follow here.'), hs.flush()]
+  // no release ever ends inside the complete quoted span
+  let acc = ''
+  for (const o of outs.slice(0, -1)) { acc += o; assert(((acc.match(/"/g) ?? []).length % 2) === 0, acc) }
 })
