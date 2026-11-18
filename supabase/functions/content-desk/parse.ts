@@ -56,22 +56,35 @@ export function parse(text: string): Parsed {
 /**
  * Keep desk prose in short paragraphs: any paragraph that is not a list and has 35+ words is split
  * at sentence ends into paragraphs of at most ~30 words. Lists and short paragraphs are untouched.
+ * A sentence end is [.!?] (optionally closed by a quote or bracket), then whitespace, then an
+ * uppercase letter, a digit or a quote. Nothing else is a cut point, so a number (1.5x), a URL or an
+ * abbreviation followed by lowercase never splits, and the text between cuts is kept byte for byte:
+ * the only change is the whitespace at a chosen cut becoming a blank line (Sol r4 #9).
  */
+const SENTENCE_END = /[.!?]+["'\u201d\u2019)\]]*(\s+)(?=[\p{Lu}\p{N}"'\u201c\u2018])/gu
+
 export function shortParagraphs(text: string, max = 30, trigger = 35): string {
   const words = (s: string) => (s.match(/\S+/g) ?? []).length
-  return text.split(/\n\s*\n/).map((para) => {
+  return text.split(/(\n\s*\n)/).map((para, i) => {
+    if (i % 2 === 1) return para   // the original blank-line separators stay as they were
     const lines = para.split('\n')
     if (lines.some((l) => /^\s*([-•→*]|\d+[.)])\s/.test(l)) || words(para) < trigger) return para
-    const sentences = para.replace(/\s*\n\s*/g, ' ').match(/[^.!?]+(?:[.!?]+["')\]]*|$)\s*/g)?.map((x) => x.trim()).filter(Boolean) ?? [para]
-    const out: string[] = []
-    let cur: string[] = []
-    let n = 0
-    for (const sen of sentences) {
-      const w = words(sen)
-      if (cur.length && n + w > max) { out.push(cur.join(' ')); cur = []; n = 0 }
-      cur.push(sen); n += w
+    // candidate cuts: [start, end) of the whitespace after each sentence end
+    const cuts: [number, number][] = []
+    for (const m of para.matchAll(SENTENCE_END)) {
+      const end = m.index! + m[0].length
+      cuts.push([end - m[1].length, end])
     }
-    if (cur.length) out.push(cur.join(' '))
-    return out.join('\n\n')
-  }).join('\n\n')
+    let out = '', from = 0, n = 0
+    for (const [ws, next] of cuts) {
+      const w = words(para.slice(from, ws))
+      if (n > 0 && n + w > max) { out = out.trimEnd() + '\n\n'; n = 0 }
+      out += para.slice(from, next)
+      n += w
+      from = next
+    }
+    const w = words(para.slice(from))
+    if (n > 0 && n + w > max) out = out.trimEnd() + '\n\n'
+    return out + para.slice(from)
+  }).join('')
 }

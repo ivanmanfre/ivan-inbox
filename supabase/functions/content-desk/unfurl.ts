@@ -11,10 +11,30 @@ export function allowedHost(url: string): boolean {
   } catch { return false }
 }
 
-/** The URL is one of the whitespace-separated tokens of his message (trailing punctuation ignored). */
+const PAIRS: Record<string, string> = { '(': ')', '[': ']', '<': '>', '"': '"', "'": "'", '\u201c': '\u201d', '\u2018': '\u2019' }
+const TRAIL = /[,;:!?.]+$/
+
+/**
+ * The URL is one of the whitespace-separated tokens of his message (Sol r4 #10): the raw token is
+ * compared first, so a URL that really ends in a comma or bracket matches verbatim. Only then is a
+ * trailing run of , ; : ! ? . dropped, and ONE level of a matched wrapper pair ((), [], <>, quotes)
+ * removed (with its own trailing punctuation). An unmatched closing character is never stripped.
+ */
 export function urlInMessage(url: string, text: string): boolean {
-  // exact token; only surrounding quotes, brackets or <> and a trailing comma/semicolon are ignored
-  return text.split(/\s+/).some((t) => t.replace(/[,;]$/, '').replace(/^[<(\['"]+/, '').replace(/[>)\]'"]+$/, '').replace(/[,;]$/, '') === url)
+  if (!url) return false
+  return text.split(/\s+/).some((t) => tokenForms(t).includes(url))
+}
+
+export function tokenForms(t: string): string[] {
+  const out = [t]
+  const bare = t.replace(TRAIL, '')
+  out.push(bare)
+  const close = PAIRS[bare[0]]
+  if (close && bare.length > 2 && bare.endsWith(close)) {
+    const inner = bare.slice(1, -1)
+    out.push(inner, inner.replace(TRAIL, ''))
+  }
+  return out
 }
 
 function og(html: string, prop: string): string | undefined {

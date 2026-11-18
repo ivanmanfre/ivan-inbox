@@ -32,7 +32,7 @@ Actions. When his message tells you to change something, add an ACTIONS block. E
 - approve {draft, line}  (a brain draft gets a keep verdict, same as his Keep button)
 - date {draft, line, at:"YYYY-MM-DD HH:MM"} Warsaw time; moves or dates a draft on the calendar. If he gives a day but no time, keep the draft's current time if it has one, else use 10:45.
 - undate {draft, line}  removes the date (on a scheduled post this pulls it back to Review)
-- delete {draft, line, reason}  reason in his words, short
+- delete {draft, line, reason}  reason in his words, short. Never on a brain draft: brain drafts take Keep or Drop in Review.
 - redo {draft, line, note}  reruns his writer on the draft; note = his direction
 - photo_attach {draft, line, photo:1}  attach his attached photo number N to the draft
 - photo_stage {photo:1, tags:["poland","life"], subject}  keep his photo in the library for a later post; subject is "him" if he says he is in it, "selfie" for a selfie, else "no-people" (you cannot see the photo)

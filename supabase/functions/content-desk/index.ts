@@ -81,7 +81,13 @@ function failText(e: unknown): string {
     t3_queue_failed: 'The cloud job could not be queued.',
     past_date: 'That time is in the past.', bad_status: 'The post is not in a state that allows this.',
     not_found: 'That post is gone.', changed: 'The post changed since, so I did nothing.',
+    no_queue_row: 'Its queued copy is no longer there, so I pulled nothing.', queue_changed: 'Its queued copy changed since, so I pulled nothing.',
+    write_failed: 'The write did not confirm. Check the post before trying again.', queue_still_live: 'It still has a queued copy, so I deleted nothing.',
+    gone: 'That post is gone or no longer in your Review.', queue_read_failed: 'I could not read its queue, so I did nothing.',
+    brain_draft: 'Brain drafts take Keep or Drop in Review.', not_saved: 'That answer was never saved, so this action cannot run.',
   }
+  // the exact code first (queue_changed must never read as changed), then a code inside a longer message
+  if (known[m]) return known[m]
   for (const [k, v] of Object.entries(known)) if (m.includes(k)) return v
   return 'Something went wrong, so nothing changed.'
 }
@@ -300,9 +306,28 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
       if (again.body !== text || !sameAtt) return json({ error: 'key_mismatch' }, 409, origin)
       const { data: prior } = await svc.from('desk_messages').select('*').eq('user_id', userId).eq('role', 'assistant')
         .filter('meta->>reply_to', 'eq', again.id).order('created_at', { ascending: false }).limit(1).maybeSingle()
-      if (!prior || prior.status === 'streaming') return json({ error: 'turn_in_progress' }, 409, origin)
-      userRow = { id: again.id }
-      replayAnswer = prior
+      if (!prior) return json({ error: 'turn_in_progress' }, 409, origin)
+      if (prior.status === 'streaming') {
+        // still running, or a turn that died before its final save: after 60 s, rebuild a terminal
+        // reply from the action journal so the key never runs again and nothing is invited twice
+        if (Date.now() - Date.parse(prior.created_at) < 60_000) return json({ error: 'turn_in_progress' }, 409, origin)
+        const { data: acts } = await svc.from('desk_actions').select('id, kind, result').eq('message_id', prior.id)
+        const actions = (acts ?? []).map((a: { id: string; kind: string; result: { state?: string } | null }) => {
+          let st = a.result?.state ?? 'failed'
+          if (st === 'pending' || st === 'committing') st = 'failed'
+          return { id: a.id, kind: a.kind, state: st === 'held' ? 'cancelled' : st, undo: false, label: st === 'done' ? 'Done (recorded).' : 'Not done.' }
+        })
+        for (const a of (acts ?? []) as { id: string; result: Record<string, unknown> | null }[]) if (a.result?.state === 'held') await claimState(svc, a, 'held', 'cancelled')
+        const { data: rebuilt } = await svc.from('desk_messages').update({ status: 'done',
+          body: 'This answer did not finish saving. Here is what was recorded; check before repeating anything.',
+          meta: { ...(prior.meta ?? {}), actions, rebuilt: true }, updated_at: new Date().toISOString() }).eq('id', prior.id).eq('status', 'streaming').select('*').single()
+        if (!rebuilt) return json({ error: 'turn_in_progress' }, 409, origin)
+        userRow = { id: again.id }
+        replayAnswer = rebuilt
+      } else {
+        userRow = { id: again.id }
+        replayAnswer = prior
+      }
     }
   }
 
@@ -402,7 +427,8 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
             const n = Number(x.act.photo ?? 1); const att = attachments.filter((a) => a.kind === 'photo')[n - 1]
             parts.push(`photo: attachment ${n}${att?.name ? ` (${att.name})` : ''}`)
           }
-          if (x.act.kind === 't3') parts.push(`job title: ${String(x.act.title ?? '').slice(0, 120)}; job brief: ${String(x.act.brief ?? '').slice(0, 8000)}`)
+          // plan() normalized these once (normT3); the verifier reads the exact strings queueT3Job stores (Sol r4 #2)
+          if (x.act.kind === 't3') parts.push(`job title: ${String(x.act.title ?? '')}; job brief: ${String(x.act.brief ?? '')}`)
           if (x.act.kind === 'link') parts.push(`url: ${String(x.act.url ?? '')}`)
           return parts.join(' ')
         }
@@ -478,15 +504,33 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
           ...(echoes.length ? { actions: echoes } : {}), ...(chips.length ? { chips } : {}), ...(t3 ? { t3_job: t3 } : {}),
           ...(mode.evalMode ? { test: true } : {}),
         }
+        // The final row (with its echoes) is the only thing that lets a hold arm: held_seen and commit
+        // both require it (echoDurable). It is written only over this turn's own streaming row (a
+        // replay that already rebuilt the turn wins), and a save whose response was lost is confirmed
+        // by a reread before anything is cancelled (Sol r4 #7).
         let final: Record<string, unknown> | null = null
         for (let i = 0; i < 3 && !final; i++) {
           const { data } = await svc.from('desk_messages').update({ status: 'done', body: finalBody, meta, updated_at: new Date().toISOString() })
-            .eq('id', messageId).select('*').single()
+            .eq('id', messageId).eq('status', 'streaming').select('*').maybeSingle()
           final = data ?? null
+          if (!final) {
+            const { data: cur } = await svc.from('desk_messages').select('*').eq('id', messageId).maybeSingle()
+            if (cur?.status === 'done' && !(cur.meta as { rebuilt?: boolean } | null)?.rebuilt && cur.body === finalBody) final = cur
+            else if (cur?.status === 'done') break   // a replay rebuilt this turn: its record stands
+          }
         }
         if (!final) {
-          // the answer and its actions stand; only the stored copy failed. Show it as sent, never "send again".
-          final = { id: messageId, role: 'assistant', origin: 'desk', status: 'done', body: `${finalBody}\n\n(I could not save this answer. If an action is listed, check before repeating it.)`, meta, created_at: new Date().toISOString() }
+          // The echo with its holds is not durably saved, so no hold may ever arm: cancel them all
+          // (CAS held -> cancelled) and say so. Done actions stand; never invite a repeat (Sol r4).
+          const held = echoes.filter((e) => e.state === 'held')
+          for (const e of held) {
+            const { data: a } = await svc.from('desk_actions').select('id, result').eq('id', e.id).maybeSingle()
+            if (a) await claimState(svc, a, 'held', 'cancelled')
+            e.state = 'cancelled'; e.undo = false; e.label = 'Cancelled: I could not save this answer.'
+          }
+          final = { id: messageId, role: 'assistant', origin: 'desk', status: 'done',
+            body: `${finalBody}\n\n(I could not save this answer.${held.length ? ' The held actions were cancelled.' : ''} If an action is listed as done, check before repeating it.)`,
+            meta: { ...meta, actions: echoes }, created_at: new Date().toISOString() }
         }
         emit('final', { message: final })
       } catch (e) {
@@ -512,6 +556,18 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
 }
 
 // ---- undo / commit / cancel ------------------------------------------------
+/**
+ * A hold may arm (held_seen) or commit only once the answer that carries its echo is durably saved:
+ * the message row is done, is not a rebuilt replay, and its echo list holds this action id (Sol r4 #7).
+ */
+// deno-lint-ignore no-explicit-any
+async function echoDurable(svc: any, messageId: string, actionId: string): Promise<boolean | null> {
+  const { data, error } = await svc.from('desk_messages').select('status, meta').eq('id', messageId).maybeSingle()
+  if (error) return null
+  const meta = (data?.meta ?? {}) as { actions?: { id?: string }[]; rebuilt?: boolean }
+  return !!data && data.status === 'done' && !meta.rebuilt && Array.isArray(meta.actions) && meta.actions.some((e) => e?.id === actionId)
+}
+
 /** Compare-and-set on desk_actions.result.state: only one of two racing requests wins (Sol desk-ui r1 #1). */
 // deno-lint-ignore no-explicit-any
 async function claimState(svc: any, a: { id: string; result: Record<string, unknown> | null }, from: string, to: string): Promise<boolean> {
@@ -554,6 +610,9 @@ async function settle(svc: any, userDb: any, userId: string, op: string, actionI
       // "Do it now" may commit any time within 10 minutes of the proposal
       return { ok: false, error: 'hold_expired' }
     }
+    const durable = await echoDurable(svc, a.message_id, actionId)
+    if (durable === null) return { ok: false, error: 'read_failed' }
+    if (!durable) return { ok: false, error: 'not_saved', detail: failText('not_saved') }
     // exactly one commit wins, and a cancel that already won makes this one refuse
     if (!await claimState(svc, a, 'held', 'committing')) return { ok: false, error: 'not_held' }
     try {
@@ -574,7 +633,8 @@ async function settle(svc: any, userDb: any, userId: string, op: string, actionI
     } catch (e) {
       // a claimed action that throws anywhere ends failed, never stuck in "committing"
       await svc.from('desk_actions').update({ result: { ...(a.result ?? {}), state: 'failed', error: failText(e) } }).eq('id', actionId)
-      newState = 'failed'; label = `Not done: ${failText(e)}`
+      const why = typeof (a.args as { reason?: unknown } | null)?.reason === 'string' ? String((a.args as { reason: string }).reason).replace(/\s+/g, ' ').trim().slice(0, 200) : ''
+      newState = 'failed'; label = `Not done: ${failText(e)}${why ? ` Your reason was: "${why}".` : ''}`
     }
     invalidate()
   }
@@ -596,15 +656,20 @@ async function heldSeen(svc: any, userDb: any, userId: string, ids: string[], ev
   const results: { id: string; state?: string; seen_at?: string | null; hold_until?: string | null; error?: string }[] = []
   for (const id of ids) {
     try {
-      const { data: a, error } = await svc.from('desk_actions').select('id, result').eq('id', id).eq('user_id', userId).maybeSingle()
+      const { data: a, error } = await svc.from('desk_actions').select('id, result, message_id').eq('id', id).eq('user_id', userId).maybeSingle()
       if (error) { results.push({ id, error: 'read_failed' }); continue }
       if (!a) { results.push({ id, error: 'not_found' }); continue }
       let r = (a.result ?? {}) as { state?: string; seen_at?: string; hold_ms?: number }
       const ms = Number(r.hold_ms ?? 8000)
       if (r.state === 'held' && !r.seen_at) {
+        // the clock starts only for an echo that is durably saved (Sol r4 #7)
+        const durable = await echoDurable(svc, a.message_id, id)
+        if (durable === null) { results.push({ id, error: 'read_failed' }); continue }
+        if (!durable) { results.push({ id, error: 'not_saved' }); continue }
         const seenAt = new Date().toISOString()
-        const { data: won } = await svc.from('desk_actions').update({ result: { ...r, seen_at: seenAt } })
+        const { data: won, error: wErr } = await svc.from('desk_actions').update({ result: { ...r, seen_at: seenAt } })
           .eq('id', id).filter('result->>state', 'eq', 'held').is('result->>seen_at', null).select('id, result')
+        if (wErr) { results.push({ id, error: 'write_failed' }); continue }
         if (Array.isArray(won) && won.length) {
           r = won[0].result
           if (!evalMode) {
@@ -614,8 +679,10 @@ async function heldSeen(svc: any, userDb: any, userId: string, ids: string[], ev
             })(), 'hold_commit')
           }
         } else {
-          const { data: again } = await svc.from('desk_actions').select('result').eq('id', id).maybeSingle()
-          r = (again?.result ?? r) as typeof r
+          // lost the CAS: report only what a successful reread shows
+          const { data: again, error: rErr } = await svc.from('desk_actions').select('result').eq('id', id).maybeSingle()
+          if (rErr || !again) { results.push({ id, error: 'read_failed' }); continue }
+          r = again.result as typeof r
         }
       }
       // the stored row is the truth: the UI counts down to hold_until

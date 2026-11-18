@@ -111,6 +111,14 @@ export function unmeasured(drafts: Draft[], posts: PostRow[]): Draft[] {
     .sort((a, z) => String(z.published_at).localeCompare(String(a.published_at)))
 }
 
+export function mergedPosts(drafts: Draft[], posts: PostRow[]): { at: string; first_line: string; p: PostRow | null }[] {
+  const rows = [
+    ...posts.filter((p) => p.posted_at).map((p) => ({ at: String(p.posted_at), first_line: p.first_line ?? '', p })),
+    ...unmeasured(drafts, posts).map((d) => ({ at: String(d.published_at), first_line: d.first_line, p: null as PostRow | null })),
+  ]
+  return rows.sort((a, z) => Date.parse(z.at) - Date.parse(a.at))
+}
+
 export function render(b: BriefJson, recent: { role: string; origin: string; body: string; created_at: string }[] = [],
   jobs: { title: string; status: string; created_at: string; t3_link: string | null }[] = []): Rendered {
   const drafts = b.drafts ?? []
@@ -193,18 +201,16 @@ export function render(b: BriefJson, recent: { role: string; origin: string; bod
     const byStatus: Record<string, number> = {}
     for (const d of drafts) byStatus[d.status] = (byStatus[d.status] ?? 0) + 1
     const posts = ((b.posts as { posts?: PostRow[] }).posts ?? []).filter((p) => p.posted_at)
-    const last = posts.slice().sort((a, z) => String(z.posted_at).localeCompare(String(a.posted_at)))[0]
     const best = posts.filter((p) => !p.boosted).sort((a, z) => (z.impressions ?? 0) - (a.impressions ?? 0))[0]
     const S: string[] = []
     S.push(`Review: ${rv.length} drafts, ${rv.filter((d) => d.recipe === 'cp17').length} of them from the new writer recipe; ${rv.filter((d) => d.scheduled_at).length} dated.`)
     S.push(`(Only if he asks:) Review also has ${rv.filter((d) => d.is_copy).length} copies and ${rv.filter((d) => d.brain).length} brain drafts that take Keep/Drop.`)
     S.push(`All live drafts by status: ${Object.entries(byStatus).map(([k, v]) => `${k} ${v}`).join(', ')}.`)
     for (const w of weeks) S.push(`${w.label.toLowerCase()}: ${w.originals} of ${w.cap} originals dated, ${w.dated.length - w.originals} ${w.dated.length - w.originals === 1 ? 'copy' : 'copies'}, ${w.dated.filter((x) => x.status === 'published').length} already published.`)
-    // the newest PUBLISHED DRAFT is the last post out; the metrics read can lag a day behind it
-    const newestPub = drafts.filter((d) => d.status === 'published' && d.published_at).sort((a, z) => String(z.published_at).localeCompare(String(a.published_at)))[0]
-    if (newestPub && (!last || Date.parse(String(newestPub.published_at)) > Date.parse(String(last.posted_at)) + 3600e3)) {
-      S.push(`Last post out: ${warsaw(newestPub.published_at)} "${clip(newestPub.first_line, 70)}" (no numbers yet).`)
-    } else if (last) S.push(`Last post out: ${warsaw(last.posted_at)} "${clip(last.first_line, 70)}" (${last.impressions ?? '?'} impressions so far).`)
+    // one list, measured posts and published drafts the metrics have not caught yet, newest first;
+    // the same call (same inputs) builds RECENT PUBLISHED POSTS below, so its first row is this line (Sol r4 #8)
+    const merged = mergedPosts(drafts, (b.posts as { posts?: PostRow[] }).posts ?? [])
+    if (merged[0]) S.push(`Last post out: ${warsaw(merged[0].at)} "${clip(merged[0].first_line, 70)}" (${merged[0].p ? `${merged[0].p.impressions ?? '?'} impressions so far` : 'no numbers yet'}).`)
     if (best) S.push(`Best post of the last 31 days by impressions: "${clip(best.first_line, 70)}" ${warsaw(best.posted_at, false)}, ${best.impressions} impressions.`)
     S.push(`Ideas waiting: ${b.ideas?.reviewing ?? 0}. Queue armed (next 21 days): ${(b.queue ?? []).length} posts, ${(b.queue ?? []).filter((x) => x.origin === 'autopilot').length} picked by the autopilot.`)
     L.splice(1, 0, '', 'SUMMARY (exact counts, use these):', ...S.map((x) => '- ' + x))
@@ -234,8 +240,9 @@ export function render(b: BriefJson, recent: { role: string; origin: string; bod
   const posts = (b.posts as { posts?: PostRow[] }).posts ?? []
   const bar = (b.posts as { bar?: number }).bar
   L.push('', `RECENT PUBLISHED POSTS (last 31 days; "worked" = 1.5x his organic median, bar ${bar ?? '?'} impressions; boosted never counts; under 48h = too new):`)
-  for (const d of unmeasured(drafts, posts)) L.push(`- ${warsaw(d.published_at)} "${clip(d.first_line, 90)}": (no numbers yet)`)
-  for (const p of posts.slice().sort((a, z) => String(z.posted_at).localeCompare(String(a.posted_at)))) {
+  for (const m of mergedPosts(drafts, posts)) {
+    const p = m.p
+    if (!p) { L.push(`- ${warsaw(m.at)} "${clip(m.first_line, 90)}": (no numbers yet)`); continue }
     L.push(`- ${warsaw(p.posted_at)} "${clip(p.first_line, 90)}": ${p.impressions ?? '?'} impressions, ${p.likes ?? 0} likes, ${p.comments ?? 0} comments, ${p.times_median ?? '?'}x median${p.boosted ? ', BOOSTED' : ''}${p.too_new ? ', too new' : p.worked ? ', WORKED' : ''}`)
   }
   const pv = Array.isArray((b.panel as { pv48?: unknown }).pv48) ? (b.panel as { pv48: { posted_at: string; first_line: string; contacted_viewers_48h: number | null; contacted_fit_viewers_48h: number | null; baseline_per_48h: number | null; window_open: boolean }[] }).pv48 : []
