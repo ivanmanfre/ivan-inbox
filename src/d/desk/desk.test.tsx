@@ -187,6 +187,41 @@ describe('Desk polish (review of the new layout)', () => {
     expect(screen.getByText(label)).toBeTruthy()
   })
 
+  it('beside its cards, a turn keeps the lines that are no card (a post it could not match, a save warning)', async () => {
+    const proposal = 'Proposed (ref 1a2b3c4d): move "A made up post about trains in the rain and a long platform wait."'
+    vi.mocked(api.readMessages).mockResolvedValueOnce([stored({ id: 'p3',
+      // as the server cuts it: the proposal split over two paragraphs, then a line with no card, then the save notice
+      body: `${proposal}\n\n(no date) to Thu 26 Nov, 09:30 (UTC+01:00). It runs only when you tap Do it now.\n\nNo draft matches "the ferry one". Say its first words.\n\n(I could not save this answer. The held actions were cancelled.)`,
+      meta: { actions: [{ id: 'act-r', kind: 'date', label: 'Cancelled: I could not save this answer.', state: 'cancelled', undo: false }] } })])
+    render(<Desk layout="phone" />)
+    await screen.findByText(/No draft matches "the ferry one"/)
+    expect(screen.getByText(/I could not save this answer\. The held actions were cancelled/)).toBeTruthy()
+    expect(screen.queryByText(/Proposed \(ref/)).toBeNull()
+    expect(screen.queryByText(/It runs only when you tap/)).toBeNull()
+  })
+
+  it('a folded preview never ends inside a code fence', async () => {
+    const code = ['```', 'line one', '', 'line two after a blank', '```'].join('\n')
+    const long = [code, ...Array.from({ length: 12 }, (_, i) => `Paragraph ${i} about a made up train ride, long enough to count.`)].join('\n\n')
+    vi.mocked(api.readMessages).mockResolvedValueOnce([
+      stored({ id: 'f1', body: long, created_at: '2026-11-17T09:00:00Z' }),
+      ...['a', 'b', 'c', 'd'].map((k, i) => stored({ id: `g${k}`, body: `Short ${k}.`, created_at: `2026-11-17T10:0${i}:00Z` })),
+    ])
+    const { container } = render(<Desk layout="desktop" />)
+    await screen.findByText('Show all')
+    expect(container.querySelector('#dk-t-f1')!.textContent).toContain('line two after a blank')
+  })
+
+  it('a finished change undone later does not keep its old "Moved (ref …)" sentence', async () => {
+    vi.mocked(api.readMessages).mockResolvedValueOnce([stored({ id: 'p4',
+      body: 'Moved (ref 1a2b3c4d) "A made up post about trains.\n\nNobody looked up." (no date) to Tue 9 Mar, 10:45',
+      meta: { actions: [{ id: 'act-s', kind: 'date', label: 'Undone.', state: 'undone', undo: false }] } })])
+    render(<Desk layout="phone" />)
+    await screen.findByText('Back as it was.')
+    expect(screen.queryByText(/Moved \(ref/)).toBeNull()
+    expect(screen.queryByText(/Nobody looked up/)).toBeNull()
+  })
+
   it('a cancelled proposal never keeps "It runs only when you tap Do it now" above its card', async () => {
     vi.mocked(api.readMessages).mockResolvedValueOnce([stored({ id: 'p2',
       body: 'Proposed (ref 1a2b3c4d): move "A made up post about trains." (no date) to Thu 26 Nov, 09:30 (UTC+01:00). It runs only when you tap Do it now.',

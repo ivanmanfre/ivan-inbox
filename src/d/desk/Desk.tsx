@@ -169,7 +169,7 @@ function DeskList({ desk, locked, layout }: { desk: DeskHandle; locked: boolean;
   // same minute are both announced.
   const [said, setSaid] = useState('')
   const seenReplies = useRef<Set<string> | null>(null)
-  const newest = [...messages].reverse().find(m => m.role === 'assistant' && !m.answers && m.status === 'done')
+  const doneKey = messages.filter(m => m.role === 'assistant' && !m.answers && m.status === 'done').map(m => m.id).join(',')
   useEffect(() => {
     if (!desk.loaded) return
     const done = messages.filter(m => m.role === 'assistant' && !m.answers && m.status === 'done')
@@ -184,7 +184,7 @@ function DeskList({ desk, locked, layout }: { desk: DeskHandle; locked: boolean;
     setSaid('')
     const raf = requestAnimationFrame(() => setSaid(line))
     return () => cancelAnimationFrame(raf)
-  }, [newest?.id, messages.length, desk.loaded]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [doneKey, desk.loaded]) // eslint-disable-line react-hooks/exhaustive-deps
   const lastUser = (() => { for (let i = messages.length - 1; i >= 0; i--) if (messages[i].role === 'user') return i; return -1 })()
   let day = ''
   let prevRole: DeskMessage['role'] | null = null
@@ -236,25 +236,39 @@ function Hero({ busy, onPick }: { busy: boolean; onPick: (t: string) => void }) 
  *  stays open. */
 const FOLD_AT = 720
 const opened = new Set<string>()
-function preview(text: string): string {
-  const paras = text.split(/\n\s*\n/)
-  let out = ''
-  for (const p of paras) {
-    if (out && out.length + p.length > FOLD_AT * 0.6) break
-    out = out ? `${out}\n\n${p}` : p
+/** Markdown blocks: split on blank lines, except inside a ``` or ~~~ fence. */
+function blocks(text: string): string[] {
+  const out: string[] = []
+  let cur: string[] = [], fence: string | null = null
+  for (const line of text.split('\n')) {
+    const f = /^\s*(```|~~~)/.exec(line)?.[1]
+    if (f) fence = fence === f ? null : fence ?? f
+    if (!fence && !f && !line.trim()) { if (cur.length) out.push(cur.join('\n')); cur = []; continue }
+    cur.push(line)
   }
-  // Whole Markdown blocks only (a paragraph, a list, a table): a block is never cut, so no link or table breaks.
+  if (cur.length) out.push(cur.join('\n'))
   return out
+}
+function preview(text: string): { text: string; more: boolean } {
+  const all = blocks(text)
+  const kept: string[] = []
+  let n = 0
+  for (const b of all) {
+    if (kept.length && n + b.length > FOLD_AT * 0.6) break
+    kept.push(b); n += b.length
+  }
+  return { text: kept.join('\n\n'), more: kept.length < all.length }
 }
 function Body({ id, text, recent }: { id: string; text: string; recent: boolean }) {
   const [open, setOpen] = useState(() => opened.has(id))
-  const long = !recent && text.length > FOLD_AT
+  const pre = !recent && text.length > FOLD_AT ? preview(text) : null
+  const long = !!pre?.more
   const fold = long && !open
   const toggle = () => { const next = !open; if (next) opened.add(id); else opened.delete(id); setOpen(next) }
   return (
     <div className="dk-text-w">
       <div className={`dk-text${fold ? ' dk-fold' : ''}`} id={`dk-t-${id}`}>
-        <Markdown text={fold ? preview(text) : text} />
+        <Markdown text={fold && pre ? pre.text : text} />
       </div>
       {long && <button type="button" className="dk-more" aria-expanded={open} aria-controls={`dk-t-${id}`} onClick={toggle}>{open ? 'Show less' : 'Show all'}</button>}
     </div>
@@ -293,11 +307,32 @@ function Byline({ m, live }: { m: DeskMessage; live?: boolean }) {
   )
 }
 
-/** A turn with change cards: the server builds its body only from those cards (one line per card: its sentence,
- *  any note, and for a held one "It runs only when you tap Do it now."), and keeps that text when a card later
- *  changes state. So the body is not shown beside cards; each card shows its own sentence and its note, live. */
+/** A turn with change cards: the server's body is its lines in order (supabase content-desk index.ts): one per
+ *  card (a held card's "Proposed (ref …): … It runs only when you tap Do it now.", any other card's sentence and
+ *  note) and the lines that are no card (a post it could not match, "I could not save this answer"), then cut
+ *  into short paragraphs. The cards say their own part live, so what is shown beside them is the body without
+ *  those card lines: every proposal (from "Proposed (ref" to its "Do it now." end, across the cuts), every other
+ *  sentence carrying a card ref, and each card's current sentence and note. Whatever is left is a real note and stays. */
+const SEP = '\u0000'
+const ws = `[\\s${SEP}]+`
+const esc = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+const loose = (t: string) => t.trim().split(/\s+/).map(esc).join(ws)
 function bodyBesideCards(m: DeskMessage): string {
-  return m.meta.actions?.length ? '' : m.body
+  const acts = m.meta.actions
+  if (!acts?.length) return m.body
+  let t = m.body.split(/\n\s*\n/).join(SEP)
+  t = t.replace(new RegExp(`Proposed \\(ref [0-9a-f]{6,}\\):[\\s\\S]*?It runs only when you tap Do it now\\.`, 'g'), '')
+  t = t.replace(new RegExp(`It runs only when you tap Do it now\\.`, 'g'), '')
+  // A finished card's sentence keeps its ref ("Moved (ref …) "…" (Tue 16 Mar) to …", "Done (ref …): approve "…""):
+  // from its first word through the quoted post, its date in brackets and the sentence's end (or the line's).
+  t = t.replace(new RegExp(`[A-Z][^${SEP}(".]{0,40}?\\(ref [0-9a-f]{6,}\\):?[\\s\\S]*?"[\\s\\S]*?"(?:[\\s${SEP}]*\\([^)]*\\))?[^${SEP}"]*?(?:\\.(?=[\\s${SEP}]|$)|(?=${SEP}|$))`, 'g'), '')
+  for (const a of acts) {
+    for (const part of [a.label, a.detail]) {
+      if (!part || part.trim().length < 8 || /^[a-z_]+$/.test(part)) continue
+      t = t.replace(new RegExp(loose(part)), '')
+    }
+  }
+  return t.split(SEP).map(x => x.trim()).filter(Boolean).join('\n\n')
 }
 
 function DraftCard({ d }: { d: DeskDraftCard }) {
@@ -455,7 +490,8 @@ function ActionRow({ a, desk }: { a: DeskAction; at: string; desk: DeskHandle })
   const tapped = actionStore.undoTapped(a.id)
   useEffect(() => {
     const known = heldSeenStore.get(a.id)
-    if (!isHeld || !undoEl || tapped || (known && known.state !== 'failed')) return
+    // A pending report still installs the observer (the store dedupes; a later failure then has a retry).
+    if (!isHeld || !undoEl || tapped || (known && known.state !== 'failed' && known.state !== 'pending')) return
     if (typeof IntersectionObserver === 'undefined' || typeof document.elementFromPoint !== 'function') return
     let full = false
     const tryReport = () => {
