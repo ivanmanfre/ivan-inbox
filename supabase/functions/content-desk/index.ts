@@ -320,6 +320,15 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
           echoes.push(echo)
         }
         if (wrote) invalidate()
+        // The reply streamed before the actions ran. If one failed, say so in the body too, so the
+        // text never claims a change that did not happen.
+        const failedEchoes = echoes.filter((e) => e.state === 'failed' && !['ambiguous', 'line_mismatch'].includes(e.detail ?? ''))
+        let finalBody = reply
+        if (failedEchoes.length) {
+          const note = failedEchoes.map((e) => e.label).join(' ')
+          finalBody = `${reply}\n\nThat did not go through: ${note}`
+          emit('delta', { text: `\n\nThat did not go through: ${note}` })
+        }
         timings.total_ms = Date.now() - t0
         const t3 = echoes.find((e) => e.t3_job)?.t3_job
         const meta = {
@@ -327,7 +336,7 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
           ...(echoes.length ? { actions: echoes } : {}), ...(chips.length ? { chips } : {}), ...(t3 ? { t3_job: t3 } : {}),
           ...(mode.evalMode ? { test: true } : {}),
         }
-        const { data: final } = await svc.from('desk_messages').update({ status: 'done', meta, updated_at: new Date().toISOString() })
+        const { data: final } = await svc.from('desk_messages').update({ status: 'done', body: finalBody, meta, updated_at: new Date().toISOString() })
           .eq('id', messageId).select('*').single()
         emit('final', { message: final })
       } catch (e) {

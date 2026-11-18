@@ -321,14 +321,16 @@ async function planInner(ctx: Ctx, act: Act): Promise<Planned> {
       const att = ctx.attachments.filter((a) => a.kind === 'photo')[n - 1]
       if (!att) return { echo: { kind, label: 'I do not see a photo on your message.', state: 'failed', undo: false }, refuse: 'no_photo' }
       const tags = (Array.isArray(act.tags) ? act.tags : []).map((t) => String(t).toLowerCase().trim()).filter(Boolean).slice(0, 8)
-      const note = typeof act.note === 'string' ? act.note.slice(0, 300) : null
+      // content_photos.subject is one of selfie | him | no-people (check constraint); the model
+      // infers it from Ivan's words (it cannot see the picture), else no-people.
+      const subject = ['selfie', 'him', 'no-people'].includes(String(act.subject)) ? String(act.subject) : 'no-people'
       return {
         echo: { kind, label: `Saved your photo to the library${tags.length ? ' (' + tags.join(', ') + ')' : ''} for a later post`, state: 'done', undo: true },
         run: async () => {
           const path = (att.url.match(/\/object\/public\/post-stills\/(.+)$/) ?? [])[1] ?? att.url
           const { data, error } = await ctx.svc.from('content_photos').insert({
             storage_path: decodeURIComponent(path), public_url: att.url, tags: [...new Set([...tags, 'desk'])],
-            country: tags.includes('poland') ? 'Poland' : null, subject: note, source: 'content_desk', source_ref: `desk:${ctx.messageId}`,
+            country: tags.includes('poland') ? 'Poland' : null, subject, source: 'content_desk', source_ref: `desk:${ctx.messageId}`,
           }).select('id').single()
           if (error) throw new Error(error.message)
           return { result: data, undo: { op: 'delete_row', table: 'content_photos', id: data.id } }
