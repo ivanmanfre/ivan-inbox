@@ -18,12 +18,11 @@ import { render, applyVisibility, warsaw, type BriefJson, type Rendered } from '
 import { buildPrompt } from './prompt.ts'
 import { parse, shortParagraphs, oneText, sanitize, HandleStream, type Act } from './parse.ts'
 import { askDesk, askDeskStream, LlmError, DESK_MODEL } from './llm.ts'
-import { planLive, planForTarget, runUndo, UndoRefused, stillSame, actionKey, journalArgs, confirmMatches, draftRef, HOLD_EXPIRE_MS, type Confirmation, type ActionEcho, type Ctx, type Planned, type Snapshot } from './actions.ts'
+import { planLive, planForTarget, runUndo, UndoRefused, lockCode, stillSame, actionKey, journalArgs, confirmMatches, draftRef, HOLD_EXPIRE_MS, type Confirmation, type ActionEcho, type Ctx, type Planned, type Snapshot } from './actions.ts'
 import { authorize } from './auth.ts'
 import { planTriggers } from './triggers.ts'
 import { queueT3Job, sweepT3Stalls } from '../_shared/desk-t3.ts'
 import { deskUnfurl } from './unfurl.ts'
-import { numberRows } from './target.ts'
 import { notify } from '../_shared/notify.ts'
 
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined
@@ -91,6 +90,8 @@ function failText(e: unknown): string {
     too_many_photos: 'The post already has the most photos it can take.', not_single_photo: 'That post type does not take a photo.',
     published: 'It is already published.', refused: 'The app refused it, so nothing changed.',
     human_edited: 'It has your hand edits, and the writer will not overwrite them.',
+    in_queue: 'This one is already in the queue. Move it in the calendar.', no_action: 'I could not match this to its saved action, so I did nothing.',
+    claim_failed: 'I could not reach the database, so nothing ran. Tap again.', undo_failed: 'The undo did not go through, so I left it as it is.',
   }
   // the exact code first (queue_changed must never read as changed), then a code inside a longer message
   if (known[m]) return known[m]
@@ -158,7 +159,7 @@ let bannedCache: { at: number; words: string[] } | null = null
 // deno-lint-ignore no-explicit-any
 async function bannedWords(svc: any): Promise<string[]> {
   if (bannedCache && Date.now() - bannedCache.at < BRIEF_MAX_AGE_MS) return bannedCache.words
-  const { data, error } = await svc.from('content_prompts').select('body').eq('slug', 'forbidden-language').eq('is_active', true)
+  const { data, error } = await svc.from('content_prompts').select('body').eq('slug', 'forbidden-language').eq('scope', 'system').eq('is_active', true)
     .order('version', { ascending: false }).limit(1).maybeSingle()
   if (error || !data?.body) return bannedCache?.words ?? []
   const fl = String(data.body)
@@ -497,14 +498,6 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
 
         const ctx: Ctx = {
           userDb, svc, userId, messageId, brief: r, attachments, text, env, fixtures: mode.fixtures,
-          // list numbers the previous desk answer displayed (its meta.shown_drafts), for "number 2"
-          shown: (() => {
-            // only a map of the current version: built from the literal "N\\." labels of that answer (Sol r12 #1)
-            const prev = [...recent].reverse().find((m: { role: string }) => m.role === 'assistant') as { meta?: { shown_map?: { v?: number; rows?: { n: number; id: string; rev?: string | null }[] } } } | undefined
-            const map = prev?.meta?.shown_map
-            const list = map?.v === 2 && Array.isArray(map.rows) ? map.rows : []
-            return new Map(list.filter((x) => typeof x?.n === 'number' && typeof x?.id === 'string').map((x) => [x.n, { id: x.id, rev: x.rev ?? null }]))
-          })(),
           unfurl: (u) => deskUnfurl(u),
           t3: mode.t3On ? async ({ title, brief: b }) => {
             const j = mode.t3Test
@@ -606,15 +599,18 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
           if (immediate) {
             let terminal: Record<string, unknown>
             let undo: Record<string, unknown> | null = null
+            // a draft write's undo images were stored by its SQL function on this row: never overwritten here
+            let undoInDb = false
             try {
               if (snap && !mode.dry && !await stillSame(svc, snap)) throw new Error('changed')
-              const res = await p.run!()
+              const res = await p.run!(echo.id)
               wrote = true
               if (res.detail) echo.detail = res.detail
               if (res.t3_job) echo.t3_job = res.t3_job
               if (res.label) echo.label = res.label
-              if (!res.undo) echo.undo = false
+              if (!res.undo && !res.undoInDb) echo.undo = false
               undo = res.undo ?? null
+              undoInDb = res.undoInDb === true
               terminal = { state: 'done', value: res.result ?? null }
             } catch (e) {
               echo.state = 'failed'; echo.undo = false
@@ -624,7 +620,7 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
               console.error('desk action failed', echo.kind)
               terminal = { state: stuck ? 'failed_release' : 'failed', error: failText(e) }
             }
-            if (!await retry3(() => svc.from('desk_actions').update({ result: terminal, undo }).eq('id', echo.id))) {
+            if (!await retry3(() => svc.from('desk_actions').update(undoInDb ? { result: terminal } : { result: terminal, undo }).eq('id', echo.id))) {
               // the write happened; only its record failed: never invite a repeat (Sol r3 lost receipt)
               echo.detail = 'Done, but I could not record it. Check before repeating it.'
               echo.undo = false
@@ -645,9 +641,8 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
         // <opener>, held for Undo"); its live state lives only in the structured echo.
         let finalBody = reply
         if (parsed.actions.length) finalBody = bodyLines.length ? bodyLines.join('\n\n') : 'I did not do anything.'
-        // the visible numbers and the stored map come from the same uniquely matched rows (Sol r11 #3)
-        const numbered = numberRows(sanitize(finalBody, r.lines.keys()), [...r.drafts.values()])
-        finalBody = shortParagraphs(numbered.body)
+        // lists render as plain Markdown (display only): no numbered references exist (round 14 #1)
+        finalBody = shortParagraphs(sanitize(finalBody, r.lines.keys()))
         const sideEffects = await turnSideEffects(svc, messageId)
         timings.total_ms = Date.now() - t0
         const t3 = echoes.find((e) => e.t3_job)?.t3_job
@@ -655,8 +650,6 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
           model: m1.model, reply_to: userRow.id, client_key: clientKey, timings, tool_calls: toolCalls, brief_chars: r.text.length,
           ...(echoes.length ? { actions: echoes } : {}), ...(chips.length ? { chips: oneText(chips) } : {}), ...(t3 ? { t3_job: t3 } : {}),
           turn_token: turnToken, side_effects: sideEffects, ...(mode.evalMode ? { test: true } : {}),
-          // the drafts this answer shows, in order: a later "number 2" means the second of these (Sol r9 #1a)
-          shown_map: { v: 2, rows: numbered.rows },
         }
         // The final row (with its echoes) is the only thing that lets a hold arm: held_seen and commit
         // both require it (echoDurable). It is written only over this turn's own streaming row (a
@@ -843,29 +836,40 @@ async function echoDurable(svc: any, messageId: string, actionId: string): Promi
   return !!data && data.status === 'done' && !meta.recovered && !meta.rebuilt && Array.isArray(meta.actions) && meta.actions.some((e) => e?.id === actionId)
 }
 
-/** Compare-and-set on desk_actions.result.state: only one of two racing requests wins (Sol desk-ui r1 #1). */
-/** held -> committing, only while the hold's deadline has not passed (one atomic update). */
+/**
+ * held -> committing in ONE SQL UPDATE on the DATABASE clock (desk_claim_commit). Its outcome is distinct:
+ * 'claimed' | 'expired' (still held, deadline passed) | 'not_held'; an RPC error is 'error' and never
+ * cancels a hold (round 14 #5).
+ */
 // deno-lint-ignore no-explicit-any
-async function claimCommit(svc: any, a: { id: string; user_id?: string; result: Record<string, unknown> | null }): Promise<boolean> {
-  // one SQL UPDATE: held -> committing only while expires_at > now() on the DATABASE clock (Sol r12 #6)
+async function claimCommit(svc: any, a: { id: string; user_id?: string }): Promise<'claimed' | 'expired' | 'not_held' | 'error'> {
   const { data, error } = await svc.rpc('desk_claim_commit', { p_action: a.id, p_user: a.user_id })
-  return !error && data === true
+  if (error) return 'error'
+  return data === 'claimed' || data === 'expired' || data === 'not_held' ? data : 'error'
 }
 
-/** A hold that will never run: CAS held -> cancelled, and the message's echo says so (Sol r11 #6). */
+const EXPIRED_LABEL = 'Expired after 24 hours. Nothing changed.'
+const STALE_LABEL = 'Cancelled: this proposal is from an older version. Ask again.'
+
+/**
+ * A hold that will never run: desk_expire_hold cancels it in SQL only while it is still held AND its
+ * deadline has passed on the DATABASE clock or it has no v2 confirmation; the message's echo then says so.
+ * Returns the state that actually won (and why), or null when the database could not be read.
+ */
 // deno-lint-ignore no-explicit-any
-async function expireHold(svc: any, a: { id: string; result: Record<string, unknown> | null; message_id?: string }, label: string): Promise<string | null> {
-  if (!await claimState(svc, a, 'held', 'cancelled')) {
-    // lost the race: report the state that actually won
-    const { data, error } = await svc.from('desk_actions').select('result').eq('id', a.id).maybeSingle()
-    return error ? null : ((data?.result as { state?: string } | null)?.state ?? null)
+async function expireHold(svc: any, a: { id: string; user_id?: string; message_id?: string }): Promise<{ state: string | null; reason: string | null } | null> {
+  const { data, error } = await svc.rpc('desk_expire_hold', { p_action: a.id, p_user: a.user_id })
+  if (error || !data || typeof data !== 'object') return null
+  const r = data as { state?: string | null; reason?: string | null }
+  if (r.state === 'cancelled' && r.reason) {
+    const messageId = a.message_id ?? (await svc.from('desk_actions').select('message_id').eq('id', a.id).maybeSingle()).data?.message_id
+    const label = r.reason === 'expired' ? EXPIRED_LABEL : STALE_LABEL
+    if (messageId) for (let i = 0; i < 3; i++) {
+      const { data: ok } = await svc.rpc('desk_patch_action_echo', { p_message: messageId, p_action: a.id, p_patch: { state: 'cancelled', undo: false, label } })
+      if (ok) break
+    }
   }
-  const messageId = a.message_id ?? (await svc.from('desk_actions').select('message_id').eq('id', a.id).maybeSingle()).data?.message_id
-  if (messageId) for (let i = 0; i < 3; i++) {
-    const { data } = await svc.rpc('desk_patch_action_echo', { p_message: messageId, p_action: a.id, p_patch: { state: 'cancelled', undo: false, label } })
-    if (data) break
-  }
-  return 'cancelled'
+  return { state: r.state ?? null, reason: r.reason ?? null }
 }
 
 // deno-lint-ignore no-explicit-any
@@ -889,12 +893,27 @@ async function settle(svc: any, userDb: any, userId: string, op: string, actionI
   let resDetail: string | undefined
   if (op === 'undo') {
     if (state !== 'done' || a.undone_at || !a.undo) return { ok: false, error: 'nothing_to_undo' }
-    if (!await claimState(svc, a, 'done', 'undoing')) return { ok: false, error: 'nothing_to_undo' }
-    try { await runUndo({ userDb, svc }, a.undo) } catch (e) {
-      await svc.from('desk_actions').update({ result: { ...(a.result ?? {}), state: 'done' } }).eq('id', actionId)
-      return { ok: false, error: e instanceof UndoRefused ? 'changed_since' : 'undo_failed', detail: failText(e) }
+    if ((a.undo as { op?: string }).op === 'draft_v4') {
+      // a draft write (date, remove date, photo): ONE locked SQL call takes only the action id, claims the
+      // owned row (done -> undoing), loads target, before and applied from it, compares the whole columns
+      // with applied and restores before; any refusal rolls the claim back (round 14 #4)
+      const { data, error } = await svc.rpc('desk_undo', { p_action: actionId })
+      if (error) return { ok: false, error: lockCode(error) ? 'changed_since' : 'undo_failed', detail: failText(lockCode(error) ? new UndoRefused('changed_since') : 'undo_failed') }
+      const r = (data ?? {}) as { ok?: boolean; error?: string }
+      if (r.ok !== true) {
+        const code = String(r.error ?? 'undo_failed')
+        if (code === 'nothing_to_undo') return { ok: false, error: 'nothing_to_undo' }
+        const refused = code === 'changed_since' || code === 'gone'
+        return { ok: false, error: code === 'in_queue' ? 'in_queue' : refused ? 'changed_since' : 'undo_failed', detail: refused ? failText(new UndoRefused(code)) : failText(code) }
+      }
+    } else {
+      if (!await claimState(svc, a, 'done', 'undoing')) return { ok: false, error: 'nothing_to_undo' }
+      try { await runUndo({ svc }, a.undo) } catch (e) {
+        await svc.from('desk_actions').update({ result: { ...(a.result ?? {}), state: 'done' } }).eq('id', actionId)
+        return { ok: false, error: e instanceof UndoRefused ? 'changed_since' : 'undo_failed', detail: failText(e) }
+      }
+      await svc.from('desk_actions').update({ undone_at: new Date().toISOString(), result: { ...(a.result ?? {}), state: 'undone' } }).eq('id', actionId)
     }
-    await svc.from('desk_actions').update({ undone_at: new Date().toISOString(), result: { ...(a.result ?? {}), state: 'undone' } }).eq('id', actionId)
     newState = 'undone'; label = 'Undone.'
     invalidate()
   } else if (op === 'cancel') {
@@ -905,20 +924,20 @@ async function settle(svc: any, userDb: any, userId: string, op: string, actionI
     // Confirm-to-act: ONLY this op, Ivan's "Do it now" tap, runs a draft write. No server clock.
     // A hold without the v2 confirmation (made before round 11) is cancelled, never run (Sol r11 #2).
     const conf = (a.args as { _confirm?: Confirmation } | null)?._confirm
-    if (conf?.v !== 2) { await expireHold(svc, a, 'Cancelled: this proposal is from an older version. Ask again.'); return { ok: false, error: 'stale_hold' } }
+    if (conf?.v !== 2) { await expireHold(svc, a); return { ok: false, error: 'stale_hold' } }
     const durable = await echoDurable(svc, a.message_id, actionId)
     if (durable === null) return { ok: false, error: 'read_failed' }
     if (!durable) return { ok: false, error: 'not_saved', detail: failText('not_saved') }
     // exactly one commit wins, a cancel that already won makes this one refuse, and the 24 h deadline is
     // part of the SAME atomic claim: held -> committing only while now < expires_at (Sol r11 #6)
-    if (!await claimCommit(svc, a)) {
-      const { data: cur } = await svc.from('desk_actions').select('id, result').eq('id', actionId).maybeSingle()
-      if ((cur?.result as { state?: string } | null)?.state === 'held') {
-        await expireHold(svc, cur, 'Expired after 24 hours. Nothing changed.')
-        return { ok: false, error: 'hold_expired' }
-      }
-      return { ok: false, error: 'not_held' }
+    const claim = await claimCommit(svc, a)
+    // an RPC error never cancels a hold: nothing ran, the card stays held (round 14 #5)
+    if (claim === 'error') return { ok: false, error: 'claim_failed', detail: failText('claim_failed') }
+    if (claim === 'expired') {
+      const won = await expireHold(svc, a)
+      return { ok: false, error: won?.state === 'cancelled' ? 'hold_expired' : won ? 'not_held' : 'claim_failed' }
     }
+    if (claim !== 'claimed') return { ok: false, error: 'not_held' }
     try {
       const args = (a.args ?? {}) as Act & { _snapshot?: Snapshot; _dry?: boolean; _fixtures?: boolean }
       const snap = args._snapshot
@@ -932,7 +951,7 @@ async function settle(svc: any, userDb: any, userId: string, op: string, actionI
       // checked the live row against the snapshot; the card was built from that same snapshot)
       if (!confirmMatches(args._confirm as Confirmation, { id: snap.target_id, updated_at: snap.updated_at, scheduled_at: snap.scheduled_at }, p.canon)) throw new Error('changed')
       const isDry = dryReq || args._dry === true
-      const res = isDry ? { result: { dry: true } } : await p.run()
+      const res = isDry ? { result: { dry: true } } : await p.run(actionId)
       // the undo payload of a committed write is kept, so Undo works after the tap (date, photo)
       const recorded = await retry3(() => svc.from('desk_actions').update({ result: { ...(a.result ?? {}), state: 'done', value: res.result ?? null }, undo: (res as { undo?: unknown }).undo ?? null }).eq('id', actionId))
       newState = 'done'
@@ -974,17 +993,11 @@ async function heldSeen(svc: any, userDb: any, userId: string, ids: string[], ev
       if (!a) { results.push({ id, error: 'not_found' }); continue }
       let r = (a.result ?? {}) as { state?: string; seen_at?: string; hold_ms?: number }
       if (r.state === 'held') {
-        // a hold past its deadline, or without the v2 confirmation, will never run: cancelled, echo persisted
-        const { data: full, error: fErr } = await svc.from('desk_actions').select('args').eq('id', id).maybeSingle()
-        if (fErr || !full) { results.push({ id, error: 'read_failed' }); continue }   // an error, never "legacy"
-        const v2 = (full.args as { _confirm?: { v?: number } } | null)?._confirm?.v === 2
-        const exp = (r as { expires_at?: string }).expires_at
-        const expired = exp ? Date.now() >= Date.parse(exp) : Date.now() - Date.parse(a.created_at) > HOLD_EXPIRE_MS
-        if (!v2 || expired) {
-          const won = await expireHold(svc, a, expired ? 'Expired after 24 hours. Nothing changed.' : 'Cancelled: this proposal is from an older version. Ask again.')
-          if (won == null) { results.push({ id, error: 'read_failed' }); continue }
-          r = { ...r, state: won }
-        }
+        // a hold past its deadline on the DATABASE clock, or without the v2 confirmation, will never run:
+        // desk_expire_hold decides both in SQL and cancels it there; the echo is persisted (round 14 #5)
+        const won = await expireHold(svc, { id, user_id: userId, message_id: a.message_id })
+        if (won == null || won.state == null) { results.push({ id, error: 'read_failed' }); continue }
+        r = { ...r, state: won.state }
       }
       const ms = Number(r.hold_ms ?? 8000)
       if (r.state === 'held' && !r.seen_at) {

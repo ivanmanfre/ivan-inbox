@@ -204,7 +204,9 @@ export function scan(text: string): Scan {
     const name = rawName.toLowerCase()
     const isTool = TOOL_BLOCK.has(name) || OTHER_TOOL.test(name)
     if (inReply) {
-      if (slash && name === 'reply') { out.reply = text.slice(replyStart, m.index); inReply = false; replyDone = true; pos = m.index + whole.length; continue }
+      // the reply closes only on a valid closing tag, the same exact syntax as the tool tags: "</reply>"
+      // with optional whitespace before ">" ("</reply/typo>" is text) (Sol r13 #7)
+      if (slash && name === 'reply' && /^<\/reply\s*>$/i.test(whole)) { out.reply = text.slice(replyStart, m.index); inReply = false; replyDone = true; pos = m.index + whole.length; continue }
       if (!slash && isTool) { out.reply = text.slice(replyStart, m.index); inReply = false; replyDone = true }
       else { pos = m.index + whole.length; continue }
     } else if (!slash || !isTool) {
