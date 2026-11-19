@@ -94,3 +94,24 @@ Deno.test('askDeskStream: an error after speaking is an error, not a second answ
   const f = (async () => streamResp(sseBody(['<reply>half', ' more', 'x'], 0, 2))) as typeof fetch
   await assertRejects(() => askDeskStream('p', () => {}, { hedgeMs: 0, fetchImpl: f }))
 })
+
+Deno.test('Stop: an aborted stream ends as stopped, keeps what was said, and never fetches a second answer', async () => {
+  let n = 0
+  const got: string[] = []
+  const stop = new AbortController()
+  const f = (async (_u: string, init: RequestInit) => { n++; return streamResp(sseBody(['<reply>One ', 'two ', 'three ', 'four</reply>'], 30, -1, init.signal)) }) as unknown as typeof fetch
+  setTimeout(() => stop.abort(), 75)
+  const e = await assertRejects(() => askDeskStream('p', (t) => got.push(t), { hedgeMs: 0, fetchImpl: f, signal: stop.signal }))
+  assertEquals((e as { code?: string }).code, 'stopped')
+  assert(got.join('').startsWith('One '), got.join('')); assert(!got.join('').includes('four'))
+  assertEquals(n, 1)
+})
+
+Deno.test('Stop: a buffered call aborted before it answers is stopped, not retried', async () => {
+  let n = 0
+  const stop = new AbortController()
+  const f = (async (_u: string, init: RequestInit) => { n++; await wait(500, init.signal); return ok('<reply>late</reply>') }) as unknown as typeof fetch
+  setTimeout(() => stop.abort(), 30)
+  const e = await assertRejects(() => askDesk('p', { hedgeMs: 0, fetchImpl: f, signal: stop.signal }))
+  assertEquals((e as { code?: string }).code, 'stopped'); assertEquals(n, 1)
+})

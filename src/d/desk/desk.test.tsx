@@ -232,11 +232,12 @@ describe('Desk polish (review of the new layout)', () => {
     expect(screen.queryByText(/The scorer picks it up next/)).toBeNull()
   })
 
-  it('a held delete says before the tap that it cannot be undone', async () => {
+  it('a done delete offers Undo like every other change (2026-11-19: it is an archive the server can bring back)', async () => {
     vi.mocked(api.readMessages).mockResolvedValueOnce([stored({ id: 'p6', body: '',
-      meta: { actions: [{ id: 'act-d', kind: 'delete', label: 'Deleting "A made up post"', state: 'held', undo: false }], notes: [] } })])
+      meta: { actions: [{ id: 'act-d', kind: 'delete', label: 'Deleted "A made up post"', state: 'done', undo: true }], notes: [] } })])
     render(<Desk layout="phone" />)
-    await screen.findByText("Deleting can't be undone.")
+    await screen.findByRole('button', { name: 'Undo' })
+    expect(screen.queryByText(/can't be undone/)).toBeNull()
   })
 
   it('two look-alike held deletes show their whole openers and their own refs', async () => {

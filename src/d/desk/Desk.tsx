@@ -99,7 +99,7 @@ export function Desk({ layout, onBack }: { layout: 'phone' | 'desktop'; onBack?:
       {layout === 'desktop' && (desk.readFailed || desk.fromCache) && <div className={`dk-status${desk.readFailed ? ' dk-status-off' : ''}`} role="status">{status}</div>}
       <DeskList desk={desk} locked={locked} />
       <DeskComposer busy={locked} onSend={desk.send} prefill={desk.prefill} suggest={quiet ? STARTERS : undefined}
-        autoFocus={layout === 'desktop'} onUploading={setUploading} />
+        autoFocus={layout === 'desktop'} onUploading={setUploading} streaming={desk.streaming} stopping={desk.stopping} onStop={desk.stop} />
     </section>
   )
 }
@@ -206,6 +206,8 @@ function DeskList({ desk, locked }: { desk: DeskHandle; locked: boolean }) {
   }, [doneKey, desk.loaded, desk.readFailed, desk.fromCache]) // eslint-disable-line react-hooks/exhaustive-deps
   let day = ''
   let prevRole: DeskMessage['role'] | null = null
+  // Ask again's question row is not shown again (its new answer says "Asked again"); a failed one is, with its Retry.
+  const shown = messages.filter(m => !(m.role === 'user' && m.meta.regen_of && (!m.local || m.local === 'sending')))
   return (
     <div className="dk-body">
       <div ref={list} className="dk-list" data-desk-list onScroll={onScroll} role="log" aria-live="off" aria-label="Conversation with the desk">
@@ -216,14 +218,14 @@ function DeskList({ desk, locked }: { desk: DeskHandle; locked: boolean }) {
               ? <div className="dk-empty dk-empty-off" role="alert"><p>Could not read the desk. Your messages are safe on the server.</p><button type="button" className="dk-pill" onClick={desk.reload}>Try again</button></div>
               : <Hero busy={locked} onPick={t => desk.send(t)} />
             : <div className="dk-empty" aria-busy="true"><span className="dk-typing"><i /><i /><i /></span>Reading the desk</div>)}
-          {messages.map((m, i) => {
+          {shown.map((m, i) => {
             const d = warsawDayWord(m.created_at)
             const head = d !== day ? <div className="dk-day" key={`d-${d}`}><span>{d}</span></div> : null
             const fresh = !!head || prevRole !== m.role
             day = d
             prevRole = m.role
             return [head, <Row key={m.answers ? `a-${m.answers}` : m.id} m={m} desk={desk} fresh={fresh} locked={locked}
-              recent={i >= messages.length - 4} />]
+              recent={i >= shown.length - 4} />]
           })}
         </div>
       </div>
@@ -294,6 +296,19 @@ function Body({ id, text, recent }: { id: string; text: string; recent: boolean 
 }
 
 /** Copy the answer's text (the markdown as written), with a moment of "Copied". */
+/** Under an answer: Copy for an answer worth copying, and Ask again on the newest plain answer. */
+function AnsKeys({ copy, again, locked }: { copy: string | null; again: (() => void) | null; locked: boolean }) {
+  return (
+    <div className="dk-ans-keys">
+      {copy && <CopyKey text={copy} />}
+      {again && <button type="button" className="dk-copy" disabled={locked} onClick={again} aria-label="Ask the same question again">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3" /><path d="M19.5 4.5v4h-4" /></svg>
+        <span>Ask again</span>
+      </button>}
+    </div>
+  )
+}
+
 function CopyKey({ text }: { text: string }) {
   const [done, setDone] = useState<'ok' | 'no' | null>(null)
   useEffect(() => {
@@ -305,19 +320,17 @@ function CopyKey({ text }: { text: string }) {
     try { await navigator.clipboard.writeText(text); setDone('ok') } catch { setDone('no') }
   }
   return (
-    <div className="dk-ans-keys">
-      <button type="button" className="dk-copy" onClick={() => void copy()} aria-label={done === 'ok' ? 'Copied' : 'Copy the answer'}>
-        {done === 'ok'
-          ? <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
-          : <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8.5" y="8.5" width="11" height="11" rx="2.5" /><path d="M15.5 5.5h-8a2 2 0 0 0-2 2v8" /></svg>}
-        <span>{done === 'ok' ? 'Copied' : done === 'no' ? 'Could not copy' : 'Copy'}</span>
-      </button>
-    </div>
+    <button type="button" className="dk-copy" onClick={() => void copy()} aria-label={done === 'ok' ? 'Copied' : 'Copy the answer'}>
+      {done === 'ok'
+        ? <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+        : <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8.5" y="8.5" width="11" height="11" rx="2.5" /><path d="M15.5 5.5h-8a2 2 0 0 0-2 2v8" /></svg>}
+      <span>{done === 'ok' ? 'Copied' : done === 'no' ? 'Could not copy' : 'Copy'}</span>
+    </button>
   )
 }
 
-function Byline({ m, live }: { m: DeskMessage; live?: boolean }) {
-  const note = ORIGIN_NOTE[m.origin]
+function Byline({ m, live, again }: { m: DeskMessage; live?: boolean; again?: boolean }) {
+  const note = again ? 'Asked again' : ORIGIN_NOTE[m.origin]
   return (
     <div className={`dk-by${live ? ' dk-by-live' : ''}`}>
       <Mark /><b>Desk</b>{note && <span>{note}</span>}{!live && <time>{warsawHm(m.created_at)}</time>}
@@ -336,18 +349,23 @@ function bodyBesideCards(m: DeskMessage): string {
 
 function DraftCard({ d }: { d: DeskDraftCard }) {
   const when = d.scheduled_at
-  const status = /sched|queue/i.test(d.status) ? 'Scheduled' : /post|publish/i.test(d.status) ? 'Posted' : /review/i.test(d.status) ? 'In review' : d.status
-  return (
-    <div className="dk-card" data-draft={d.handle}>
+  const status = /sched|queue/i.test(d.status) ? 'Scheduled' : /post|publish/i.test(d.status) ? 'Posted' : /review/i.test(d.status) ? 'In review'
+    : /approved/i.test(d.status) ? 'Approved' : /error/i.test(d.status) ? 'Needs a look' : d.status
+  const inner = <>
       <div className={`dk-date${when ? '' : ' dk-date-none'}`} aria-hidden="true">
         {when ? <><small>{warsawDow(when)}</small><b>{warsawDm(when).split(' ')[0]}</b></> : <small>No date</small>}
       </div>
       <div className="dk-card-t">
         <b>{d.first_line}</b>
-        <small><span className={`dk-st dk-st-${status.toLowerCase().replace(/\s+/g, '-')}`}>{status}</span>{when ? ` ${warsawDm(when)}, ${warsawHm(when)}` : ''}<span className="dk-h">{d.handle}</span></small>
+        <small><span className={`dk-st dk-st-${status.toLowerCase().replace(/\s+/g, '-')}`}>{status}</span>{when ? ` ${warsawDm(when)}, ${warsawHm(when)}` : ''}</small>
       </div>
-    </div>
-  )
+    </>
+  // A card with the draft's id opens it in Content (the post window); an older card without one only shows it.
+  return d.id
+    ? <a className="dk-card dk-card-go" data-draft={d.id} href={dHash('content', 'now', { draft: d.id, lane: 'ivan' })} aria-label={`Open the post: ${d.first_line}`}>
+        {inner}<svg className="dk-card-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
+      </a>
+    : <div className="dk-card" data-draft={d.handle}>{inner}</div>
 }
 
 /** A sent photo: tap opens it whole in a new tab; a photo that does not load says so. */
@@ -404,7 +422,7 @@ function Row({ m, desk, fresh, locked, recent }: {
     if (m.status === 'error') return <FailedAnswer m={m} text={m.error ?? 'The desk did not answer.'} desk={desk} />
     return (
       <div className="dk-ans dk-streaming" data-msg={m.id} data-streaming aria-busy="true">
-        <Byline m={m} live />
+        <Byline m={m} live again={!!desk.messages.find(x => x.role === 'user' && x.client_key === m.answers)?.meta.regen_of} />
         {m.body
           ? <div className="dk-text"><Markdown text={m.body} caret /></div>
           : <span className="dk-typing" aria-label="The desk is answering"><i /><i /><i /><em>Reading your week</em></span>}
@@ -412,17 +430,21 @@ function Row({ m, desk, fresh, locked, recent }: {
     )
   }
   if (m.status === 'error') return <FailedAnswer m={m} text={m.body || 'The desk could not answer just now.'} desk={desk} />
-  const byline = fresh || m.origin !== 'desk'
+  const again = !!m.meta.regen_of
+  const byline = fresh || again || m.origin !== 'desk'
   const body = bodyBesideCards(m)
+  // Copy is for answers worth copying: not a one-line note that sits on a change card.
+  const copy = !!body && body.length >= 60 && !m.meta.actions?.length ? body : null
+  const askAgain = desk.canAskAgain(m) ? () => desk.askAgain(m) : null
   return (
     <div className={`dk-ans${m.origin === 'proactive' ? ' dk-pro' : ''}${byline ? '' : ' dk-cont'}`} data-msg={m.id}>
-      {byline && <Byline m={m} />}
+      {byline && <Byline m={m} again={again} />}
       {!!body && <Body id={m.id} text={body} recent={recent} />}
-      {/* Copy is for answers worth copying: not a one-line note that sits on a change card. */}
-      {!!body && body.length >= 60 && !m.meta.actions?.length && <CopyKey text={body} />}
-      {!!m.meta.drafts?.length && <div className="dk-cards">{m.meta.drafts.map(d => <DraftCard key={d.handle} d={d} />)}</div>}
+      {m.meta.stopped && <small className="dk-ans-note">Stopped. Nothing was changed.</small>}
+      {!!m.meta.drafts?.length && <div className="dk-cards">{m.meta.drafts.map(d => <DraftCard key={d.id ?? d.handle} d={d} />)}</div>}
       {m.meta.actions?.map(a => <ActionRow key={a.id} a={a} at={m.created_at} desk={desk} />)}
       {m.meta.t3_job && <T3Card job={desk.jobs[m.meta.t3_job.id]} fallback={m.meta.t3_job} />}
+      {(copy || askAgain) && <AnsKeys copy={copy} again={askAgain} locked={locked} />}
       {!!m.meta.chips?.length && <Chips chips={m.meta.chips} locked={locked} onPick={t => desk.send(t, { chip: true })} />}
     </div>
   )
@@ -431,6 +453,15 @@ function Row({ m, desk, fresh, locked, recent }: {
 
 const SETTLED_NOTE: Record<string, string> = {
   hold_expired: 'Too late to do it from here. Ask again if you still want it.',
+}
+// A refusal with no sentence from the server (an older function): plain words, never a raw code.
+const OP_NOTE: Record<string, string> = {
+  changed_since: 'It was changed again since, so I left it as it is.',
+  in_queue: 'It is in the queue now. Move it in the calendar.',
+  too_late: 'Its old time is under 15 minutes away or past, so I left the post as it is now.',
+  slot_taken: 'Its old slot is not free any more, so I left the post as it is now.',
+  undo_failed: 'The undo did not go through, so I left it as it is.',
+  busy: 'It is running right now. Check again in a minute.',
 }
 // After the countdown the server commits within about half a second; the row says so for this long
 // before it offers "Do it now" (the server's answer normally lands by realtime first).
@@ -553,14 +584,15 @@ function ActionRow({ a, desk }: { a: DeskAction; at: string; desk: DeskHandle })
     if (kind === 'cancel') actionStore.markUndoTapped(a.id)
     if (!actionStore.start(a.id, kind)) return
     // A rejected call counts as a failed one: the in-flight state is always cleared (Sol desk-ui r4 #3).
-    const r = await desk.act(kind, a.id).catch((): { ok: false; error: string } => ({ ok: false, error: 'No connection.' }))
+    const r = await desk.act(kind, a.id).catch((): { ok: false; error: string; detail?: string } => ({ ok: false, error: 'No connection.' }))
     // A lost race ('not_held' / 'nothing_to_undo') means the server already settled it: the row is read
     // back and shows that state, never an error. Any other failure (or a 15 s timeout) clears the
     // in-flight state and offers the action again AT ONCE ("Try Undo again"), while the row is read back
     // in the background: a repeat cancel is safe, the server's compare-and-set decides (Sol desk-ui r5 U2).
     const settled = r.ok || r.error === 'not_held' || r.error === 'nothing_to_undo'
     if (settled) { actionStore.finish(a.id); return }
-    const error = r.error === 'timeout' ? 'No answer from the desk.' : SETTLED_NOTE[r.error ?? ''] ?? r.error ?? 'That did not go through.'
+    const error = r.error === 'timeout' ? 'No answer from the desk.' : r.detail ?? SETTLED_NOTE[r.error ?? ''] ?? OP_NOTE[r.error ?? '']
+      ?? (r.error && /\s/.test(r.error) ? r.error : 'That did not go through.')
     actionStore.finish(a.id, { op: kind, error })
     void desk.refresh()
   }
@@ -597,8 +629,6 @@ function ActionRow({ a, desk }: { a: DeskAction; at: string; desk: DeskHandle })
         </small>}
         {/* The server's note on this change (a duplicate, a write it could not record): on the card, every state. */}
         {a.detail && a.state !== 'failed' && !/^[a-z_]+$/.test(a.detail) && <small className="dk-act-note">{a.detail}</small>}
-        {/* Deleting has no Undo once it is done: the card says so before the tap. */}
-        {held && a.kind === 'delete' && <small className="dk-warn">Deleting can't be undone.</small>}
         {failed && <small className="dk-warn" role="alert">{failed.error}</small>}
       </span>
       {(a.state === 'done' && a.undo) || (held && !busy) ? <div className="dk-act-keys">

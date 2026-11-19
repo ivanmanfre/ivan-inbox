@@ -97,11 +97,14 @@
 .dk-ans-err>small{display:block;color:var(--dk-muted);font-size:12.5px;margin:4px 0 0 30px}
 .dk-ans-err .dk-me-keys{margin-left:30px}
 
-/* under an answer: Copy. Always on the phone's newest answer and on desktop hover; quiet otherwise. */
-.dk-ans-keys{display:flex;gap:4px;margin:0 0 -6px -10px}
+/* under an answer: Copy and Ask again. Always on the phone; on desktop on hover and on the newest answer. */
+.dk-ans-keys{display:flex;gap:4px;margin:2px 0 -6px -10px}
+.dk-cards+.dk-ans-keys,.dk-t3+.dk-ans-keys{margin-top:6px}
 .dk-copy{min-height:44px;display:inline-flex;align-items:center;gap:6px;padding:0 10px;border-radius:999px;color:var(--dk-muted);font:500 12.5px var(--f)}
 .dk-copy svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 .dk-copy:active{background:var(--p2);color:var(--t1)}
+.dk-copy:disabled{opacity:.45}
+.dk-ans-note{display:block;margin-top:6px;font:500 12.5px/1.3 var(--f);color:var(--dk-muted)}
 .dk-desktop .dk-copy{min-height:36px;opacity:0;transition:opacity .15s ease}
 .dk-desktop .dk-ans:hover .dk-copy,.dk-desktop .dk-ans:last-child .dk-copy,.dk-desktop .dk-copy:focus-visible{opacity:1}
 
@@ -119,6 +122,12 @@
 .dk-st-scheduled{color:var(--ds-sev-clear-ui,var(--t2))}
 .dk-h{font:400 12px var(--m);color:var(--dk-muted)}
 .dk-card-t small .dk-h{margin-left:auto}
+/* a card that opens its post: the whole card is the tap target */
+.dk-card-go{color:inherit;text-decoration:none;-webkit-tap-highlight-color:transparent}
+.dk-card-go .dk-card-t{flex:1}
+.dk-card-arrow{flex:none;width:18px;height:18px;fill:none;stroke:var(--dk-muted);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.dk-card-go:active{background:var(--p2)}
+.dk-card-go:focus-visible{outline:2px solid var(--t1);outline-offset:2px}
 
 /* a change the desk made or holds: what, which post, and the taps */
 .dk-act{margin-top:12px;display:grid;gap:8px;padding:12px 14px 14px;border-radius:var(--ds-r3,16px);background:var(--p1);box-shadow:0 0 0 1px var(--line),var(--ds-shadow-soft,none)}
@@ -197,6 +206,8 @@
 .dk-key:active:not(:disabled){background:var(--p2)}
 .dk-send{background:var(--t1);color:var(--bg)}
 .dk-send:disabled{background:var(--p3);color:var(--dk-muted);opacity:1}
+.dk-stop{background:var(--t1);color:var(--bg)}
+.dk-stop:disabled{background:var(--p3);color:var(--dk-muted)}
 .dk-rec{color:var(--t1);background:var(--p2)}
 .dk-comp-note{display:flex;align-items:center;gap:8px;font:400 12.5px var(--f);color:var(--t2);padding:8px 10px 0}
 .dk-rec-dot{width:8px;height:8px;border-radius:50%;background:var(--ds-sev-urgent,#FF453A);animation:dk-pulse 1s infinite ease-in-out}
@@ -228,7 +239,8 @@
 @media (hover:hover){
   .dk-pill:hover:not(:disabled),.dk-suggest button:hover,.dk-starters button:hover:not(:disabled),.dk-more:hover{background:var(--p2)}
   .dk-go:hover:not(:disabled){background:var(--t2)}
-  .dk-copy:hover{background:var(--p2);color:var(--t1)}
+  .dk-copy:hover:not(:disabled){background:var(--p2);color:var(--t1)}
+  .dk-card-go:hover{background:var(--p2)}
   .dk-headkey:hover,.dk-back:hover,.dk-key:hover:not(:disabled):not(.dk-send){background:var(--p2)}
 }
 @media (prefers-reduced-motion:reduce){

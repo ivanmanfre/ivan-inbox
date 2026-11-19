@@ -4,10 +4,10 @@
 // it is handed (p_action), never as a caller-supplied identity:
 // Every draft write goes through a desk SQL function (db/20261118m_content_desk_r6.sql) that first takes
 // the publisher's locks (account, queue rows, draft), checks the authorized revision, then runs the app's write:
-//   approve      -> desk_approve (approveDraft's UPDATE) / desk_keep -> cb39_verdict_set keep for a brain draft
+//   approve      -> desk_approve (approveDraft's UPDATE, with an exact Undo since 2026-11-19) / desk_keep -> cb39_verdict_set keep for a brain draft (no Undo)
 //   date, undate -> desk_set_date -> operator_set_schedule_date('clientops', …)  (WhenEditor / Calendar)
-//   pull         -> desk_pull -> content_next_pull(queue, slot_at, reason) (Next rows) / the calendar's Remove date
-//   delete       -> desk_delete (reason stamp, delete, archive fallback); never a brain draft (Keep/Drop in Review)
+//   pull         -> desk_pull -> content_next_pull(queue, slot_at, reason) (Next rows) / the calendar's Remove date; Undo puts it back (pull_v1)
+//   delete       -> desk_delete (reason stamp, then the app's archive path, so it has an Undo); never a brain draft (Keep/Drop in Review)
 //   redo         -> regenerateDraft (status generating + post-gen-v2 webhook)
 //   photo_attach -> desk_set_photos -> operator_set_draft_photos('clientops', …)    (PictureRow)
 //   draft_line   -> lm-curator-decide approve                    (Ideas approve, with ideaDecidable)
@@ -649,7 +649,9 @@ async function planCase(ctx: Ctx, act: Act, c: Record<string, unknown>): Promise
         run: async (actionId, claim) => {
           if (failedCheck && act._qa_override !== true) throw new Error('qa_override_missing')
           // the authorized revision only, under the publisher's locks; Brain Keep then calls the app's keep RPC (Sol r5 B3)
-          return { result: await deskWrite(ctx, actionId, claim, brain ? 'desk_keep' : 'desk_approve', { p_draft: id, p_expected_updated_at: pinned, p_expected_status: d!.status, p_expected_scheduled_at: sourceAt(act, d!) }) }
+          const result = await deskWrite(ctx, actionId, claim, brain ? 'desk_keep' : 'desk_approve', { p_draft: id, p_expected_updated_at: pinned, p_expected_status: d!.status, p_expected_scheduled_at: sourceAt(act, d!) })
+          // desk_approve stores its exact undo images on the action row (2026-11-19); a brain Keep has none
+          return brain ? { result } : { result, undoInDb: true }
         },
       }
     }
@@ -712,7 +714,8 @@ async function planCase(ctx: Ctx, act: Act, c: Record<string, unknown>): Promise
         return { echo: { kind: 'pull', label: `${q} has a queued copy, but not one I can pull exactly, so I did nothing. Move it in the calendar.`, state: 'failed', undo: false, target }, refuse: 'no_queue_row' }
       }
       if (asPull) {
-        // Pull: the queued copy is cancelled and the draft goes back to Review. No undo exists in the app.
+        // Pull: the queued copy is cancelled and the draft goes back to Review. desk_pull stores everything it
+        // changed (op pull_v1), so Undo puts it back on the schedule while its time is 15+ minutes away.
         return {
           ...base,
           echo: { kind: 'pull', label: `Taking ${q} off the schedule`, state: 'held', undo: true, hold_ms: HOLD_MS, target },
@@ -731,7 +734,7 @@ async function planCase(ctx: Ctx, act: Act, c: Record<string, unknown>): Promise
               // at full precision by desk_pull under the lock; the live one only at the proposal
               p_next_queue: asPull ? (savedNext?.queue_id ?? queue!.queue_id) : null, p_next_slot: asPull ? (savedNext?.slot_at ?? queue!.slot_at) : null,
               p_reason: asPull ? reason : null, p_expected_scheduled_at: sourceAt(act, d!),
-            }) }
+            }), undoInDb: true }
           },
         }
       }
@@ -771,9 +774,10 @@ async function planCase(ctx: Ctx, act: Act, c: Record<string, unknown>): Promise
         command: `delete ${qq}${why ? `, reason: ${why}` : ''}`,
         run: async (actionId, claim) => {
           // undated, review/error, no live queue copy, the authorized revision: all checked under the
-          // publisher's locks in desk_delete, which then stamps the reason and deletes (or archives)
+          // publisher's locks in desk_delete, which then stamps the reason and archives it the app's way (2026-11-19:
+          // no hard DELETE), storing its exact undo images on the action row
           if (!pinned) throw new Error('changed')
-          return { result: await deskWrite(ctx, actionId, claim, 'desk_delete', { p_draft: id, p_expected_updated_at: pinned, p_reason: why }) }
+          return { result: await deskWrite(ctx, actionId, claim, 'desk_delete', { p_draft: id, p_expected_updated_at: pinned, p_reason: why }), undoInDb: true }
         },
       }
     }

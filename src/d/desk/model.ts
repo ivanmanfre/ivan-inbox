@@ -15,7 +15,8 @@ export type DeskAction = {
 /** A chip has ONE text: what it shows is exactly what it sends (Sol backend r5 B1). Any `label` a row
  *  still carries is ignored. */
 export type DeskChip = { send: string; label?: string }
-export type DeskDraftCard = { handle: string; first_line: string; status: string; scheduled_at?: string | null }
+/** A post an answer names (server cards.ts, 2026-11-19): `id` opens it in Content; older rows may have none. */
+export type DeskDraftCard = { handle: string; id?: string; first_line: string; status: string; scheduled_at?: string | null }
 export type DeskT3 = { id: string; status: T3Status; title: string; link?: string | null }
 export type DeskAttachment = { kind: 'photo' | 'link'; url: string; name?: string }
 export type DeskMeta = {
@@ -34,6 +35,10 @@ export type DeskMeta = {
   /** On a turn with change cards (server, Content Desk UI polish r5): the lines that are no card (a post it could not
    *  match, a could-not-save notice, a recovery line), kept apart from the cards' own receipts. */
   notes?: string[]
+  /** On an answer Ivan stopped (Stop, 2026-11-19): it keeps only the text he already saw and ran nothing. */
+  stopped?: boolean
+  /** Ask again (2026-11-19): on the hidden re-asked question row and on its new answer, the answer it replaces. */
+  regen_of?: string
 }
 
 export type DeskMessage = {
