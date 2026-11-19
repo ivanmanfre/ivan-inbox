@@ -2,9 +2,15 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { History } from './History'
-import { msg, threads } from './fixtures'
+import { ThreadPane } from './Thread'
+import { useDmVerbs } from './verbs'
+import { DmAsks } from './asks'
+import { renderInFrame } from '../test-utils'
+import { SEATS } from '../seats'
+import { NOW, msg, threads } from './fixtures'
 import type { DmAttachments, DmFile } from '../../lib/dmAttachments'
 import type { Thread } from '../../lib/inbox'
+import type { PreReadHandle } from '../../exp/v2c/chat/usePreRead'
 
 const fetchDmAttachments = vi.hoisted(() => vi.fn())
 vi.mock('../../lib/dmAttachments', async orig => ({ ...(await orig<typeof import('../../lib/dmAttachments')>()), fetchDmAttachments }))
@@ -64,6 +70,16 @@ describe('files in the conversation', () => {
     expect(screen.queryByText('Message text unavailable')).toBeNull()
     expect(container.querySelector(`[data-msg="${wordless.id}"] .dm-b-body`)).toBeNull()
     expect(container.querySelector(`[data-msg="${wordless.id}"] .dm-file`)).toBeTruthy()
+  })
+
+  it('shows a LinkedIn screenshot in place of the stored inbound placeholder', () => {
+    const inbound = msg({ prospect_id: 'noah', direction: 'inbound', unipile_chat_id: 'chat', client_id: 'swishdm', message_text: '(empty)', sent_at: '2026-11-19T22:46:52.441Z' })
+    const [t] = threads([inbound])
+    const screenshot = file({ id: 'screenshot', kind: 'image', mime: null, name: null, width: 150, height: 150 })
+    render(<History t={t} attachments={files([[inbound.id, [screenshot]]])} />)
+    expect(screen.getByRole('img', { name: 'Image sent on LinkedIn' })).toBeTruthy()
+    expect(screen.queryByText('(empty)')).toBeNull()
+    expect(screen.queryByText('Message text unavailable')).toBeNull()
   })
 
   it('places a file sent with no words (no row of ours) at its time, on the sender side', () => {
@@ -152,17 +168,20 @@ describe('reading the files for an open conversation', () => {
     expect(fetchDmAttachments).toHaveBeenCalledTimes(1)
   })
 
-  it('never starts a read for a pane nobody opened, and reads once it is opened', async () => {
-    const { deck, t } = deckThread()
-    fetchDmAttachments.mockResolvedValue(files([[deck.id, [file()]]]))
-    const Pane = ({ open }: { open: boolean }) => <output>{useDmAttachments(t, open) ? 'files' : 'none'}</output>
-    const view = render(<Pane open={false} />)
-    await act(async () => { await new Promise(r => setTimeout(r, 30)) })
-    expect(fetchDmAttachments).not.toHaveBeenCalled()
-    expect(screen.getByText('none')).toBeTruthy()
-    view.rerender(<Pane open />)
-    await waitFor(() => expect(screen.getByText('files')).toBeTruthy())
-    expect(fetchDmAttachments).toHaveBeenCalledTimes(1)
+  it.each(SEATS)('loads inbound images when the desktop picks a thread on the %s seat', async clientId => {
+    const inbound = msg({ prospect_id: `image-${clientId}`, direction: 'inbound', unipile_chat_id: 'chat', client_id: clientId, sent_at: '2026-11-19T22:46:52Z', message_text: '' })
+    const [t] = threads([inbound])
+    const screenshot = file({ kind: 'image', name: null, mime: null })
+    fetchDmAttachments.mockResolvedValue(files([[inbound.id, [screenshot]]]))
+    const noop = () => {}
+    const pre: PreReadHandle = { get: () => ({ s: 'none' }), run: noop, busy: false, spent: 0, capped: false }
+    function Pane() {
+      const verbs = useDmVerbs({ refresh: noop, patch: noop, dated: noop })
+      return <ThreadPane t={t} all={[t]} auto phone={false} verbs={verbs} now={NOW} onBack={noop} onAsk={noop} onMenu={noop} staleN={0} pre={pre} reload={noop} />
+    }
+    renderInFrame(<DmAsks><Pane /></DmAsks>, { hash: '#exp/d/dms' })
+    expect(await screen.findByRole('img', { name: 'Image sent on LinkedIn' })).toBeTruthy()
+    expect(fetchDmAttachments).toHaveBeenCalledExactlyOnceWith(inbound.prospect_id)
   })
 
   it('joins a read still under way when the same conversation is opened again', async () => {

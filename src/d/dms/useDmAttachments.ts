@@ -34,12 +34,9 @@ function withoutLinks(d: DmAttachments): DmAttachments {
 }
 
 /**
- * The files on this conversation, or null (none known yet, no LinkedIn chat, or the read failed).
- * Null renders the thread exactly as it was before files existed here.
- * `enabled: false` is a pane that was shown without being opened: it shows a read it already has and
- * never starts one.
+ * The files on the visible conversation, or null if none are known.
  */
-export function useDmAttachments(t: Pick<Thread, 'prospect_id' | 'messages'>, enabled = true): DmAttachments | null {
+export function useDmAttachments(t: Pick<Thread, 'prospect_id' | 'messages'>): DmAttachments | null {
   // Only a thread with a LinkedIn chat can carry files. The key is the newest message on it: it moves when
   // one lands or is sent, and stays put while older pages of the same conversation are still being read in
   // (a count would move with every page, and each move is a provider read).
@@ -64,7 +61,6 @@ export function useDmAttachments(t: Pick<Thread, 'prospect_id' | 'messages'>, en
     const renewAt = (data: DmAttachments) => { if (hasFiles(data)) later(Math.max(30_000, data.expiresAt - RENEW_BEFORE_MS - Date.now())) }
     if (hit) setRead({ pid, data: hit.data })
     if (hit && hit.key === key && now - hit.at < FRESH_MS && hit.data.expiresAt - now > RENEW_BEFORE_MS) { renewAt(hit.data); return stop }
-    if (!enabled) return stop
     void readOnce(pid, key).then(data => {
       if (!current) return
       fails.current = 0
@@ -76,17 +72,17 @@ export function useDmAttachments(t: Pick<Thread, 'prospect_id' | 'messages'>, en
       if (current && had && hasFiles(had) && fails.current < MAX_RETRIES) { fails.current++; later(RETRY_MS) }
     })
     return stop
-  }, [key, tick, enabled]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [key, tick]) // eslint-disable-line react-hooks/exhaustive-deps
   // Back from the background with links about to run out: read again.
   useEffect(() => {
-    if (!key || !enabled) return
+    if (!key) return
     const onShow = () => {
       const hit = cache.get(t.prospect_id)
       if (document.visibilityState === 'visible' && hit && hit.data.expiresAt - Date.now() < RENEW_BEFORE_MS) setTick(n => n + 1)
     }
     document.addEventListener('visibilitychange', onShow)
     return () => document.removeEventListener('visibilitychange', onShow)
-  }, [key, enabled, t.prospect_id])
+  }, [key, t.prospect_id])
   const mine = key && read?.pid === t.prospect_id && hasFiles(read.data) ? read.data : null
   // Links that ran out and could not be renewed stop being links: the chip stays, a tap opens nothing.
   const expiresAt = mine?.expiresAt ?? 0

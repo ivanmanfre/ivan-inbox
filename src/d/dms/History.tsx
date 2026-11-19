@@ -245,7 +245,10 @@ function HistoryRead({ onSendAnyways, onDiscardHeld, onEditHeld, heldLater = fal
         const st = statusPill(m, t.stage)
         const blank = pill === 'Invite, blank'
         const email = messageChannel(m) === 'email'
-        const parts = blank ? [] : inb ? [(m.message_text ?? '').trim()].filter(Boolean) : bubbles(m.message_text ?? '')
+        const files = email ? null : attachments?.byMessage.get(m.id) ?? null
+        const text = m.message_text?.trim() ?? ''
+        const attachmentOnly = inb && files?.length && text === '(empty)'
+        const parts = blank || attachmentOnly ? [] : inb ? [text].filter(Boolean) : bubbles(m.message_text ?? '')
         // A pending send (waiting for an accept, queued) is not on the day line: it comes after every sent
         // item, carries no clock (its draft/approval time was never a send time) unless it is scheduled.
         const pend = isPendingSend(m)
@@ -276,7 +279,6 @@ function HistoryRead({ onSendAnyways, onDiscardHeld, onEditHeld, heldLater = fal
         if (fresh && !s0.ids.has(m.id)) s0.arrived.add(m.id)
         const arrive = v4 && s0.arrived.has(m.id)
         const envelope = email ? emailDetails(m, t) : null
-        const files = email ? null : attachments?.byMessage.get(m.id) ?? null
         if (isUnreachableSend(m)) return (
           <Fragment key={m.id}>
             {before}

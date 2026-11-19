@@ -88,9 +88,8 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
   reading?: boolean
 }) {
   const { thread: t, loading: emailLoading, settling: emailSettling, error: emailDetailsError, retry: retryEmailDetails } = useEmailDetails(sourceThread)
-  // The files on the LinkedIn chat (a deck, a screenshot), read live; null until known and when there are none.
-  // A pane shown on its own (desktop, nothing opened) never starts that read: it can be swapped by a refresh or a search.
-  const attachments = useDmAttachments(sourceThread, !auto)
+  // The visible thread loads its LinkedIn files even when the desktop picked it automatically.
+  const attachments = useDmAttachments(sourceThread)
   const [edits, setEdits] = useState<Edits>(() => seed(t))
   const [reply, setReply] = useState('')
   const [replyComposition, setReplyComposition] = useState<EmailComposition | null>(null)
