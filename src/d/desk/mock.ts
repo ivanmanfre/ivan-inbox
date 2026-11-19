@@ -116,7 +116,7 @@ export const mockApi = {
     const m = rows.find(r => r.meta.actions?.some(a => a.id === actionId))
     if (!m) return { ok: false, error: 'not_found' }
     // a pull whose time is too close: the server refuses the Undo with its own sentence
-    if (o === 'undo' && /late/.test(actionId)) return { ok: false, error: 'too_late', detail: 'Its time is under 15 minutes away or past, so I left it off the schedule. Date it again in the calendar.' }
+    if (o === 'undo' && /late/.test(actionId)) return { ok: false, error: 'too_late', detail: 'Its old time is under 15 minutes away or past, so I left the post as it is now. Change it in the calendar.' }
     const state = o === 'undo' ? 'undone' : o === 'commit' ? 'done' : 'cancelled'
     const next: DeskMessage = { ...m, meta: { ...m.meta, actions: m.meta.actions!.map(a => (a.id === actionId ? { ...a, state, undo: o === 'commit' } : a)) } }
     push(next)

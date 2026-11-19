@@ -40,7 +40,7 @@ vi.mock('./api', () => ({
       meta: { client_key: body.client_key, reply_to: `u-${body.client_key}`, ...(stop ? { stopped: true } : {}), ...(body.regen_of ? { regen_of: body.regen_of } : {}) } }))
     return 'final'
   }),
-  undoAction: vi.fn(async () => ({ ok: false, error: 'too_late', detail: 'Its time is under 15 minutes away or past, so I left it off the schedule. Date it again in the calendar.' })),
+  undoAction: vi.fn(async () => ({ ok: false, error: 'too_late', detail: 'Its old time is under 15 minutes away or past, so I left the post as it is now. Change it in the calendar.' })),
   commitAction: vi.fn(async () => ({ ok: true })),
   cancelAction: vi.fn(async () => ({ ok: true })),
 }))
@@ -111,7 +111,7 @@ describe('Desk follow-ups', () => {
       actions: [{ id: 'act-p', kind: 'pull', label: 'Took "A made up post" off the schedule', state: 'done', undo: true }] } })])
     render(<Desk layout="phone" />)
     fireEvent.click(await screen.findByRole('button', { name: 'Undo' }))
-    await screen.findByText(/Its time is under 15 minutes away or past/)
+    await screen.findByText(/Its old time is under 15 minutes away or past/)
     expect(screen.queryByText('too_late')).toBeNull()
   })
 })

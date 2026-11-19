@@ -24,6 +24,7 @@ import { planTriggers } from './triggers.ts'
 import { queueT3Job, sweepT3Stalls } from '../_shared/desk-t3.ts'
 import { deskUnfurl } from './unfurl.ts'
 import { draftCards } from './cards.ts'
+import { stopTurn, closeStopWindow } from './stop.ts'
 import { notify } from '../_shared/notify.ts'
 
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined
@@ -94,8 +95,8 @@ function failText(e: unknown): string {
     human_edited: 'It has your hand edits, and the writer will not overwrite them.',
     in_queue: 'This one is already in the queue. Move it in the calendar.', stored_differs: 'The calendar did not store the time on the card, so I changed nothing.', writer_refused: 'The writer refused it, so the draft is back as it was.', no_action: 'I could not match this to its saved action, so I did nothing.',
     claim_failed: 'I could not reach the database, so nothing ran. Tap again.', undo_failed: 'The undo did not go through, so I left it as it is.',
-    too_late: 'Its time is under 15 minutes away or past, so I left it off the schedule. Date it again in the calendar.',
-    slot_taken: 'Its old slot is not free any more, so I left it off the schedule. Date it again in the calendar.',
+    too_late: 'Its old time is under 15 minutes away or past, so I left the post as it is now. Change it in the calendar.',
+    slot_taken: 'Its old slot is not free any more, so I left the post as it is now. Change it in the calendar.',
   }
   // the exact code first (queue_changed must never read as changed), then a code inside a longer message
   if (known[m]) return known[m]
@@ -270,20 +271,6 @@ async function recentMessages(svc: any, userId: string, evalMode = false) {
   return (data ?? []).filter((m: { meta?: { test?: boolean } }) => m.meta?.test !== true).slice(0, 11).reverse()
 }
 /**
- * Stop (2026-11-19): marks Ivan's own question row; the turn answering it reads the mark while the model writes
- * and stops there. A turn already past the model (planning or saving) finishes as normal.
- */
-// deno-lint-ignore no-explicit-any
-async function stopTurn(svc: any, userId: string, clientKey: string): Promise<{ ok: boolean; error?: string }> {
-  if (!clientKey) return { ok: false, error: 'bad_key' }
-  const { data: row, error } = await svc.from('desk_messages').select('id, meta').eq('user_id', userId).eq('role', 'user').eq('client_key', clientKey).maybeSingle()
-  if (error) return { ok: false, error: 'read_failed' }
-  if (!row) return { ok: false, error: 'not_found' }
-  const { error: uErr } = await svc.from('desk_messages').update({ meta: { ...(row.meta ?? {}), stop_at: new Date().toISOString() } }).eq('id', row.id)
-  return uErr ? { ok: false, error: 'write_failed' } : { ok: true }
-}
-
-/**
  * Ask again (2026-11-19): the question behind one of Ivan's plain desk answers, from the answer's own reply_to.
  * Refused for an answer with change cards, a cloud job, an error or a photo: those are never re-run.
  */
@@ -404,7 +391,7 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
   // Ask again (2026-11-19): a new answer to a stored question, read-only. The SERVER takes the question from
   // the answer's own reply_to (never the client's text), and only for a plain answer: no cards, no error, no photo.
   // a regen_of that is there but malformed is refused, never read as an ordinary send (Sol r1)
-  if (body.regen_of !== undefined && body.regen_of !== null && !(typeof body.regen_of === 'string' && /^[0-9a-f-]{36}$/i.test(body.regen_of))) {
+  if ('regen_of' in body && !(typeof body.regen_of === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(body.regen_of))) {
     return json({ error: 'regen_refused', detail: CLIENT_TEXT.regen_refused }, 400, origin)
   }
   const regenOf = typeof body.regen_of === 'string' ? body.regen_of : null
@@ -561,13 +548,12 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
         } finally {
           clearInterval(stopPoll)
         }
-        // Sol r1: a Stop saved after the last poll but before the model finished still wins, read once here
-        if (!stopped) {
-          const { data: last, error: lastErr } = await svc.from('desk_messages').select('meta').eq('id', userRow.id).maybeSingle()
-          if (!lastErr && (last?.meta as { stop_at?: string } | null)?.stop_at) {
-            stopped = true
-            parsed = { reply: writeShown ? '' : shownSoFar, actions: [], reads: [], chips: [] }
-          }
+        // Sol r2: the Stop window closes atomically before anything is planned or run. This turn stamps gen_done_at on
+        // the question row only while no stop_at is there; op stop sets stop_at only while no gen_done_at is there.
+        // Exactly one wins. A failed read or write here counts as a Stop (fail closed: nothing runs).
+        if (!stopped && !(await closeStopWindow(svc, userRow.id))) {
+          stopped = true
+          parsed = { reply: writeShown ? '' : shownSoFar, actions: [], reads: [], chips: [] }
         }
         // Ask again is read-only: a proposed change is dropped and he is told to send it as a new message
         const regenDropped = !!regenOf && parsed.actions.length > 0

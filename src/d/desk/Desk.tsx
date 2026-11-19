@@ -458,8 +458,8 @@ const SETTLED_NOTE: Record<string, string> = {
 const OP_NOTE: Record<string, string> = {
   changed_since: 'It was changed again since, so I left it as it is.',
   in_queue: 'It is in the queue now. Move it in the calendar.',
-  too_late: 'Its time is under 15 minutes away or past, so I left it off the schedule.',
-  slot_taken: 'Its old slot is not free any more, so I left it off the schedule.',
+  too_late: 'Its old time is under 15 minutes away or past, so I left the post as it is now.',
+  slot_taken: 'Its old slot is not free any more, so I left the post as it is now.',
   undo_failed: 'The undo did not go through, so I left it as it is.',
   busy: 'It is running right now. Check again in a minute.',
 }
