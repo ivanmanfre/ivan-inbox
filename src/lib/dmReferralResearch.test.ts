@@ -139,6 +139,92 @@ describe('referral researcher', () => {
     expect(result.draft).toBeNull()
     expect(calls).toBe(1)
   })
+  it('drafts for the profile the referrer supplied even when the title is unknown', async () => {
+    const link = 'https://www.linkedin.com/in/vladimir-golovanov/'
+    const text = "I'm no longer working with the ChillBase team, but I can recommend my former colleague, Vladimir Golovanov: " + link +
+      " However, the team might not be onboarding new partners at the moment, so please check with him directly"
+    const contents: string[] = []
+    vi.stubGlobal('fetch', async (url: string, init: RequestInit) => {
+      expect(url).toBe('https://proxy.test/v1/messages')
+      contents.push(JSON.parse(String(init.body)).messages[0].content)
+      return contents.length === 1
+        ? claude(JSON.stringify({ name: 'Vladimir Golovanov', linkedin_url: link }))
+        : claude(JSON.stringify({ paragraphs: ['Hey Vladimir', 'Natalia suggested I ask you about creator campaigns for ChillBase.', 'Is the team open to working with new creator partners at the moment?'] }))
+    })
+    const result = await researchReferral(db, { id: 'chillbase-referral', text, company: 'ChillBase', referrer: 'Natalia Bykova' }, 'Davorin', [], [])
+    expect(result).toMatchObject({
+      status: 'verified', name: 'Vladimir Golovanov', role: null,
+      linkedin_url: 'https://www.linkedin.com/in/vladimir-golovanov',
+      draft: expect.stringContaining('Hey Vladimir'),
+      acknowledgement: "Thanks Natalia, I'll reach out to Vladimir.",
+    })
+    expect(contents).toHaveLength(2)
+    expect(contents[1]).toContain('current role')
+    expect(contents[1]).toContain('Natalia')
+  })
+  it('leaves the referral card hidden for an ordinary profile share', async () => {
+    let calls = 0
+    vi.stubGlobal('fetch', async () => { calls++; return claude('{"name":null,"linkedin_url":null}') })
+    const result = await researchReferral(db, { ...input, text: 'Here is my profile: https://www.linkedin.com/in/natalia-bykova?trk=public_profile' }, 'Davorin', [], [])
+    expect(result.status).toBe('none')
+    expect(result.draft).toBeNull()
+    expect(calls).toBe(1)
+  })
+  it('does not use a LinkedIn profile selected by the model that was absent from the message', async () => {
+    const urls: string[] = []
+    vi.stubGlobal('fetch', async (url: string) => {
+      urls.push(url)
+      return urls.length === 1 ? claude('{"name":"Ben Patton","linkedin_url":"https://www.linkedin.com/in/other-ben"}') : apify([])
+    })
+    const text = 'Contact Ben Patton. Here is my profile: https://www.linkedin.com/in/someone-else'
+    const result = await researchReferral(db, { ...input, text }, 'Mattan', [], [])
+    expect(urls[1]).toContain('harvestapi~linkedin-profile-search')
+    expect(result.draft).toBeNull()
+    expect(result.linkedin_url).toBeNull()
+  })
+  it('does not use the referrer’s own profile for a named colleague', async () => {
+    const link = 'https://www.linkedin.com/in/mia-lee'
+    const urls: string[] = []
+    vi.stubGlobal('fetch', async (url: string) => {
+      urls.push(url)
+      return urls.length === 1 ? claude(JSON.stringify({ name: 'Ben Patton', linkedin_url: link })) : apify([])
+    })
+    const result = await researchReferral(db, { ...input, text: 'Ben Patton handles that. My profile is ' + link,
+      referrer: 'Mia Lee', referrerUrl: link }, 'Mattan', [], [])
+    expect(urls[1]).toContain('harvestapi~linkedin-profile-search')
+    expect(result.linkedin_url).toBeNull()
+    expect(result.draft).toBeNull()
+  })
+  it.each([
+    ['https://www.linkedin.com/in/ACoAABcdEfG', ''],
+    ['https://www.linkedin.com/in/ben-patton', ' or call Jane Smith: https://www.linkedin.com/in/jane-smith'],
+  ])('shows a possible match when a supplied link cannot be tied to a single name: %s', async (link, alternative) => {
+    let calls = 0
+    vi.stubGlobal('fetch', async () => {
+      return ++calls === 1 ? claude(JSON.stringify({ name: 'Ben Patton', linkedin_url: link }))
+        : claude(JSON.stringify({ paragraphs: ['Hey Ben', 'Mallory suggested I reach out.'] }))
+    })
+    const result = await researchReferral(db, { ...input, text: 'Contact Ben Patton: ' + link + alternative }, 'Mattan', [], [])
+    expect(result).toMatchObject({ status: 'unresolved', draft: null, candidate: { name: 'Ben Patton', linkedin_url: link } })
+  })
+  it('keeps retry available when an unparsed handoff also contains a profile link', async () => {
+    vi.stubGlobal('fetch', async () => claude('{"name":null,"linkedin_url":null}'))
+    const result = await researchReferral(db, { ...input, text: 'Speak to Ben Patton. My profile: https://www.linkedin.com/in/mia-lee' }, 'Mattan', [], [])
+    expect(result.status).toBe('unresolved')
+    expect(result.reason).toContain('A named person')
+  })
+  it('retains the original company context when the linked contact works at an outside firm', async () => {
+    const link = 'https://www.linkedin.com/in/ben-patton'
+    const prompts: string[] = []
+    vi.stubGlobal('fetch', async (_url: string, init: RequestInit) => {
+      prompts.push(JSON.parse(String(init.body)).messages[0].content)
+      return prompts.length === 1 ? claude(JSON.stringify({ name: 'Ben Patton', company: 'Acme Growth', linkedin_url: link }))
+        : claude(JSON.stringify({ paragraphs: ['Hey Ben', 'Mallory suggested I reach out about creator campaigns for Saint Spritz.'] }))
+    })
+    const result = await researchReferral(db, { ...input, text: 'Contact Ben Patton at Acme Growth: ' + link }, 'Mattan', [], [])
+    expect(result).toMatchObject({ status: 'verified', company: 'Acme Growth' })
+    expect(prompts[1]).toContain('"outside_partner_for":"Saint Spritz"')
+  })
   it('uses the tagged profile without any name search (Irina tagging Tatiana, 2026-11-02)', async () => {
     const urls: string[] = []
     vi.stubGlobal('fetch', async (url: string) => {
