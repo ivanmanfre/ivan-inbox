@@ -2,7 +2,8 @@ import { draftSendVia, isEngineRetired, isHeldSend, isIntentionalStop, isInterna
 import { supabase } from './supabase'
 
 export function canSendRejectedDm(m: InboxMessage & { unipile_message_id?: string | null }): boolean {
-  return !(draftSendVia(m) === 'email' && m.channel !== 'email') && m.direction === 'outbound' && !m.sent_at && !m.unipile_message_id && !!m.message_text?.trim()
+  return !m.draft_evidence?.dm_attachment && m.send_blocked_reason !== 'pdf_delivery_unconfirmed'
+    && !(draftSendVia(m) === 'email' && m.channel !== 'email') && m.direction === 'outbound' && !m.sent_at && !m.unipile_message_id && !!m.message_text?.trim()
     && !!m.send_blocked_at && !!m.send_blocked_reason && !isEngineRetired(m) && !isInternalConfirmation(m)
     && m.send_blocked_reason !== SWISHDM_REPLY_HOLD   // a SwishDM review hold is released only by approve_swishdm_reply_draft, never by an override
     && !isSwishdmRow(m)        // SwishDM rows are sent only by the SwishDM senders (send_rejected_inbox_draft refuses them too, db/294)

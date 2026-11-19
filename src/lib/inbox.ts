@@ -384,7 +384,7 @@ const sameWords = (text: string | null | undefined) => (text ?? '').replace(/\s+
  *  hold (duplicate_in_thread, send_failed_verified...) is refused there, and a paused schedule has its own card. */
 export function canScheduleHeld(m: InboxMessage): boolean {
   const r = m.send_blocked_reason
-  return isHeldSend(m) && !m.approved_at && isRecoverableHold(r) && !r!.startsWith(`${RACE_HOLD_PREFIX}scheduled`)
+  return !m.draft_evidence?.dm_attachment && isHeldSend(m) && !m.approved_at && isRecoverableHold(r) && !r!.startsWith(`${RACE_HOLD_PREFIX}scheduled`)
 }
 
 /** LinkedIn's 422 invalid_recipient / blocked_recipient (provider_invalid_recipient, or the provider type kept in
@@ -427,6 +427,7 @@ export function emailLaneHoldText(why: string): string {
 
 export function heldReasonText(reason: string | null | undefined): string {
   const r = (reason ?? '').trim()
+  if (r === 'pdf_delivery_unconfirmed') return 'LinkedIn may have received the PDF. Check the conversation before sending again.'
   const tail = r.includes(':') ? r.slice(r.indexOf(':') + 1).trim() : ''
   if (r.startsWith('lint_calendar_') || /^calendar_(context_or_)?wording_unverified/.test(r)) return 'The calendar check could not verify the proposed time or wording.'
   if (r.startsWith('arch_market_claim_unratified')) return `It mentions ${tail || 'a market'}, which is not a confirmed ARCH market.`
@@ -509,6 +510,9 @@ export function holdReason(m: InboxMessage): string | null {
     }
   }
   if (!isRecoverableHold(r)) return null
+  if (r === 'lint_pdf_file_unavailable') return 'The attached PDF could not be read. Replace it before approving again.'
+  if (r === 'lint_pdf_route_changed') return 'The LinkedIn conversation changed. Check the thread before approving the PDF again.'
+  if (r === 'post_approval_race:scheduled_pdf_requires_review') return 'PDFs need to be sent from the draft. Review the message and attachment before approving.'
   // The sender also writes unseen_outbound / turn_outbound: the side is the suffix.
   if (r && isRaceHold(r)) return r.endsWith('outbound')
     ? 'Came back: a message went out on this thread while it was queued. Re-read the thread, then approve again.'
@@ -1682,6 +1686,7 @@ export type DraftEvidenceExemplar = { they: string | null; reply: string | null;
 export type DmDraftFile = { id: string; name: string; size: number; sha256: string }
 export type DraftEvidence = {
   dm_attachment?: DmDraftFile
+  dm_attachment_transport_id?: string
   instantly_reply?: { eaccount?: string; subject?: string | null } | null
   client_id?: string
   author?: string

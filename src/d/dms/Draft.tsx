@@ -168,9 +168,11 @@ export function Draft({ t, edits, setEdits, save, onBlur, onRetrySave, now, onRe
   </select>{deliveryBusy && <span role="status">Saving…</span>}</label>
   const hold = holdReason(draft)
   const attached = draft.draft_evidence?.dm_attachment ?? null
+  const editablePdfHold = !draft.draft_evidence?.dm_attachment_transport_id &&
+    ['lint_pdf_file_unavailable', 'lint_pdf_route_changed', 'post_approval_race:scheduled_pdf_requires_review'].includes(draft.send_blocked_reason ?? '')
   const canAttach = t.client_id === 'ivan' && mode === 'dm' && !draft.email_mirror_text?.trim() && !comp && !email && !inmail &&
     draft.ai_model === 'inbox_on_demand_reply' && !!draft.unipile_chat_id &&
-    !t.draftStale && !draft.approved_at && !draft.sent_at && !draft.send_blocked_at && !draft.draft_evidence_unavailable
+    !t.draftStale && !draft.approved_at && !draft.sent_at && (!draft.send_blocked_at || editablePdfHold) && !draft.draft_evidence_unavailable
   const files = (attached || (canAttach && onFileChange)) &&
     <DraftFile key={draft.id} draftId={draft.id} file={attached} locked={deliveryBusy} onChange={canAttach ? onFileChange : undefined} />
   const sendKey = onSend ? (e: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); onSend() } } : undefined

@@ -413,6 +413,8 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
         onRetry={() => setEmailRetry(n => n + 1)} onSend={() => void compose()} cc={replyCc} onCcChange={setReplyCc} />
     : <Composer to={first} from={from} big={emailReplyFor === t.prospect_id} noSend={noSend} note={composeNote} sendLabel={composeLabel} disabled={composeOff} value={reply} setValue={setReply} busy={busy || emailBlocked} onSend={() => void compose()} />
 
+  const scheduleKey = !t.draft?.draft_evidence?.dm_attachment && !t.spam && t.client_id !== 'anna' && !swishReply && !scheduledPending && !composeOff && !replyingByEmail && (hasDraft || reply.trim())
+    ? <Btn verb="schedule-send" className="dm-k dm-schedule-key" disabled={busy} onClick={() => void openSchedule()}>{reply.trim() ? 'Schedule reply' : 'Schedule send'}</Btn> : null
   if (v4) {
     // Same closures, same keys; only the arrangement and the one-primary rule differ (SPEC-dms §2.5):
     // a stale draft, or a draft with his own words in the composer, draws Send outlined.
@@ -420,8 +422,6 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
     const sendV4 = canSendDraft
       ? <Key primary={!t.draftStale && !reply.trim()} verb="send" className="dm-send" disabled={busy || scheduledPending || emailLoading || !!emailDetailsError || draftFormattingError} onClick={() => void send()}>{replyingByEmail && (!v4 || handEmailOpen) ? `Draft: ${sendLabel}` : sendLabel}</Key>
       : primary
-    const scheduleKey = !t.draft?.draft_evidence?.dm_attachment && !t.spam && t.client_id !== 'anna' && !swishReply && !scheduledPending && !composeOff && !replyingByEmail && (hasDraft || reply.trim())
-      ? <Btn verb="schedule-send" className="dm-k dm-schedule-key" disabled={busy} onClick={() => void openSchedule()}>{reply.trim() ? 'Schedule reply' : 'Schedule send'}</Btn> : null
     return <ThreadV4 name={t.prospect_name} phone={phone} pid={t.prospect_id} scrollRef={scroll} dockRef={dock}
       head={<HeadV4 t={t} phone={phone} onBack={onBack} onCopy={() => void copy()} copied={copied} onAsk={onAsk} onMore={() => setMenu(m => (m ? null : 'top'))} moreOpen={menu === 'top'}
         onWho={() => setSheet('context')} onDelete={t.chat_provider_id && !t.spam ? () => void run(async () => { if (await verbs.deleteSeat(t)) onBack() }) : undefined} deleting={busy}
@@ -493,7 +493,7 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
         {draftError && <p className="dm-meta" role="alert">{draftError}</p>}
         {!hasDraft && !t.spam && composer(true)}
         <div className="dm-keys">
-          <div className="dm-keys-s">{!t.spam && t.client_id !== 'anna' && !swishReply && !scheduledPending && !composeOff && !replyingByEmail && (hasDraft || reply.trim()) && <Btn verb="schedule-send" className="dm-k dm-schedule-key" disabled={busy} onClick={() => void openSchedule()}>{reply.trim() ? 'Schedule reply' : 'Schedule send'}</Btn>}{small}{more}</div>
+          <div className="dm-keys-s">{scheduleKey}{small}{more}</div>
           {primary}
         </div>
         {hasDraft && !t.spam && composer(false)}

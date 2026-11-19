@@ -33,7 +33,10 @@ Deno.serve(async req => {
   }
 
   // Dispatch uses the supplied project key throughout. PostgreSQL only grants the claim to service_role.
-  const db = createClient(base, send ? token : service, options)
+  const preflight = send ? AbortSignal.timeout(12_000) : null
+  const db = createClient(base, send ? token : service, preflight ? {
+    ...options, global: { fetch: (input, init) => fetch(input, { ...init, signal: preflight }) },
+  } : options)
   const bucket = db.storage.from(BUCKET)
   try {
     if (Number(req.headers.get('content-length')) > MAX_BYTES + 32_768) return reply(413, { error: 'Choose a PDF under 10 MB.' })
@@ -43,7 +46,7 @@ Deno.serve(async req => {
     const id = multipart ? form?.get('draft_id') : input?.draft_id
     if (typeof id !== 'string' || !UUID.test(id)) return reply(400, { error: 'Invalid draft.' })
     const { data: row, error } = await db.from('outreach_messages')
-      .select('channel,direction,message_type,ai_model,approved_at,sent_at,send_blocked_at,unipile_message_id,unipile_chat_id,message_text,draft_evidence')
+      .select('channel,direction,message_type,ai_model,approved_at,sent_at,send_blocked_at,send_blocked_reason,unipile_message_id,unipile_chat_id,message_text,draft_evidence')
       .eq('id', id).maybeSingle()
     if (error) return reply(503, { error: 'Could not check the draft.' })
     if (!row || row.channel !== 'linkedin' || row.direction !== 'outbound' ||
@@ -69,11 +72,13 @@ Deno.serve(async req => {
         return reply(409, { error: 'The attachment, approved message or chat changed.' })
       }
       const file = await bucket.download(objectName(id, attachment.id))
-      if (file.error || !file.data) return reply(422, { error: 'The approved PDF is unavailable.' })
-      const payload = await providerForm(input.text, input.account_id, attachment, file.data)
+      if (file.error || !file.data) return reply(422, { code: 'pdf_file_unavailable', error: 'The approved PDF is unavailable.' })
+      let payload: FormData
+      try { payload = await providerForm(input.text, input.account_id, attachment, file.data) }
+      catch { return reply(422, { code: 'pdf_file_unavailable', error: 'The approved PDF could not be verified.' }) }
       const claimed = await db.rpc('claim_inbox_dm_pdf_transport', {
         p_id: id, p_claimed_at: input.claimed_at, p_file_id: attachment.id,
-        p_account_id: input.account_id, p_chat_id: input.chat_id, p_text: input.text,
+        p_account_id: input.account_id, p_chat_id: input.chat_id, p_text: row.message_text,
       })
       if (claimed.error || claimed.data !== true) return reply(409, { error: 'The PDF dispatch was already attempted or the approval changed.' })
       const url = new URL(['api', 'v1', 'chats', encodeURIComponent(input.chat_id), 'messages'].join('/'), `https://${dsn}`)
@@ -90,7 +95,11 @@ Deno.serve(async req => {
       const link = await bucket.createSignedUrl(objectName(id, attachment.id), 180, { download: attachment.name })
       return link.data ? reply(200, { url: link.data.signedUrl }) : reply(404, { error: 'Could not open the PDF.' })
     }
-    if (row.approved_at || row.sent_at || row.unipile_message_id || row.send_blocked_at) return reply(409, { error: 'This draft is no longer editable.' })
+    const editableHold = !row.draft_evidence.dm_attachment_transport_id &&
+      ['lint_pdf_file_unavailable', 'lint_pdf_route_changed', 'post_approval_race:scheduled_pdf_requires_review'].includes(row.send_blocked_reason)
+    if (row.approved_at || row.sent_at || row.unipile_message_id || (row.send_blocked_at && !editableHold)) {
+      return reply(409, { error: 'This draft is no longer editable.' })
+    }
     let next: Attachment | null = null
     if (multipart) {
       const file = form?.get('file')
