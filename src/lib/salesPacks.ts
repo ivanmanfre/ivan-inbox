@@ -20,7 +20,7 @@
    same table, the same columns and the same `isRealBooking` filter.
    ========================================================================== */
 import { supabase } from './supabase'
-import { isLiveBooking, type CalendarEvent } from './nextCall'
+import { reconcileCalendarEvents, type CalendarEvent } from './nextCall'
 
 // ---------------------------------------------------------------------------
 // Packs
@@ -179,5 +179,5 @@ export async function fetchWeekEvents(from: Date, to: Date): Promise<WeekEvent[]
     .order('start_time', { ascending: true })
     .limit(100)
   if (error) throw error
-  return ((data ?? []) as unknown as WeekEvent[]).filter(isLiveBooking)
+  return reconcileCalendarEvents((data ?? []) as unknown as WeekEvent[])
 }

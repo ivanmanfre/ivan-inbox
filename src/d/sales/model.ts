@@ -1,7 +1,7 @@
 // D Sales: the pure reading. Every rule is today's (wb/sales/match.ts:
 // matchPack, groupEvents, describeTimes, callPhase, callEndMs, reportIdFor;
 // lib/transcripts.ts for calls on record). Both clocks, always: Warsaw and UTC.
-import { MEETING_TYPE_LABEL, resolveMeetingType } from '../../lib/nextCall'
+import { MEETING_TYPE_LABEL, reconcileCalendarEvents, resolveMeetingType } from '../../lib/nextCall'
 import type { PackKind, PackMeta, SalesPack, WeekEvent } from '../../lib/salesPacks'
 import type { CallRow } from '../../lib/transcripts'
 import type { PackDoc } from '../../wb/sales/Doc'
@@ -87,14 +87,16 @@ export function readEvent(ev: WeekEvent, group: string, idx: PackIndex, calls: C
     withAll: (ev.attendees ?? []).filter(a => !/ivanmanfred/i.test(a)).join(', '),
     type: typeOf(ev),
     source: ev.source ? `via ${ev.source.charAt(0).toUpperCase()}${ev.source.slice(1)}` : '',
-    reportId: past ? reportIdFor(ev, slug, calls) : null,
+    reportId: past ? reportIdFor(ev, calls) : null,
   }
 }
 
 export type Fortnight = { today: CallEvent[]; later: CallEvent[]; next: CallEvent[]; earlier: CallEvent[] }
 
 export function readFortnight(events: WeekEvent[], idx: PackIndex, calls: CallRow[], now: Date): Fortnight {
-  const g = groupEvents(events, now)
+  // Reconcile here as well so an older saved calendar cannot bring back two rows.
+  const g = groupEvents(reconcileCalendarEvents(events).filter(e =>
+    (e.attendees ?? []).length > 0 || !/^\s*(?:\[Revenue Camp\]|out of office\s*$)/i.test(e.title ?? '')), now)
   const map = (k: keyof Fortnight) => g[k].map(e => readEvent(e, k, idx, calls, now))
   return { today: map('today'), later: map('later'), next: map('next'), earlier: map('earlier') }
 }

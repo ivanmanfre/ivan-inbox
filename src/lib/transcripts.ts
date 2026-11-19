@@ -35,6 +35,7 @@ export type CallRow = {
   follow_up_sent: boolean | null
   source: string | null
   meeting_type: string | null
+  calendar_event_id?: string | null
   brief: CallBrief | null
   talk_stats?: TalkStats | null
   /** After-call review (db/20261118a, Mac job call-review). Null until reviewed. */
@@ -73,7 +74,7 @@ export type CallBrief = {
 // why the raw body is a second, per-row read (fetchCallBody) rather than
 // something the list drags along and then hides behind a disclosure.
 const LIST_COLS = 'id, title, date, duration_minutes, participants, summary, action_items, '
-  + 'topics, follow_up_draft, follow_up_sent, source, meeting_type, brief, talk_stats, call_review'
+  + 'topics, follow_up_draft, follow_up_sent, source, meeting_type, calendar_event_id, brief, talk_stats, call_review'
 
 const PAGE = 200
 const MAX_PAGES = 10

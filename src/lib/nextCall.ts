@@ -37,6 +37,7 @@ export type CalendarEvent = {
   source: string | null
   referral_token: string | null
   booking_source_path: string | null
+  mirror_ids?: string[]
 }
 
 const COLS = 'id, title, start_time, end_time, attendees, meeting_url, is_all_day, is_test, ' +
@@ -68,6 +69,45 @@ export function isLiveBooking(e: { is_test: boolean | null; title: string | null
   return isRealBooking(e) && !isCancelled(e)
 }
 
+const IOS_DEMO = /^inbound on steroids\s*[-–]\s*demo call$/i
+
+export function guestEmails(attendees: string[] | null | undefined): Set<string> {
+  return new Set((attendees ?? []).map(a => a.trim().toLowerCase()).filter(a =>
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(a) && !/@(?:ivanmanfredi\.com|inboundonsteroids\.com)$/.test(a)))
+}
+
+/** Pair the Calendly placeholder with its named Google invite. Cancellation
+ * must be evaluated after pairing, so it removes the placeholder too. */
+export function reconcileCalendarEvents(events: CalendarEvent[]): CalendarEvent[] {
+  const real = events.filter(isRealBooking)
+  const discarded = new Set<string>()
+  const merged = new Map<string, CalendarEvent>()
+  for (const demo of real) {
+    if (!IOS_DEMO.test(demo.title?.trim() ?? '')) continue
+    const guests = guestEmails(demo.attendees)
+    const start = Date.parse(demo.start_time), end = Date.parse(demo.end_time ?? '')
+    if (!guests.size || !Number.isFinite(start)) continue
+    const matches = real.filter(invite => invite.id !== demo.id
+      && /\band Ivan Manfredi\s*$/i.test(invite.title ?? '')
+      && Date.parse(invite.start_time) === start && Date.parse(invite.end_time ?? '') === end
+      && [...guestEmails(invite.attendees)].some(email => guests.has(email)))
+    if (matches.length !== 1) continue
+
+    const invite = merged.get(matches[0].id) ?? matches[0]
+    discarded.add(demo.id)
+    merged.set(invite.id, {
+      ...invite,
+      meeting_url: invite.meeting_url ?? demo.meeting_url,
+      meeting_type: invite.meeting_type ?? demo.meeting_type ?? 'discovery_sales',
+      source: invite.source ?? demo.source,
+      referral_token: invite.referral_token ?? demo.referral_token,
+      booking_source_path: invite.booking_source_path ?? demo.booking_source_path,
+      mirror_ids: [...(invite.mirror_ids ?? []), demo.id],
+    })
+  }
+  return real.filter(e => !discarded.has(e.id)).map(e => merged.get(e.id) ?? e).filter(e => !isCancelled(e))
+}
+
 export async function fetchUpcomingEvents(now: Date = new Date()): Promise<CalendarEvent[]> {
   const nowIso = now.toISOString()
   const weekIso = new Date(now.getTime() + 7 * 86_400_000).toISOString()
@@ -85,7 +125,7 @@ export async function fetchUpcomingEvents(now: Date = new Date()): Promise<Calen
   // infer the select shape and falls back to a safety-net error type. Cast
   // through unknown, same as every other ad-hoc read in this codebase that
   // touches a table outside the generated types.
-  return ((data ?? []) as unknown as CalendarEvent[]).filter(isLiveBooking)
+  return reconcileCalendarEvents((data ?? []) as unknown as CalendarEvent[])
 }
 
 const DISCOVERY_RX = /\b(discovery|intro|fit\s*call|sales|consult|consultation|first\s*call)\b/i
@@ -114,6 +154,7 @@ const VALID_KEYS = new Set<string>(['discovery_sales', 'technical_audit', 'clien
 // at all rather than a question mark.
 export function resolveMeetingType(e: { meeting_type: string | null; title: string }): MeetingTypeKey | null {
   if (e.meeting_type && VALID_KEYS.has(e.meeting_type)) return e.meeting_type as MeetingTypeKey
+  if (IOS_DEMO.test(e.meeting_type?.trim() ?? '') || IOS_DEMO.test(e.title?.trim() ?? '')) return 'discovery_sales'
   return classifyTitle(e.title)
 }
 

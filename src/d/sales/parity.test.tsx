@@ -12,6 +12,7 @@ import { filterFortnight, tokenLine } from './Filter'
 import { FortnightList } from './Fortnight'
 import { moreThisWeek, nextCall, packIndex, readFortnight } from './model'
 import { NextCallPlate } from './NextCall'
+import { buildArchive } from './archive'
 
 const NOW = new Date('2026-09-18T10:00:00Z')
 const ev = (id: string, start: string, extra: Partial<WeekEvent> = {}): WeekEvent => ({
@@ -48,6 +49,27 @@ describe('Next-call plate', () => {
 })
 
 describe('Fortnight', () => {
+  it('omits webinars and free-time blocks, and requires guest evidence for a report link', () => {
+    const start = '2026-09-18T08:00:00Z'
+    const known = ev('known', start, { title: 'Jamie Guest and Ivan Manfredi', attendees: ['jamie@example.com'] })
+    const missing = ev('missing', start, { title: 'Morgan Other and Ivan Manfredi', attendees: ['morgan@example.com'] })
+    const webinar = ev('webinar', start, { title: '[Revenue Camp] Workshop', attendees: [] })
+    const block = ev('block', start, { title: 'Out of office', attendees: [] })
+    const report = call('report', { title: 'Jamie Guest and Ivan Manfredi', date: start, source: 'ivan-listener' })
+    const rows = readFortnight([webinar, known, block, missing], packIndex([]), [report], NOW).today
+    expect(rows.map(r => [r.ev.id, r.reportId])).toEqual([['known', 'report'], ['missing', null]])
+  })
+
+  it('carries report links from a merged booking onto the named invite', () => {
+    const start = '2026-09-18T08:00:00Z'
+    const end = '2026-09-18T08:30:00Z'
+    const named = ev('named', start, { title: 'Jamie Guest and Ivan Manfredi', attendees: ['jamie@example.com'], end_time: end })
+    const mirror = { ...named, id: 'mirror', title: 'Inbound On Steroids - Demo Call', meeting_url: null }
+    const report = call('report', { calendar_event_id: 'mirror', date: start })
+    const rows = readFortnight([mirror, named], packIndex([]), [report], NOW).today
+    expect(rows.map(r => [r.ev.id, r.reportId])).toEqual([['named', 'report']])
+  })
+
   it('a row carries compare; the filter narrows with today\'s tokens and says so', () => {
     const f = readFortnight([ev('a', '2026-09-18T13:00:00Z'), ev('b', '2026-09-21T13:00:00Z', { title: 'Unknown person', attendees: [] })], idx, [], NOW)
     const tokens = [{ id: '1', field: 'pack', op: 'has no' as const, value: '' }]
@@ -76,7 +98,7 @@ describe('Call window', () => {
     renderInFrame(<CallWindow row={row} at={1} of={1} onStep={() => {}} layout="phone" />, { hash: '#exp/d/sales' })
     const t = document.body.textContent!
     for (const s of ['The hook to open a proposal with', 'Open with the 3 lost deals', 'Content pulled out of this call (1)', 'Why audits beat ads', 'Read of the room',
-      'Fit', '4 out of 5', 'What hurts', 'No pipeline', 'What they run on', 'What set this off', 'Kind', '2026', 'D Four', '1 still open', 'Reading only.']) expect(t).toContain(s)
+      'Fit', '4 out of 5', 'What hurts', 'No pipeline', 'What they run on', 'What set this off', 'Kind', '2026', 'D Four', 'Action items', 'Reading only.']) expect(t).toContain(s)
   })
   it('an unknown call id says it did not load, and j / k step on the phone too', () => {
     const step = vi.fn()
@@ -92,7 +114,7 @@ describe('Call window', () => {
 describe('Calls on record, phone', () => {
   it('past six, "show them" opens the rest', () => {
     const calls = Array.from({ length: 9 }, (_, i) => call(`r${i}`))
-    renderInFrame(<CallsOnRecord calls={calls} state="ok" seg="all" setSeg={() => {}} openId={null} onOpen={() => {}} onRetry={() => {}} limit={6} />, { hash: '#exp/d/sales', layout: 'phone' })
+    renderInFrame(<CallsOnRecord lists={buildArchive(calls).lists} state="ok" seg="all" setSeg={() => {}} openId={null} onOpen={() => {}} onRetry={() => {}} limit={6} />, { hash: '#exp/d/sales', layout: 'phone' })
     expect(document.querySelectorAll('[data-call]')).toHaveLength(6)
     fireEvent.click(document.querySelector('[data-verb="show-more"]')!)
     expect(document.querySelectorAll('[data-call]')).toHaveLength(9)

@@ -10,9 +10,15 @@ const mk = (id: string, ivanPct: number | null): CallRow => ({
   id, title: 'Meet', date: '2026-11-10T13:00:00Z', duration_minutes: 30, participants: ['Ivan Manfredi', 'Ada'],
   talk_stats: ivanPct == null ? null : { words: { 'Ivan Manfredi': 10, Ada: 5 }, total: 15, ivan_pct: ivanPct },
   summary: 'S', action_items: null, topics: null, follow_up_draft: null, follow_up_sent: false,
-  source: 'ivan-listener', meeting_type: null, brief: null,
+  source: 'ivan-listener', meeting_type: 'sales_call', brief: null,
 })
-const calls = [mk('a', 70), mk('b', null)]
+const calls = [
+  mk('a', 70), mk('b', null),
+  { ...mk('client', null), source: 'fathom-risedtc' },
+  { ...mk('client-copy', null), source: 'fathom-risedtc' },
+  { ...mk('checkin', null), meeting_type: 'client_checkin' },
+  { ...mk('unclear', null), meeting_type: null, title: 'Meeting with Ivan' },
+]
 vi.mock('../../../lib/supabase', () => ({
   supabase: {
     rpc: vi.fn(async () => ({ error: null, data: [
@@ -31,13 +37,14 @@ vi.mock('../useSalesData', () => ({
   }),
 }))
 import SalesPage from './SalesV4'
+import SalesV3 from '../V3'
 
 afterEach(cleanup)
 const route = (q = '', sub: string | null = null): DRoute => ({ place: 'sales', sub, query: new URLSearchParams(q) })
 
-it('opens on the Mine segment; the row shows a talk line only when the share is known', () => {
+it('opens on sales recordings and shows a talk line only when the share is known', () => {
   render(<SalesPage layout="desktop" route={route()} navigate={() => {}} />)
-  expect(document.querySelector('.sl4-segments [aria-selected="true"]')?.textContent).toContain('Mine')
+  expect(document.querySelector('.sl4-segments [aria-selected="true"]')?.textContent).toContain('Sales')
   expect(screen.getByRole('link', { name: 'Call results' }).getAttribute('href')).toBe('#exp/d/sales/results')
   const rows = document.querySelectorAll('[data-call]')
   expect(rows.length).toBe(2)
@@ -46,9 +53,19 @@ it('opens on the Mine segment; the row shows a talk line only when the share is 
   expect(talk[0].textContent).toBe('You 70% of the talking')
 })
 
-it('the phone back bar names the default segment honestly', () => {
-  render(<SalesPage layout="phone" route={route('call=a')} navigate={() => {}} />)
-  expect(document.querySelector('.sl-back')?.textContent).toContain('your calls, last 60 days')
+it('client recordings have their own tab, and older call links open in the correct category', () => {
+  const first = render(<SalesPage layout="desktop" route={route('seg=clients')} navigate={() => {}} />)
+  expect([...document.querySelectorAll('[data-call]')].map(row => row.getAttribute('data-call'))).toEqual(['client', 'checkin'])
+  expect(document.querySelector('[data-call="client"]')?.textContent).toContain('RISE DTC')
+  first.unmount()
+  render(<SalesPage layout="phone" route={route('seg=mine&call=client-copy')} navigate={() => {}} />)
+  expect(document.querySelector('.sl-back')?.textContent).toContain('1 of 2, Clients')
+  expect(document.querySelector('[data-open-call="client"]')).toBeTruthy()
+})
+
+it('the alternate Sales layout uses the same client archive', () => {
+  render(<SalesV3 layout="desktop" route={route('seg=clients')} navigate={() => {}} />)
+  expect([...document.querySelectorAll('[data-call]')].map(row => row.getAttribute('data-call'))).toEqual(['client', 'checkin'])
 })
 
 it('shows a recorded no-show without a transcript and keeps missing outcomes unconfirmed', async () => {

@@ -60,7 +60,7 @@ describe('Sales parts', () => {
     const step = vi.fn()
     renderInFrame(<CallWindow row={row} at={2} of={5} onStep={step} layout="desktop" />, { hash: '#exp/d/sales' })
     expect(document.body.textContent).toContain('the end.')
-    expect(document.body.textContent).toContain('You said you would')
+    expect(document.body.textContent).toContain('Action itemsYours')
     fireEvent.keyDown(window, { key: 'j' })
     fireEvent.keyDown(window, { key: 'k' })
     expect(step.mock.calls).toEqual([[1], [-1]])

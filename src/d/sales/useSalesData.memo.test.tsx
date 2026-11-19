@@ -55,3 +55,14 @@ it('lands the calendar without waiting for a slow call archive or pack index', a
   expect(read.result.current.state.packs).toBe('loading')
   expect(read.result.current.state.calls).toBe('loading')
 })
+
+it('clears the old calendar when the last live booking was removed', async () => {
+  vi.mocked(fetchWeekEvents).mockResolvedValueOnce([event]).mockResolvedValueOnce([])
+  vi.mocked(fetchPackIndex).mockResolvedValue([])
+  vi.mocked(fetchCalls).mockResolvedValue([])
+  const read = renderHook(() => useSalesData())
+  await waitFor(() => expect(read.result.current.events).toEqual([event]))
+  act(() => read.result.current.retry())
+  await waitFor(() => expect(read.result.current.events).toEqual([]))
+  expect(read.result.current.state.events).toBe('ok')
+})

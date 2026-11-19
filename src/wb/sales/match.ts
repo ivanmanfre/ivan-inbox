@@ -8,7 +8,7 @@
    `Intl.DateTimeFormat` with an explicit `timeZone`, and no library is added
    to do it.
    ========================================================================== */
-import { isStartingSoon, type When } from '../../lib/nextCall'
+import { guestEmails, isStartingSoon, type When } from '../../lib/nextCall'
 import type { PackMeta, WeekEvent } from '../../lib/salesPacks'
 import type { CallRow } from '../../lib/transcripts'
 
@@ -312,29 +312,26 @@ export function packsInWindow(
 // reads the same rule.
 // ---------------------------------------------------------------------------
 
-/**
- * `call_reports` carries no `calendar_event_id`, so the link from a past call to
- * its report is inferred, and deliberately narrowly: the transcript has to be
- * from the same WARSAW day AND share a word with the event. Either condition on
- * its own would attach the wrong report on any day that held two calls.
- */
-export function reportIdFor(event: WeekEvent, slug: string | null, calls: CallRow[]): string | null {
-  const day = dayKey(event.start_time)
-  const sameDay = calls.filter(c => c.date && dayKey(c.date) === day)
-  if (sameDay.length === 0) return null
-  const words = new Set<string>()
-  for (const a of event.attendees ?? []) {
-    const local = norm(a.split('@')[0] ?? '')
-    if (local.length >= 4) words.add(local)
-  }
-  for (const w of `${event.title ?? ''} ${slug ?? ''}`.split(/[^A-Za-z0-9]+/)) {
-    const t = norm(w)
-    if (t.length >= 4) words.add(t)
-  }
-  const hit = sameDay.find(c => {
-    const t = norm(c.title ?? '')
-    return [...words].some(w => t.includes(w))
+const REPORT_TITLE_WORDS = new Set(['ivan', 'manfredi', 'meet', 'meeting', 'zoom', 'with', 'demo', 'call', 'inbound', 'steroids'])
+const reportWords = (text: string) => text.toLowerCase().match(/[a-z0-9]{4,}/g)?.filter(w => !REPORT_TITLE_WORDS.has(w)) ?? []
+
+/** An exact calendar id wins. Older recordings need a unique near-time guest match. */
+export function reportIdFor(event: WeekEvent, calls: CallRow[]): string | null {
+  const ids = new Set([event.id, ...(event.mirror_ids ?? [])])
+  const exact = calls.filter(c => c.calendar_event_id && ids.has(c.calendar_event_id))
+  if (exact.length) return exact.length === 1 ? exact[0].id : null
+
+  const guests = guestEmails(event.attendees)
+  const namedGuest = event.title?.match(/^(.+?)\s+and Ivan Manfredi\s*$/i)?.[1] ?? ''
+  const words = new Set(reportWords(namedGuest))
+  for (const email of guests) for (const word of reportWords(localPart(email))) words.add(word)
+  const start = Date.parse(event.start_time)
+  const matches = calls.filter(c => {
+    if (c.calendar_event_id || c.source === 'fathom-risedtc' || c.source === 'fireflies-arch') return false
+    if (!(Math.abs(Date.parse(c.date) - start) <= 15 * 60_000)) return false
+    return [...guestEmails(c.participants)].some(email => guests.has(email))
+      || reportWords(c.title ?? '').some(word => words.has(word))
   })
-  return hit?.id ?? null
+  return matches.length === 1 ? matches[0].id : null
 }
 

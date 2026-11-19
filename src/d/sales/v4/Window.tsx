@@ -1,12 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { actionItems, callTopics, people, talkLine, type CallRow, type ReviewPattern } from '../../../lib/transcripts'
+import { callTopics, people, talkLine, type CallRow, type ReviewPattern } from '../../../lib/transcripts'
 import { Review } from './Review'
-import { Items, Text, Said } from '../CallWindow'
+import { CallActions, Text, Said } from '../CallWindow'
 import { CallRoom, callWhen } from '../CallRoom'
 import { otherPerson } from './model'
-
-// An item with no owner, or one the notes call "Unclear", is nobody's yet: it is not theirs.
-const unowned = (o: string | null) => !o || /^(?:unclear|unknown|tbd)$/i.test(o.trim())
+import { archiveActions, clientRecorder } from '../archive'
 
 /** `sendsRecorded`: some call on record has follow_up_sent true. Nothing writes that flag today (0 of 24 drafts), so
  *  "Not sent" would be on every draft; the pill shows only once something records sends (review 2026-11-06). */
@@ -35,7 +33,7 @@ export function Window({ row, at, of, onStep, layout, missing, sendsRecorded = f
   }
   if (missing) return <div className="sl4-window" data-call-missing><p className="sl4-empty">This call didn't load. It is not in the archive that was read. Pick one from calls on record.</p></div>
   if (!row) return <div className="sl4-window"><p className="sl4-empty">No call open. Pick one from calls on record.</p></div>
-  const items = actionItems(row), b = row.brief, who = people(row.participants), topics = callTopics(row)
+  const items = archiveActions(row), b = row.brief, who = people(row.participants), topics = callTopics(row)
   const talk = talkLine(row)
   const speakers = Object.entries(row.talk_stats?.words ?? {}).sort((a, b) => b[1] - a[1])
   const objections = (b?.objections ?? []).map(x => (x ?? '').trim()).filter(Boolean)
@@ -43,13 +41,11 @@ export function Window({ row, at, of, onStep, layout, missing, sendsRecorded = f
   return <div className={`sl4-window sl4-window-${layout}`} data-open-call={row.id}>
     <header className="sl4-window-head"><div className="sl4-eyebrow">Call · {callWhen(row.date)}</div>
       <nav aria-label="Step through calls"><button type="button" data-verb="prev-call" disabled={at <= 1} aria-label="Previous call (k)" title="Previous call · k" onClick={() => onStep(-1)}>‹</button><button type="button" data-verb="next-call" disabled={at >= of} aria-label="Next call (j)" title="Next call · j" onClick={() => onStep(1)}>›</button><small>{at} of {of}</small></nav>
-      <h2>{otherPerson(row)}</h2><small>{row.duration_minutes ? `${row.duration_minutes} min` : 'length not recorded'}{who.length ? ` · ${who.join(', ')}` : ''}</small>
+      <h2>{otherPerson(row)}</h2><small>{[clientRecorder(row), row.duration_minutes ? `${row.duration_minutes} min` : 'length not recorded', who.join(', ')].filter(Boolean).join(' · ')}</small>
       {talk && <section className="sl4-talk" data-talk><span className={talk.warn ? 'sl4-warn' : undefined}>{talk.text}</span>{speakers.map(([n, w]) => <small key={n}>{n} {w} words</small>)}</section>}
     </header>
     <div className="sl4-window-body">
-      <div className="sl4-you"><Items head="You owe" list={items.filter(i => i.mine)} /></div>
-      <Items head="They owe" list={items.filter(i => !i.mine && !unowned(i.owner))} />
-      <Items head="Open, no owner" list={items.filter(i => !i.mine && unowned(i.owner))} />
+      <CallActions items={items} />
       <Text head="Next step" text={b?.next_step} />
       <Review row={row} pattern={pattern} />
       {repeats.length > 0 && <div className="sl-cb" data-repeats><div className="sl-cbh">Said more than once</div><ul className="sl-dots">{repeats.map((r,i) => <li key={i}>{r.times} times: {r.point.trim()}</li>)}</ul></div>}

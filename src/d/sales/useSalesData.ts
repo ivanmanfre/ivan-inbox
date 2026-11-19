@@ -28,7 +28,7 @@ export function useSalesData() {
   const [cl, setCl] = useState<ReadState>(() => recall(CALLS_KEY) ? 'ok' : 'loading')
   const [saved, setSaved] = useState(() => ({ events: Boolean(recall(eventsKey(week.from, week.to))), packs: Boolean(recall(PACKS_KEY)), calls: Boolean(recall(CALLS_KEY)) }))
   const [evErr, setEvErr] = useState('')
-  const rows = useRef({ events, packs, calls })
+  const rows = useRef({ packs, calls })
   const activeWeek = useRef(eventsKey(week.from, week.to))
   const [reads, setReads] = useState(0)
   const retry = useCallback(() => setReads(n => n + 1), [])
@@ -49,18 +49,14 @@ export function useSalesData() {
     if (activeWeek.current !== key) {
       activeWeek.current = key
       const seeded = recall<WeekEvent[]>(key)
-      rows.current.events = seeded?.value ?? []
-      setEvents(rows.current.events)
+      setEvents(seeded?.value ?? [])
       setEv(seeded ? 'ok' : 'loading')
       setSaved(s => ({ ...s, events: Boolean(seeded) }))
     }
     void fetchWeekEvents(week.from, week.to).then(value => {
       if (!active) return
       readAt.current = Date.now()
-      if (emptyOverKnown(value, rows.current.events)) {
-        setEv('failed'); setEvErr('The calendar returned empty over known events.'); return
-      }
-      rows.current.events = value; setEvents(value); setEv('ok'); setEvErr(''); setSaved(s => ({ ...s, events: false })); remember(key, value)
+      setEvents(value); setEv('ok'); setEvErr(''); setSaved(s => ({ ...s, events: false })); remember(key, value)
     }).catch(reason => {
       if (!active) return
       readAt.current = Date.now()

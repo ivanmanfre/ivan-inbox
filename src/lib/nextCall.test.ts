@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { describeWhen, isRealBooking, isStartingSoon, resolveMeetingType, type CalendarEvent, isCancelled, isLiveBooking } from './nextCall'
+import { describeWhen, isRealBooking, isStartingSoon, reconcileCalendarEvents, resolveMeetingType, type CalendarEvent, isCancelled, isLiveBooking } from './nextCall'
 
 const NOW = new Date('2026-08-22T12:00:00Z')
 
@@ -90,5 +90,26 @@ describe('isCancelled / isLiveBooking', () => {
     expect(isLiveBooking({ is_test: null, title: 'Paolo and Ivan Manfredi' })).toBe(true)
     expect(isLiveBooking({ is_test: true, title: 'Paolo and Ivan Manfredi' })).toBe(false)
     expect(isLiveBooking({ is_test: null, title: 'Canceled: Paolo and Ivan Manfredi' })).toBe(false)
+  })
+})
+
+describe('reconcileCalendarEvents', () => {
+  const demo = ev({ id: 'demo', title: 'Inbound On Steroids - Demo Call', attendees: ['person@example.com', 'im@ivanmanfredi.com'], referral_token: 'ref' })
+  const named = ev({ id: 'named', title: 'Jamie Guest and Ivan Manfredi', attendees: ['PERSON@example.com'], meeting_url: 'https://meet.google.com/example' })
+
+  it('keeps the named invite, call link and booking metadata', () => {
+    const reconciled = reconcileCalendarEvents([demo, named])
+    expect(reconciled).toEqual([expect.objectContaining({ id: 'named', referral_token: 'ref', meeting_url: named.meeting_url })])
+    expect(resolveMeetingType(reconciled[0])).toBe('discovery_sales')
+  })
+
+  it('removes the same booking when its named invite was canceled', () => {
+    expect(reconcileCalendarEvents([{ ...named, title: 'Canceled: ' + named.title }, demo])).toEqual([])
+  })
+
+  it('retains separate bookings, including when only the owner email matches', () => {
+    const unrelated = { ...named, attendees: ['other@example.com', 'im@ivanmanfredi.com'] }
+    const nextDay = { ...named, id: 'later', start_time: '2026-08-23T13:00:00Z', end_time: '2026-08-23T13:30:00Z' }
+    expect(reconcileCalendarEvents([demo, unrelated, nextDay]).map(e => e.id)).toEqual(['demo', 'named', 'later'])
   })
 })

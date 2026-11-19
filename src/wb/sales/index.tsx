@@ -299,7 +299,7 @@ export function SalesSurface({ onOpenCall }: {
     const phase = callPhase(e, now)
     const past = group === 'earlier' || phase === 'done'
     const running = !past && phase === 'running'
-    const reportId = past ? reportIdFor(e, slug, calls) : null
+    const reportId = past ? reportIdFor(e, calls) : null
     const kind = kindLine(e, slug !== null)
     // E3: the one verb this row is for, revealed where the clocks are.
     const verb = salesVerbFor({
@@ -501,7 +501,7 @@ export function SalesSurface({ onOpenCall }: {
             return salesRowMatches({
               when: g,
               pack: slug !== null,
-              report: past ? reportIdFor(e, slug, calls) !== null : false,
+              report: past ? reportIdFor(e, calls) !== null : false,
             }, tokens)
           })
           // Today is drawn even when it is empty, because "nothing today" is an

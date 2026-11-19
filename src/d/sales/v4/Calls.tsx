@@ -1,17 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
-import { LEAD_LABEL, actionItems, callStats, leadLine, owedByMe, segmentCalls, talkLine, type CallRow, type SalesSegment } from '../../../lib/transcripts'
+import { talkLine, type CallRow } from '../../../lib/transcripts'
 import { warsawDm } from '../../ui/time'
 import { Segmented } from '../../../ds/Segmented'
 import { callsByWeek, otherPerson } from './model'
 import type { ReadState } from '../useSalesData'
+import { archiveActions, ARCHIVE_TABS, clientRecorder, type ArchiveTab } from '../archive'
 
-// CALLS ON RECORD: three segments with their counts (unfinished business
-// first), then the rows. Read only: nothing here marks an item done.
-
-export const SEG_LABEL: Record<SalesSegment, string> = { mine: 'Mine', open: 'Action items', recent: 'Last 7 days', all: 'All' }
-
-export function CallsOnRecord({ calls, state, seg, setSeg, openId, onOpen, onRetry, limit, now = new Date() }: {
-  calls: CallRow[]; state: ReadState; seg: SalesSegment; setSeg: (s: SalesSegment) => void
+export function CallsOnRecord({ lists, state, seg, setSeg, openId, onOpen, onRetry, limit, now = new Date() }: {
+  lists: Record<ArchiveTab, CallRow[]>; state: ReadState; seg: ArchiveTab; setSeg: (tab: ArchiveTab) => void
   openId: string | null; onOpen: (id: string) => void; onRetry: () => void; limit?: number; now?: Date
 }) {
   const box = useRef<HTMLElement>(null)
@@ -20,38 +16,36 @@ export function CallsOnRecord({ calls, state, seg, setSeg, openId, onOpen, onRet
     if (!openId) return
     box.current?.querySelector(`[data-call="${openId.replace(/"/g, "")}"]`)?.scrollIntoView?.({ block: "nearest" })
   }, [openId, seg])
-  const known = state === 'ok' || calls.length > 0
-  const st = callStats(calls)
-  const weeks = callsByWeek(calls, now, state)
+  const queue = lists[seg]
+  const known = state === 'ok' || lists.all.length > 0
+  const weeks = callsByWeek(queue, now, state)
   const max = Math.max(1, ...(weeks?.map(w => w.n) ?? []))
-  const queue = segmentCalls(calls, seg, now)
   const [more, setMore] = useState(false)
   const shown = limit && !more ? queue.slice(0, limit) : queue
-  const counts: Record<SalesSegment, number> = { mine: segmentCalls(calls, 'mine', now).length, open: st.withActions, recent: st.week, all: st.total }
   return (
     <section className="sl4-rec" aria-label="Calls on record" ref={box}>
       <div className="sl4-record-head"><h2 className="sl4-eyebrow">Calls on record</h2>{weeks && <div className="sl4-spark" aria-label="Calls in the last 8 weeks">{weeks.map(w => <button key={w.day} type="button" title={`Week of ${w.day}: ${w.n} calls${w.avg != null ? ` · ${w.avg}m avg` : ''}`} aria-label={`Week of ${w.day}: ${w.n} calls`}><i data-current={w.current} style={{ height: `${Math.max(2,w.n / max * 100)}%` }} /></button>)}</div>}</div>
       {state === 'failed' && (
-        <div className="sl-warn">{calls.length ? 'The last read failed. These are the calls that loaded before it.' : 'The call archive did not load. This is not an empty archive, it is an unread one.'}
+        <div className="sl-warn">{lists.all.length ? 'The last read failed. These are the calls that loaded before it.' : 'The call archive did not load. This is not an empty archive, it is an unread one.'}
           <button type="button" data-verb="retry" onClick={onRetry}>Read again</button></div>
       )}
-      {state === 'loading' && calls.length === 0 && <div className="sl-quiet">Reading the call archive…</div>}
-      <Segmented markerId="sl4-segment" className="sl4-segments" label="Calls on record" value={seg} onChange={s => setSeg(s as SalesSegment)} options={(['mine','open','recent','all'] as SalesSegment[]).map(s => ({ id: s, label: <>{s === 'recent' ? '7 days' : SEG_LABEL[s]} <b>{known ? counts[s] : state === 'failed' ? '?' : <span className="ols-skeleton" aria-label="Reading count" />}</b></> }))} />
+      {state === 'loading' && lists.all.length === 0 && <div className="sl-quiet">Reading the call archive…</div>}
+      <Segmented markerId="sl4-segment" className="sl4-segments" label="Calls on record" value={seg} onChange={s => setSeg(s as ArchiveTab)} options={ARCHIVE_TABS.map(tab => ({ id: tab.id, label: <>{tab.label} <b>{known ? lists[tab.id].length : state === 'failed' ? '?' : <span className="ols-skeleton" aria-label="Reading count" />}</b></> }))} />
       {state === 'ok' && queue.length === 0 && (
-        <div className="sl-quiet">{seg === 'mine' ? 'None of your own calls in the last 60 days.' : seg === 'open' ? 'Nothing was left open on any call.' : seg === 'recent' ? 'No calls in the last seven days.' : 'No calls have been transcribed yet.'}</div>
+        <div className="sl-quiet">{ARCHIVE_TABS.find(tab => tab.id === seg)?.empty}</div>
       )}
       {shown.map(c => {
-        const n = actionItems(c).length
-        const mine = owedByMe(c)
-        const lead = leadLine(c)
+        const n = archiveActions(c).length
+        const preview = c.brief?.next_step?.trim() || c.summary?.trim()
+        const recorder = clientRecorder(c)
         const talk = talkLine(c)
-                return (
+        return (
           <button key={c.id} type="button" className={`sl4-cr${c.id === openId ? ' sl-on' : ''}`} data-call={c.id} onClick={() => onOpen(c.id)}>
-            <span className="sl4-crt"><b>{otherPerson(c)}</b><span className="sl4-crm">{c.date ? warsawDm(c.date) : 'no date'}</span></span>
+            <span className="sl4-crt"><b>{otherPerson(c)}</b><span className="sl4-crm">{[recorder, c.date ? warsawDm(c.date) : 'no date'].filter(Boolean).join(' · ')}</span></span>
             {talk && <span className={`sl4-crtalk${talk.warn ? ' sl4-warn' : ''}`} data-talk>{talk.text}</span>}
             <span className="sl4-crb">
-              {lead ? <span className="sl4-crl"><i>{LEAD_LABEL[lead.kind]}:</i> {lead.text}</span> : <span className="sl4-crl" />}
-              {n > 0 && <span className={`sl4-crn${mine > 0 ? ' sl4-mine' : ''}`} title={mine > 0 ? `${mine} of ${n} open items are yours` : `${n} open item${n === 1 ? '' : 's'}, none yours`}>{mine > 0 ? `${mine} for you` : `${n} open`}</span>}
+              <span className="sl4-crl">{preview}</span>
+              {n > 0 && <span className="sl4-crn">{n} {n === 1 ? 'action' : 'actions'}</span>}
             </span>
           </button>
         )

@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { actionItems, callTitle, callTopics, fetchCallBody, hasOpenBusiness, people, splitBody, type ActionItem, type CallRow } from '../../lib/transcripts'
-import { DIcon } from '../ui/icons'
+import { callTitle, callTopics, fetchCallBody, people, splitBody, type ActionItem, type CallRow } from '../../lib/transcripts'
 import { Key } from '../ui/Key'
 import { CallRoom, callWhen, Topics } from './CallRoom'
+import { archiveActions } from './archive'
 
 // THE CALL WINDOW. What was promised (yours apart from theirs), the next step,
 // what they pushed back on, the summary, the follow-up draft IN FULL (the judge
@@ -10,17 +10,29 @@ import { CallRoom, callWhen, Topics } from './CallRoom'
 // fold, read only when opened. Previous (k) / Next (j) step the queue. Read
 // only: nothing on this pane writes or reaches anybody.
 
-export function Items({ head, list }: { head: string; list: ActionItem[] }) {
+function Items({ head, list }: { head: string; list: ActionItem[] }) {
   if (list.length === 0) return null
   return (
     <div className="sl-cb">
       <div className="sl-cbh">{list.length === 1 ? head : `${head} (${list.length})`}</div>
       <ul>{list.map((i, n) => (
-        <li key={n}><DIcon name="check" /><span>{i.action}
+        <li key={n}><span>{i.action}
           {i.owner && !i.mine && <em> · {i.owner}</em>}{i.due && <em> · due {i.due}</em>}
           {i.why && <small>{i.why}</small>}</span></li>
       ))}</ul>
     </div>
+  )
+}
+
+export function CallActions({ items }: { items: ActionItem[] }) {
+  if (!items.length) return null
+  return (
+    <section className="sl-call-actions" aria-label="Action items">
+      <h3>Action items</h3>
+      <Items head="Yours" list={items.filter(i => i.mine)} />
+      <Items head="Other owners" list={items.filter(i => !i.mine && i.owner)} />
+      <Items head="Unassigned" list={items.filter(i => !i.owner)} />
+    </section>
   )
 }
 
@@ -73,7 +85,7 @@ export function CallWindow({ row, at, of, onStep, layout, missing }: {
 
   if (missing) return <div className="sl-cw" data-call-missing><div className="sl-quiet sl-big">This call didn't load. It is not in the archive that was read: it may have been removed, or the link is from another account. Pick one from calls on record.</div></div>
   if (!row) return <div className="sl-cw"><div className="sl-quiet sl-big">No call open. Pick one from calls on record.</div></div>
-  const items = actionItems(row)
+  const items = archiveActions(row)
   const b = row.brief
   const who = people(row.participants)
   const objections = (b?.objections ?? []).map(x => (x ?? '').trim()).filter(Boolean)
@@ -83,11 +95,10 @@ export function CallWindow({ row, at, of, onStep, layout, missing }: {
       <div className="sl-cwh">
         <span className="sl-eb">Call</span>
         <b>{callTitle(row.title)}</b>
-        <small>{callWhen(row.date)}{hasOpenBusiness(row) ? ` · ${items.length} still open` : ''} · {row.duration_minutes ? `${row.duration_minutes} minutes` : 'length not recorded'}{who.length ? ` · ${who.join(', ')}` : ''}</small>
+        <small>{callWhen(row.date)} · {row.duration_minutes ? `${row.duration_minutes} minutes` : 'length not recorded'}{who.length ? ` · ${who.join(', ')}` : ''}</small>
       </div>
       <div className="sl-cwb">
-        <Items head="You said you would" list={items.filter(i => i.mine)} />
-        <Items head="They said they would" list={items.filter(i => !i.mine)} />
+        <CallActions items={items} />
         <Text head="Next step" text={b?.next_step} />
         {objections.length > 0 && <div className="sl-cb"><div className="sl-cbh">They pushed back on</div><ul className="sl-dots">{objections.map((o, i) => <li key={i}>{o}</li>)}</ul></div>}
         <Text head="The hook to open a proposal with" text={b?.proposal_hook} />
