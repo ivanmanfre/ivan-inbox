@@ -172,6 +172,9 @@ function DeskList({ desk, locked, layout }: { desk: DeskHandle; locked: boolean;
   // Replies waiting to be announced: kept until the line is actually published, so a second finish before the
   // next frame joins the same announcement instead of cancelling the first.
   const queued = useRef<DeskMessage[]>([])
+  const frame = useRef(0)
+  // One pending frame across history updates; only leaving the desk cancels it.
+  useEffect(() => () => cancelAnimationFrame(frame.current), [])
   const doneKey = messages.filter(m => m.role === 'assistant' && !m.answers && m.status === 'done').map(m => m.id).join(',')
   useEffect(() => {
     if (!desk.loaded) return
@@ -182,15 +185,16 @@ function DeskList({ desk, locked, layout }: { desk: DeskHandle; locked: boolean;
     if (!fresh.length) return
     fresh.forEach(m => seenReplies.current!.add(m.id))
     queued.current.push(...fresh)
+    if (frame.current) return
     setSaid('')
-    const raf = requestAnimationFrame(() => {
+    frame.current = requestAnimationFrame(() => {
+      frame.current = 0
       const all = queued.current.splice(0)
       if (!all.length) return
       const one = all[0]
       setSaid(all.length > 1 ? `${all.length} new messages from the desk.`
         : one.origin === 'proactive' ? 'The desk wrote first.' : one.origin === 't3' ? 'A result came back from T3.' : 'The desk answered.')
     })
-    return () => cancelAnimationFrame(raf)
   }, [doneKey, desk.loaded]) // eslint-disable-line react-hooks/exhaustive-deps
   const lastUser = (() => { for (let i = messages.length - 1; i >= 0; i--) if (messages[i].role === 'user') return i; return -1 })()
   let day = ''
@@ -584,6 +588,8 @@ function ActionRow({ a, desk }: { a: DeskAction; at: string; desk: DeskHandle })
         {a.target && <small className="dk-act-post"><span className="dk-h">{a.target.handle}</span> {a.target.first_line}</small>}
         {/* The server's note on this change (a duplicate, a write it could not record): on the card, every state. */}
         {a.detail && a.state !== 'failed' && !/^[a-z_]+$/.test(a.detail) && <small className="dk-act-note">{a.detail}</small>}
+        {/* Deleting has no Undo once it is done: the card says so before the tap. */}
+        {held && a.kind === 'delete' && <small className="dk-warn">Deleting can't be undone.</small>}
         {failed && <small className="dk-warn" role="alert">{failed.error}</small>}
       </span>
       {(a.state === 'done' && a.undo) || (held && !busy) ? <div className="dk-act-keys">

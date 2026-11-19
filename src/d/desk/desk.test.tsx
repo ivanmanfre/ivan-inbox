@@ -232,6 +232,13 @@ describe('Desk polish (review of the new layout)', () => {
     expect(screen.queryByText(/The scorer picks it up next/)).toBeNull()
   })
 
+  it('a held delete says before the tap that it cannot be undone', async () => {
+    vi.mocked(api.readMessages).mockResolvedValueOnce([stored({ id: 'p6', body: '',
+      meta: { actions: [{ id: 'act-d', kind: 'delete', label: 'Deleting "A made up post"', state: 'held', undo: false }], notes: [] } })])
+    render(<Desk layout="phone" />)
+    await screen.findByText("Deleting can't be undone.")
+  })
+
   it('a cancelled proposal never keeps "It runs only when you tap Do it now" above its card', async () => {
     vi.mocked(api.readMessages).mockResolvedValueOnce([stored({ id: 'p2',
       body: 'Proposed (ref 1a2b3c4d): move "A made up post about trains." (no date) to Thu 26 Nov, 09:30 (UTC+01:00). It runs only when you tap Do it now.',
