@@ -509,7 +509,8 @@ export function holdReason(m: InboxMessage): string | null {
     }
   }
   if (!isRecoverableHold(r)) return null
-  if (isRaceHold(r)) return r === `${RACE_HOLD_PREFIX}outbound`
+  // The sender also writes unseen_outbound / turn_outbound: the side is the suffix.
+  if (isRaceHold(r)) return r.endsWith('outbound')
     ? 'Came back: a message went out on this thread while it was queued. Re-read the thread, then approve again.'
     : 'Came back: they wrote while it was queued. Re-read their message, then approve again.'
   if (r?.startsWith('lint_calendar_')) return 'Not sent: the calendar check held this draft. Review the proposed time or edit the invitation before sending again.'

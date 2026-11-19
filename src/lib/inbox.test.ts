@@ -1166,6 +1166,8 @@ describe('drafts with email and follow-ups, 2026-09-26 live fixes', () => {
   it('a recoverable hold says why it came back', () => {
     const race = { ...base, send_blocked_at: '2026-07-22T11:00:00Z', send_blocked_reason: `${RACE_HOLD_PREFIX}inbound` }
     expect(holdReason(race)).toMatch(/they wrote while it was queued/)
+    for (const r of ['outbound', 'unseen_outbound', 'turn_outbound']) expect(holdReason({ ...race, send_blocked_reason: `${RACE_HOLD_PREFIX}${r}` })).toMatch(/a message went out on this thread/)
+    for (const r of ['unseen_inbound', 'turn_inbound']) expect(holdReason({ ...race, send_blocked_reason: `${RACE_HOLD_PREFIX}${r}` })).toMatch(/they wrote while it was queued/)
     expect(holdReason({ ...race, send_blocked_reason: 'lint_unbacked_commitment' })).toMatch(/promises an email/)
     expect(holdReason(base)).toBeNull()
     expect(holdReason({ ...race, send_blocked_reason: 'lint_calendar_proposal_edited' })).toMatch(/not sent.*calendar/i)
