@@ -16,6 +16,17 @@ describe('referral research guard', () => {
   it.each(['No thanks', 'Thanks Ben, I handle our ads myself', 'Do you handle paid ads?', 'I do that side of the business', 'We are happy with our current agency', 'Hi there! Happy to check out :)', 'Happy to connect!', 'Happy to connect with you', 'Sure, talk to you soon', 'Feel free to contact me'])('leaves ordinary replies alone: %s', text => {
     expect(referralCandidate(text)).toBe(false)
   })
+  it('checks a LinkedIn person link even when the handoff says to check with a pronoun', () => {
+    expect(referralCandidate('I can recommend my former colleague, Vladimir Golovanov: https://www.linkedin.com/in/vladimir-golovanov/ Please check with him directly')).toBe(true)
+  })
+  it.each([
+    'https://www.linkedin.com.evil.test/in/person',
+    'https://www.linkedin.com@evil.test/in/person',
+    'https://www.linkedin.com/company/game-studio',
+    'https://www.linkedin.com/in/person/details/experience/',
+  ])('does not open referral research for a non-profile link: %s', url => {
+    expect(referralCandidate('Here is the link: ' + url)).toBe(false)
+  })
   it('accepts a researched profile belonging to the named referral and the same company', () => {
     expect(verifyReferral(found, sources, input)).toMatchObject({ status: 'verified', name: 'Ben Patton', input_message_id: 'inbound-1', draft: found.draft })
   })

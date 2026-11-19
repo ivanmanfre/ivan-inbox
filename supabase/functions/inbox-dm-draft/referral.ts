@@ -26,6 +26,7 @@ export type ReferralEmail = { to: string; cc: string[]; subject: string; body: s
 
 /** A cheap trigger only. The researcher must confirm a named human handoff. */
 export function referralCandidate(text: string): boolean {
+  if (linkedProfiles(text).length) return true
   // The object must be someone other than the two people in the thread: "happy to check out",
   // "happy to connect" and "talk to you soon" are acceptances, never handoffs.
   const handoffs = text.matchAll(/\b(?:(?:speak(?:ing)?|talk(?:ing)?|reach(?:ing)? out|connect(?:ing)?|check(?:ing)?)\s+(?:to|with)|contact(?:ing)?)\s+((?!(?:me|us|you|him|her|them)\b)\S+)/gi)
@@ -45,6 +46,32 @@ const profileKey = (s: string): string | null => {
     return /^\/in\/[^/]+\/?$/.test(u.pathname) ? u.pathname.replace(/\/$/, '').toLowerCase() : null
   } catch { return null }
 }
+
+const WEB_LINK = /https?:\/\/[^\s<>()[\]"']+/gi
+
+function canonicalLinkedProfile(raw: string): string | null {
+  const link = raw.replace(/[.,;:!?]+$/, '')
+  if (!/^https:\/\/(?:[a-z]{2,3}\.)?linkedin\.com\/in\//i.test(link)) return null
+  const key = profileKey(link)
+  if (!key) return null
+  try {
+    const slug = decodeURIComponent(key.slice('/in/'.length))
+    if (!/^[\p{L}\p{N}_-]+$/u.test(slug)) return null
+    return 'https://www.linkedin.com/in/' + encodeURIComponent(slug)
+  } catch { return null }
+}
+
+export function linkedProfiles(text: string): string[] {
+  return [...new Set((text.match(WEB_LINK) ?? []).map(canonicalLinkedProfile).filter(url => url !== null))]
+}
+
+export function linkedReferralProfile(text: string, supplied: unknown): string | null {
+  if (typeof supplied !== 'string') return null
+  const link = canonicalLinkedProfile(supplied)
+  return link && linkedProfiles(text).includes(link) ? link : null
+}
+
+export const withoutLinks = (text: string) => text.replace(WEB_LINK, ' ')
 
 /** Lay out a referral first touch like a sent first DM: greeting alone, then one short thought per
  * paragraph with a blank line between them. An approved offer line is appended verbatim by code,
