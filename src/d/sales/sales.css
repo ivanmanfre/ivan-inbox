@@ -218,3 +218,4 @@
 .sl-call-actions h3{margin:0;font-size:14px;color:var(--t1)}
 .sl-call-actions .sl-cb:last-child{padding-bottom:0}
 .sl-call-actions .sl-cb li{display:list-item;list-style:disc;margin-left:1rem}
+.sl-client-group{margin:12px 10px 6px;color:var(--t2);font:500 12px/16px var(--f)}

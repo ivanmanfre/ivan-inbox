@@ -59,6 +59,10 @@ export function buildArchive(calls: CallRow[]) {
     lists.all.push(call)
     lists[archiveCategory(call)].push(call)
   }
+  lists.clients = [
+    ...lists.clients.filter(call => !clientRecorder(call)),
+    ...lists.clients.filter(call => clientRecorder(call)),
+  ]
   return { lists, byId }
 }
 

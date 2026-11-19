@@ -55,17 +55,18 @@ it('opens on sales recordings and shows a talk line only when the share is known
 
 it('client recordings have their own tab, and older call links open in the correct category', () => {
   const first = render(<SalesPage layout="desktop" route={route('seg=clients')} navigate={() => {}} />)
-  expect([...document.querySelectorAll('[data-call]')].map(row => row.getAttribute('data-call'))).toEqual(['client', 'checkin'])
+  expect([...document.querySelectorAll('[data-call]')].map(row => row.getAttribute('data-call'))).toEqual(['checkin', 'client'])
+  expect([...document.querySelectorAll('.sl-client-group')].map(heading => heading.textContent)).toEqual(['Your client calls', 'Client team recordings'])
   expect(document.querySelector('[data-call="client"]')?.textContent).toContain('RISE DTC')
   first.unmount()
   render(<SalesPage layout="phone" route={route('seg=mine&call=client-copy')} navigate={() => {}} />)
-  expect(document.querySelector('.sl-back')?.textContent).toContain('1 of 2, Clients')
+  expect(document.querySelector('.sl-back')?.textContent).toContain('2 of 2, Clients')
   expect(document.querySelector('[data-open-call="client"]')).toBeTruthy()
 })
 
 it('the alternate Sales layout uses the same client archive', () => {
   render(<SalesV3 layout="desktop" route={route('seg=clients')} navigate={() => {}} />)
-  expect([...document.querySelectorAll('[data-call]')].map(row => row.getAttribute('data-call'))).toEqual(['client', 'checkin'])
+  expect([...document.querySelectorAll('[data-call]')].map(row => row.getAttribute('data-call'))).toEqual(['checkin', 'client'])
 })
 
 it('shows a recorded no-show without a transcript and keeps missing outcomes unconfirmed', async () => {

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { talkLine, type CallRow } from '../../../lib/transcripts'
 import { warsawDm } from '../../ui/time'
 import { Segmented } from '../../../ds/Segmented'
@@ -34,20 +34,24 @@ export function CallsOnRecord({ lists, state, seg, setSeg, openId, onOpen, onRet
       {state === 'ok' && queue.length === 0 && (
         <div className="sl-quiet">{ARCHIVE_TABS.find(tab => tab.id === seg)?.empty}</div>
       )}
-      {shown.map(c => {
+      {shown.map((c, index) => {
         const n = archiveActions(c).length
         const preview = c.brief?.next_step?.trim() || c.summary?.trim()
         const recorder = clientRecorder(c)
+        const group = seg === 'clients' && (index === 0 || Boolean(recorder) !== Boolean(clientRecorder(shown[index - 1])))
         const talk = talkLine(c)
         return (
-          <button key={c.id} type="button" className={`sl4-cr${c.id === openId ? ' sl-on' : ''}`} data-call={c.id} onClick={() => onOpen(c.id)}>
-            <span className="sl4-crt"><b>{otherPerson(c)}</b><span className="sl4-crm">{[recorder, c.date ? warsawDm(c.date) : 'no date'].filter(Boolean).join(' · ')}</span></span>
-            {talk && <span className={`sl4-crtalk${talk.warn ? ' sl4-warn' : ''}`} data-talk>{talk.text}</span>}
-            <span className="sl4-crb">
-              <span className="sl4-crl">{preview}</span>
-              {n > 0 && <span className="sl4-crn">{n} {n === 1 ? 'action' : 'actions'}</span>}
-            </span>
-          </button>
+          <Fragment key={c.id}>
+            {group && <h3 className="sl-client-group">{recorder ? 'Client team recordings' : 'Your client calls'}</h3>}
+            <button type="button" className={`sl4-cr${c.id === openId ? ' sl-on' : ''}`} data-call={c.id} onClick={() => onOpen(c.id)}>
+              <span className="sl4-crt"><b>{otherPerson(c)}</b><span className="sl4-crm">{[recorder, c.date ? warsawDm(c.date) : 'no date'].filter(Boolean).join(' · ')}</span></span>
+              {talk && <span className={`sl4-crtalk${talk.warn ? ' sl4-warn' : ''}`} data-talk>{talk.text}</span>}
+              <span className="sl4-crb">
+                <span className="sl4-crl">{preview}</span>
+                {n > 0 && <span className="sl4-crn">{n} {n === 1 ? 'action' : 'actions'}</span>}
+              </span>
+            </button>
+          </Fragment>
         )
       })}
       {limit && queue.length > limit && !more && (
