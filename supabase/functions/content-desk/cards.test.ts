@@ -35,6 +35,13 @@ Deno.test('cards: curly quotes, apostrophes and a mid-line quote of 5+ words', (
   assertEquals(quotedSpans('"a b c d" and “e f g h”'), ['a b c d', 'e f g h'])
 })
 
+Deno.test('cards: whole words only, unless the quote is cut with an ellipsis', () => {
+  const one = new Map<string, Draft>([['#s1', d('id-s', 'Tools for skincare that nobody talks about.')]])
+  assertEquals(draftCards('"Tools for ski" is it', one), [])
+  assertEquals(draftCards('"Tools for ski..." is it', one).map((x) => x.id), ['id-s'])
+  assertEquals(draftCards('"Tools for skincare" is it', one).map((x) => x.id), ['id-s'])
+})
+
 Deno.test('cards: at most six', () => {
   const many = new Map<string, Draft>(Array.from({ length: 9 }, (_, i) => [`#h${i}`, d(`id-${i}`, `Post number ${'abcdefghi'[i]} about something real`)]))
   const reply = Array.from({ length: 9 }, (_, i) => `"Post number ${'abcdefghi'[i]} about"`).join('\n')

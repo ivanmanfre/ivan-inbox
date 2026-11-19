@@ -403,7 +403,11 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
   const clientKey = typeof body.client_key === 'string' ? body.client_key.slice(0, 80) : crypto.randomUUID()
   // Ask again (2026-11-19): a new answer to a stored question, read-only. The SERVER takes the question from
   // the answer's own reply_to (never the client's text), and only for a plain answer: no cards, no error, no photo.
-  const regenOf = typeof body.regen_of === 'string' && /^[0-9a-f-]{36}$/i.test(body.regen_of) ? body.regen_of : null
+  // a regen_of that is there but malformed is refused, never read as an ordinary send (Sol r1)
+  if (body.regen_of !== undefined && body.regen_of !== null && !(typeof body.regen_of === 'string' && /^[0-9a-f-]{36}$/i.test(body.regen_of))) {
+    return json({ error: 'regen_refused', detail: CLIENT_TEXT.regen_refused }, 400, origin)
+  }
+  const regenOf = typeof body.regen_of === 'string' ? body.regen_of : null
   if (regenOf) {
     const q = await regenQuestion(svc, userId, regenOf)
     if ('error' in q) return json({ error: q.error, detail: CLIENT_TEXT[q.error] }, 409, origin)
@@ -459,7 +463,12 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
   const enc = new TextEncoder()
   const stream = new ReadableStream({
     async start(ctl) {
-      const emit = (ev: string, data: unknown) => ctl.enqueue(enc.encode(`event: ${ev}\ndata: ${JSON.stringify(data)}\n\n`))
+      // a phone that drops the connection mid-answer never ends the turn: the answer is still saved (Sol r1)
+      let gone = false
+      const emit = (ev: string, data: unknown) => {
+        if (gone) return
+        try { ctl.enqueue(enc.encode(`event: ${ev}\ndata: ${JSON.stringify(data)}\n\n`)) } catch { gone = true }
+      }
       const timings: Record<string, number> = {}
       let toolCalls = 0
       let assistantId: string | null = null
@@ -478,7 +487,8 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
         if (!mode.evalMode && (rateRes.count ?? 0) > RATE_MAX) throw new LlmError('rate_limited', 'Too many messages in 10 minutes.')
         timings.ack_ms = Date.now() - t0
         timings.brief_ms = brief.ms
-        later(sweepT3Stalls(svc), 't3_sweep')
+        // Ask again writes nothing, not even the cloud-job sweep (the tick and ordinary turns run it)
+        if (!regenOf) later(sweepT3Stalls(svc), 't3_sweep')
         const r = render(applyVisibility(brief.json, visible ?? new Map()), recent.filter((m: { id?: string; role: string; body: string; created_at: string; meta?: { regen_of?: string } }) =>
           !(m.role === 'user' && m.body === text && Date.now() - Date.parse(m.created_at) < 60_000)
           // Ask again: the answer being replaced is not shown to the model, and neither is a re-asked question
@@ -550,6 +560,14 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
           parsed = { reply: writeShown ? '' : shownSoFar, actions: [], reads: [], chips: [] }
         } finally {
           clearInterval(stopPoll)
+        }
+        // Sol r1: a Stop saved after the last poll but before the model finished still wins, read once here
+        if (!stopped) {
+          const { data: last, error: lastErr } = await svc.from('desk_messages').select('meta').eq('id', userRow.id).maybeSingle()
+          if (!lastErr && (last?.meta as { stop_at?: string } | null)?.stop_at) {
+            stopped = true
+            parsed = { reply: writeShown ? '' : shownSoFar, actions: [], reads: [], chips: [] }
+          }
         }
         // Ask again is read-only: a proposed change is dropped and he is told to send it as a new message
         const regenDropped = !!regenOf && parsed.actions.length > 0
@@ -825,9 +843,10 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
         emit('error', { error: code, detail })
         emit('final', { message: forClient(settled) })
       } finally {
-        ctl.close()
+        try { ctl.close() } catch { /* the client already left */ }
       }
     },
+    cancel() { /* the client left: the worker keeps going and saves its answer */ },
   })
   return new Response(stream, {
     headers: { ...cors(origin), 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no', 'x-desk-model': DESK_MODEL() },

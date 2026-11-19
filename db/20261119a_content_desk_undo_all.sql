@@ -47,7 +47,8 @@ AS $function$
     'draft', public.desk_draft_image(p_draft),
     'queue', coalesce((select jsonb_agg(jsonb_build_object('id', q.id, 'status', q.status,
                                  'scheduled_at', to_jsonb(q.scheduled_at at time zone 'UTC'), 'error_message', q.error_message,
-                                 'text_md5', md5(coalesce(q.post_text, ''))) order by q.id)
+                                 -- every other column the publisher reads (copy, format, media, kind, funnel...), nulls kept
+                                 'payload_md5', md5((to_jsonb(q) - 'status' - 'error_message' - 'updated_at')::text)) order by q.id)
                          from public.scheduled_posts q where q.clickup_task_id = p_draft::text), '[]'::jsonb),
     'pick', coalesce((select to_jsonb(p) from public.content_autopilot_picks p where p.draft_id = p_draft), 'null'::jsonb),
     'owner_pull', coalesce((select to_jsonb(o) from public.content_owner_pulls o where o.draft_id = p_draft), 'null'::jsonb),
@@ -297,6 +298,14 @@ begin
     d := public.desk_lock_draft(v_draft);
     if d.id is null then raise exception 'gone'; end if;
     if cardinality(public.desk_queue_ids(v_draft)) > 0 then raise exception 'in_queue'; end if;
+    -- 2026-11-19 (Sol r1): an undo that leaves the post Scheduled (Remove date undone, a scheduled post's move undone)
+    -- arms it to publish, so its time must be 15+ minutes away, as for a pull's Undo
+    if (case when 'status' = any(v_keys) then b->>'status' else d.status end) = 'scheduled'
+       and ('status' = any(v_keys) or 'scheduled_at' = any(v_keys))
+       and coalesce((case when 'scheduled_at' = any(v_keys) then (b->>'scheduled_at')::timestamp at time zone 'UTC' else d.scheduled_at end)
+                    < now() + interval '15 minutes', true) then
+      raise exception 'too_late';
+    end if;
     perform set_config('app.schedule_manual', 'on', true);
     -- ONE statement: the applied revision AND the applied whole columns must both still hold
     update public.carousel_drafts c

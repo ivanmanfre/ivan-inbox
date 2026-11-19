@@ -210,7 +210,7 @@ export async function askDeskStream(prompt: string, onReply: (t: string) => void
     // Stop (2026-11-19): what was already said stays; no second answer is fetched
     if (opts.signal?.aborted) throw new LlmError('stopped', 'stopped')
     if (winner >= 0) throw e // it already spoke; a half answer is an error, not a retry
-    const b = await askDesk(prompt, { maxTokens: opts.maxTokens, fetchImpl: opts.fetchImpl })
+    const b = await askDesk(prompt, { maxTokens: opts.maxTokens, fetchImpl: opts.fetchImpl, signal: opts.signal })
     // the same rule on the buffered path: a write turn streams no prose
     const sc = scan(b.text)
     if (sc.first === 'actions' || (sc.actions ?? '').trim()) opts.onWrite?.()

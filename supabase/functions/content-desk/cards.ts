@@ -32,8 +32,11 @@ export function draftCards(reply: string, drafts: Map<string, Draft>): DraftCard
     const q = normQuote(span)
     // a few words at least: a short quote ("today") would name half the list
     if (q.length < 12 && q.split(' ').length < 3) continue
-    let hits = pool.filter((x) => x.n.startsWith(q))
-    if (!hits.length && q.split(' ').length >= 5) hits = pool.filter((x) => x.n.includes(q))
+    // whole words only (Sol r1): "tools for ski" never names "tools for skincare", unless the quote was cut on purpose
+    const cut = /(\.\.\.|\u2026)\s*$/u.test(span)
+    const starts = (n: string) => n.startsWith(q) && (cut || n.length === q.length || n[q.length] === ' ')
+    let hits = pool.filter((x) => starts(x.n))
+    if (!hits.length && q.split(' ').length >= 5) hits = pool.filter((x) => ` ${x.n} `.includes(` ${q} `))
     if (hits.length !== 1) continue
     const { handle, d } = hits[0]
     if (seen.has(d.id)) continue
