@@ -239,6 +239,22 @@ describe('Desk polish (review of the new layout)', () => {
     await screen.findByText("Deleting can't be undone.")
   })
 
+  it('two look-alike held deletes show their whole openers and their own refs', async () => {
+    const a = 'A made up post about trains. Line two. Line three. Line four ends with the ferry.'
+    const b = 'A made up post about trains. Line two. Line three. Line four ends with the tram.'
+    vi.mocked(api.readMessages).mockResolvedValueOnce([stored({ id: 'p7', body: '', meta: { notes: [], actions: [
+      { id: 'act-a', kind: 'delete', label: `Proposed (ref 1a2b3c4d): delete "${a}" (no date).`, state: 'held', undo: false, target: { kind: 'draft', handle: '#target', first_line: a } },
+      { id: 'act-b', kind: 'delete', label: `Proposed (ref 5e6f7a8b): delete "${b}" (no date).`, state: 'held', undo: false, target: { kind: 'draft', handle: '#target', first_line: b } },
+    ] } })])
+    render(<Desk layout="phone" />)
+    await screen.findByText('ref 1a2b3c4d')
+    expect(screen.getByText('ref 5e6f7a8b')).toBeTruthy()
+    expect(screen.getByText(/ends with the ferry/)).toBeTruthy()
+    expect(screen.getByText(/ends with the tram/)).toBeTruthy()
+    expect(document.querySelectorAll('.dk-act-post-full')).toHaveLength(2)
+    expect(screen.queryByText('#target')).toBeNull()
+  })
+
   it('a cancelled proposal never keeps "It runs only when you tap Do it now" above its card', async () => {
     vi.mocked(api.readMessages).mockResolvedValueOnce([stored({ id: 'p2',
       body: 'Proposed (ref 1a2b3c4d): move "A made up post about trains." (no date) to Thu 26 Nov, 09:30 (UTC+01:00). It runs only when you tap Do it now.',

@@ -236,6 +236,11 @@ function quotedPost(label: string, firstLine: string): [number, number] | null {
   return [start, start + 1 + head.length + m.index + 1]
 }
 
+/** The server's short reference for the post a card targets ("ref 1a2b3c4d"), when its label carries one. */
+export function labelRef(label: string): string | null {
+  return /\(ref ([0-9a-f]{6,})\)/i.exec(label)?.[1] ?? null
+}
+
 export function cleanLabel(label: string, target?: { first_line: string } | null): { text: string; stated: boolean } {
   let t = label.replace(/\s+/g, ' ').trim()
   t = t.replace(/\s*\(ref [0-9a-f]{6,}\)/gi, '').replace(/\s*\(no date\)/gi, '')

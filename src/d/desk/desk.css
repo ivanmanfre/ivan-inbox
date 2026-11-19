@@ -132,6 +132,7 @@
 .dk-act-l{font:500 15px/1.4 var(--f)}
 .dk-act-post{font:400 13px/1.35 var(--f);color:var(--t2);padding:8px 10px;border-radius:10px;background:var(--p2);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
 .dk-act-post .dk-h{margin-right:4px}
+.dk-act-post-full{display:block;-webkit-line-clamp:unset;overflow:visible}
 .dk-act-note{font:400 13px/1.4 var(--f);color:var(--t2)}
 .dk-act-keys{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
 .dk-act-held{box-shadow:0 0 0 1.5px var(--t1),var(--ds-shadow-soft,none)}

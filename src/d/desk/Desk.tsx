@@ -12,7 +12,7 @@ import { useKeyboardInset } from './useKeyboardInset'
 import { actionStore } from './actionGuards'
 import { heldSeenStore, heldSeenTabBack, reportHeldSeen } from './heldSeen'
 import {
-  T3_LABEL, T3_LIVE, cleanLabel,
+  T3_LABEL, T3_LIVE, cleanLabel, labelRef,
   type DeskAction, type DeskDraftCard, type DeskMessage, type T3Job,
 } from './model'
 import '../claude/claude.css'
@@ -169,6 +169,9 @@ function DeskList({ desk, locked, layout }: { desk: DeskHandle; locked: boolean;
   // same minute are both announced.
   const [said, setSaid] = useState('')
   const seenReplies = useRef<Set<string> | null>(null)
+  // What finished before the desk opened is history; a reply that lands while the first read is still on its
+  // way is new and is announced.
+  const openedAt = useRef(Date.now())
   // Replies waiting to be announced: kept until the line is actually published, so a second finish before the
   // next frame joins the same announcement instead of cancelling the first.
   const queued = useRef<DeskMessage[]>([])
@@ -179,7 +182,9 @@ function DeskList({ desk, locked, layout }: { desk: DeskHandle; locked: boolean;
   useEffect(() => {
     if (!desk.loaded) return
     const done = messages.filter(m => m.role === 'assistant' && !m.answers && m.status === 'done')
-    if (!seenReplies.current) { seenReplies.current = new Set(done.map(m => m.id)); return }
+    if (!seenReplies.current) {
+      seenReplies.current = new Set(done.filter(m => Date.parse(m.created_at) < openedAt.current - 2000).map(m => m.id))
+    }
     // Every reply that is new since the last announcement, even when several land in one update.
     const fresh = done.filter(m => !seenReplies.current!.has(m.id))
     if (!fresh.length) return
@@ -585,7 +590,11 @@ function ActionRow({ a, desk }: { a: DeskAction; at: string; desk: DeskHandle })
           {a.state === 'failed' && <>{say('Failed')}{a.detail ? `. ${a.detail}` : ''}</>}
           {a.state === 'unconfirmed' && <>{say('Not confirmed')}. The writer may be running, check Review in a few minutes.</>}
         </span>
-        {a.target && <small className="dk-act-post"><span className="dk-h">{a.target.handle}</span> {a.target.first_line}</small>}
+        {/* The post this card changes. While it waits for the tap: the whole opener and the server's own reference,
+            so two look-alike posts can never be told apart only by a clipped line. */}
+        {a.target && <small className={`dk-act-post${held ? ' dk-act-post-full' : ''}`}>
+          {(labelRef(a.label) || (a.target.handle && a.target.handle !== '#target')) && <span className="dk-h">{labelRef(a.label) ? `ref ${labelRef(a.label)}` : a.target.handle}</span>}{' '}{a.target.first_line}
+        </small>}
         {/* The server's note on this change (a duplicate, a write it could not record): on the card, every state. */}
         {a.detail && a.state !== 'failed' && !/^[a-z_]+$/.test(a.detail) && <small className="dk-act-note">{a.detail}</small>}
         {/* Deleting has no Undo once it is done: the card says so before the tap. */}
