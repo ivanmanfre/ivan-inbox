@@ -28,22 +28,29 @@ function fakeDb(row: { id: string; client_key: string; meta: Record<string, unkn
 Deno.test('stop: Stop first wins, the turn then sees it and plans nothing', async () => {
   const db = fakeDb({ id: 'q1', client_key: 'k1', meta: {} })
   assertEquals(await stopTurn(db, 'u', 'k1'), { ok: true })
-  assertEquals(await closeStopWindow(db, 'q1'), false)
+  assertEquals(await closeStopWindow(db, 'q1'), 'stopped')
 })
 
 Deno.test('stop: the turn first wins, a late Stop says too_late', async () => {
   const db = fakeDb({ id: 'q1', client_key: 'k1', meta: {} })
-  assertEquals(await closeStopWindow(db, 'q1'), true)
+  assertEquals(await closeStopWindow(db, 'q1'), 'go')
   assertEquals(await stopTurn(db, 'u', 'k1'), { ok: false, error: 'too_late' })
 })
 
 Deno.test('stop: a Stop landing between the turn read and its write still wins (CAS), never both', async () => {
   const row = { id: 'q1', client_key: 'k1', meta: {} as Record<string, unknown> }
   const db = fakeDb(row, { beforeUpdate: () => { if (!row.meta.stop_at && !row.meta.gen_done_at) row.meta = { stop_at: 'now' } } })
-  assertEquals(await closeStopWindow(db, 'q1'), false)
+  assertEquals(await closeStopWindow(db, 'q1'), 'stopped')
   assertEquals(row.meta.gen_done_at, undefined)
 })
 
-Deno.test('stop: a failed read on the turn side fails closed', async () => {
-  assertEquals(await closeStopWindow(fakeDb({ id: 'q1', client_key: 'k1', meta: {} }, { failRead: true }), 'q1'), false)
+Deno.test('stop: a failed read on the turn side is an error, never a run and never a fake Stop', async () => {
+  assertEquals(await closeStopWindow(fakeDb({ id: 'q1', client_key: 'k1', meta: {} }, { failRead: true }), 'q1'), 'error')
+})
+
+Deno.test('stop: the turn closing between the Stop read and its write makes Stop too_late (CAS), never both', async () => {
+  const row = { id: 'q1', client_key: 'k1', meta: {} as Record<string, unknown> }
+  const db = fakeDb(row, { beforeUpdate: () => { if (!row.meta.stop_at && !row.meta.gen_done_at) row.meta = { gen_done_at: 'now' } } })
+  assertEquals(await stopTurn(db, 'u', 'k1'), { ok: false, error: 'too_late' })
+  assertEquals(row.meta, { gen_done_at: 'now' })
 })

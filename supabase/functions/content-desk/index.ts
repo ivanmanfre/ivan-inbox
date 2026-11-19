@@ -551,9 +551,10 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
         // Sol r2: the Stop window closes atomically before anything is planned or run. This turn stamps gen_done_at on
         // the question row only while no stop_at is there; op stop sets stop_at only while no gen_done_at is there.
         // Exactly one wins. A failed read or write here counts as a Stop (fail closed: nothing runs).
-        if (!stopped && !(await closeStopWindow(svc, userRow.id))) {
-          stopped = true
-          parsed = { reply: writeShown ? '' : shownSoFar, actions: [], reads: [], chips: [] }
+        if (!stopped) {
+          const win = await closeStopWindow(svc, userRow.id)
+          if (win === 'error') throw new LlmError('desk_failed', 'stop window')   // the turn's error path: nothing runs
+          if (win === 'stopped') { stopped = true; parsed = { reply: writeShown ? '' : shownSoFar, actions: [], reads: [], chips: [] } }
         }
         // Ask again is read-only: a proposed change is dropped and he is told to send it as a new message
         const regenDropped = !!regenOf && parsed.actions.length > 0

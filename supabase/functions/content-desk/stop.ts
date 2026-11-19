@@ -19,13 +19,18 @@ export async function stopTurn(svc: any, userId: string, clientKey: string): Pro
   return Array.isArray(won) && won.length === 1 ? { ok: true } : { ok: false, error: 'too_late' }
 }
 
-/** The turn's side of Stop: true = generation is over and no Stop came first, so planning may run. */
+/**
+ * The turn's side of Stop: 'go' = generation is over and no Stop came first, so planning may run; 'stopped' = a Stop
+ * won; 'error' = the row could not be read or written (Sol r3: the turn then fails as an error, never runs, never
+ * pretends Ivan stopped it).
+ */
 // deno-lint-ignore no-explicit-any
-export async function closeStopWindow(svc: any, questionId: string): Promise<boolean> {
+export async function closeStopWindow(svc: any, questionId: string): Promise<'go' | 'stopped' | 'error'> {
   const { data: row, error } = await svc.from('desk_messages').select('meta').eq('id', questionId).maybeSingle()
-  if (error || !row) return false
-  if ((row.meta as { stop_at?: string } | null)?.stop_at) return false
+  if (error || !row) return 'error'
+  if ((row.meta as { stop_at?: string } | null)?.stop_at) return 'stopped'
   const { data: won, error: uErr } = await svc.from('desk_messages').update({ meta: { ...(row.meta ?? {}), gen_done_at: new Date().toISOString() } })
     .eq('id', questionId).filter('meta->>stop_at', 'is', null).select('id')
-  return !uErr && Array.isArray(won) && won.length === 1
+  if (uErr || !Array.isArray(won)) return 'error'
+  return won.length === 1 ? 'go' : 'stopped'
 }
