@@ -34,10 +34,15 @@ begin
       and (l.message_text ~* '\m(speak(ing)?|talk(ing)?|reach(ing)? out|connect(ing)?|check(ing)?)\s+(to|with)\s+(?!(me|us|you|him|her|them)\M)(?!\S*@\S+\.[a-z]{2,})\S|\mcontact(ing)?\s+(?!(me|us|you|him|her|them)\M)(?!\S*@\S+\.[a-z]{2,})\S'
         or substring(l.message_text from '(?i)([[:alpha:]][[:alpha:]''-]*(?:\s+[[:alpha:]][[:alpha:]''-]*){0,3})\s+(?:handles?|does|manages?|runs?|looks after|is responsible for|is in charge of)\M')
            !~* '\m(i|we|you|he|she|they|it)\M'
-        or l.message_text ~* '\mhttps://([a-z]{2,3}\.)?linkedin\.com/in/[[:alnum:]_%-]+/?([?#),.!;:>]|\]|\s|$)')
-      -- Skip only what the handler would serve from cache (same message, revision 11).
+        or exists (
+          select 1
+          from regexp_matches(l.message_text, $url$https?://[^\s<>()\[\]"']+$url$, 'gi') as links(parts)
+          where regexp_replace(parts[1], '[.,;:!?]+$', '') ~*
+            '^https://([a-z]{2,3}\.)?linkedin\.com/in/[[:alnum:]_%-]+/?([?#].*)?$'
+        ))
+      -- Skip only what the handler would serve from cache (same message, revision 12).
       and not coalesce((p.enrichment_data -> 'inbox_referral' ->> 'input_message_id') = l.id::text
-                       and (p.enrichment_data -> 'inbox_referral' ->> 'revision') = '11', false)
+                       and (p.enrichment_data -> 'inbox_referral' ->> 'revision') = '12', false)
     order by l.at desc
     -- Calls the handler rejects are cheap (no model call), so a wide batch keeps a real referral
     -- from being crowded out.

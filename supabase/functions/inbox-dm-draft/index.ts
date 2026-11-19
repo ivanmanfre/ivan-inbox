@@ -70,7 +70,7 @@ Deno.serve(async req => {
     const { data: prompts, error: promptError } = await sb.from('content_prompts').select('slug,body,updated_at').in('slug', slugs).eq('is_active', true)
     if (promptError) throw promptError
     if (slugs.some(slug => !prompts?.some(p => p.slug === slug && p.body?.trim()))) return respond({ error: 'The client’s drafting rules could not be loaded.' }, 503)
-    const { data: prospect, error: prospectError } = await sb.from('outreach_prospects').select('operator_note,enrichment_data').eq('id', id).single()
+    const { data: prospect, error: prospectError } = await sb.from('outreach_prospects').select('operator_note,enrichment_data,linkedin_url').eq('id', id).single()
     if (prospectError) throw prospectError
     const conversation = rows.filter(m => m.message_text?.trim() && (m.direction === 'inbound' || m.sent_at))
       .sort((a, b) => (a.sent_at || a.created_at).localeCompare(b.sent_at || b.created_at))
@@ -84,7 +84,7 @@ Deno.serve(async req => {
       const context = conversation.map(m => ({ speaker: m.direction === 'inbound' ? rows[0].prospect_name : canon.author, text: m.message_text }))
       // No offer line in a referral first touch (Ivan 2026-11-04: the Preply list stacked on a pitch read
       // as a sell to someone who never heard of us). One easy question closes it instead.
-      const referral = await researchReferral(sb, { id: inbound.id, text: inbound.message_text, company: rows[0].prospect_company, referrer: rows[0].prospect_name }, canon.author, prompts, context, await readMentions(sb, inbound.id))
+      const referral = await researchReferral(sb, { id: inbound.id, text: inbound.message_text, company: rows[0].prospect_company, referrer: rows[0].prospect_name, referrerUrl: prospect.linkedin_url }, canon.author, prompts, context, await readMentions(sb, inbound.id))
       const { data: freshRows, error: freshError } = await sb.from('inbox_messages_v').select('id,message_text,sent_at,created_at,prospect_stage,prospect_blacklisted')
         .eq('prospect_id', id).eq('direction', 'inbound').order('created_at').order('id')
       if (freshError) throw freshError

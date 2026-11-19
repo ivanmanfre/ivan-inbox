@@ -52,10 +52,10 @@ const WEB_LINK = /https?:\/\/[^\s<>()[\]"']+/gi
 function canonicalLinkedProfile(raw: string): string | null {
   const link = raw.replace(/[.,;:!?]+$/, '')
   if (!/^https:\/\/(?:[a-z]{2,3}\.)?linkedin\.com\/in\//i.test(link)) return null
-  const key = profileKey(link)
-  if (!key) return null
   try {
-    const slug = decodeURIComponent(key.slice('/in/'.length))
+    const path = new URL(link).pathname.match(/^\/in\/([^/]+)\/?$/)
+    if (!path) return null
+    const slug = decodeURIComponent(path[1])
     if (!/^[\p{L}\p{N}_-]+$/u.test(slug)) return null
     return 'https://www.linkedin.com/in/' + encodeURIComponent(slug)
   } catch { return null }
@@ -65,10 +65,12 @@ export function linkedProfiles(text: string): string[] {
   return [...new Set((text.match(WEB_LINK) ?? []).map(canonicalLinkedProfile).filter(url => url !== null))]
 }
 
-export function linkedReferralProfile(text: string, supplied: unknown): string | null {
+export function linkedReferralProfile(links: string[], supplied: unknown, referrerUrl?: string | null): string | null {
   if (typeof supplied !== 'string') return null
   const link = canonicalLinkedProfile(supplied)
-  return link && linkedProfiles(text).includes(link) ? link : null
+  if (!link || !links.includes(link)) return null
+  const sender = referrerUrl ? canonicalLinkedProfile(referrerUrl) : null
+  return link.toLowerCase() === sender?.toLowerCase() ? null : link
 }
 
 export const withoutLinks = (text: string) => text.replace(WEB_LINK, ' ')
