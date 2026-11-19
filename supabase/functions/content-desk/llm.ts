@@ -41,7 +41,7 @@ async function once(f: typeof fetch, base: string, key: string, model: string, p
  * with no queue wait on the proxy, so the slow tail is per call, not per load.
  * A refused or empty answer is never used; up to 3 rounds.
  */
-export async function askDesk(prompt: string, opts: { maxTokens?: number; timeoutMs?: number; hedgeMs?: number; fetchImpl?: typeof fetch } = {}): Promise<{ text: string; ms: number; attempts: number; model: string; hedged: boolean }> {
+export async function askDesk(prompt: string, opts: { maxTokens?: number; timeoutMs?: number; hedgeMs?: number; fetchImpl?: typeof fetch; signal?: AbortSignal } = {}): Promise<{ text: string; ms: number; attempts: number; model: string; hedged: boolean }> {
   const base = (env('RAILWAY_CLAUDE_URL') ?? '').replace(/\/$/, '')
   const key = env('RAILWAY_CLAUDE_API_KEY')
   if (!base || !key) throw new LlmError('desk_llm_not_configured', 'The desk model is not configured.')
@@ -52,7 +52,11 @@ export async function askDesk(prompt: string, opts: { maxTokens?: number; timeou
   let last = ''
   let hedged = false
   for (let round = 1; round <= 3; round++) {
+    // Stop (2026-11-19): Ivan's Stop aborts the call in flight and ends the answer here, never a retry
+    if (opts.signal?.aborted) throw new LlmError('stopped', 'stopped')
     const ctl = new AbortController()
+    const onStop = () => ctl.abort()
+    opts.signal?.addEventListener('abort', onStop, { once: true })
     const calls: Promise<string>[] = []
     const start = () => calls.push(once(f, base, key, model, prompt, opts.maxTokens ?? 900, opts.timeoutMs ?? 45_000, ctl.signal))
     start()
@@ -73,10 +77,12 @@ export async function askDesk(prompt: string, opts: { maxTokens?: number; timeou
         settle(calls[0])
         if (hedgeMs > 0) timer = setTimeout(hedge, hedgeMs)
       }).finally(() => { done = true; if (timer) clearTimeout(timer) })
-      ctl.abort()
+      ctl.abort(); opts.signal?.removeEventListener('abort', onStop)
+      if (opts.signal?.aborted) throw new LlmError('stopped', 'stopped')
       return { text, ms: Date.now() - t0, attempts: round, model, hedged }
     } catch {
-      ctl.abort()
+      ctl.abort(); opts.signal?.removeEventListener('abort', onStop)
+      if (opts.signal?.aborted) throw new LlmError('stopped', 'stopped')
     }
   }
   throw new LlmError('desk_llm_unavailable', `The desk model did not answer (${last}).`)
@@ -122,7 +128,7 @@ export class ReplyStreamer {
  * Any failure before the first delta falls back to the buffered askDesk.
  */
 export async function askDeskStream(prompt: string, onReply: (t: string) => void,
-  opts: { maxTokens?: number; timeoutMs?: number; hedgeMs?: number; fetchImpl?: typeof fetch; onWrite?: () => void } = {}): Promise<{ text: string; ms: number; ttft_ms: number | null; model: string; hedged: boolean; streamed: boolean }> {
+  opts: { maxTokens?: number; timeoutMs?: number; hedgeMs?: number; fetchImpl?: typeof fetch; onWrite?: () => void; signal?: AbortSignal } = {}): Promise<{ text: string; ms: number; ttft_ms: number | null; model: string; hedged: boolean; streamed: boolean }> {
   const base = (env('RAILWAY_CLAUDE_URL') ?? '').replace(/\/$/, '')
   const key = env('RAILWAY_CLAUDE_API_KEY')
   if (!base || !key) throw new LlmError('desk_llm_not_configured', 'The desk model is not configured.')
@@ -147,7 +153,7 @@ export async function askDeskStream(prompt: string, onReply: (t: string) => void
           // (measured 11-18); the desk asks for its own level on the stream path.
           ...(env('DESK_EFFORT') ? { 'x-proxy-effort': env('DESK_EFFORT')! } : {}) },
         body: JSON.stringify({ model, max_tokens: opts.maxTokens ?? 900, stream: true, messages: [{ role: 'user', content: prompt }] }),
-        signal: AbortSignal.any([ctl.signal, AbortSignal.timeout(opts.timeoutMs ?? 60_000)]),
+        signal: AbortSignal.any([ctl.signal, AbortSignal.timeout(opts.timeoutMs ?? 60_000), ...(opts.signal ? [opts.signal] : [])]),
       })
       if (!r.ok || !r.body) throw new LlmError('status', `status ${r.status}`)
       if (!(r.headers.get('content-type') ?? '').includes('text/event-stream')) throw new LlmError('not_streamed', 'proxy answered without a stream')
@@ -175,6 +181,8 @@ export async function askDeskStream(prompt: string, onReply: (t: string) => void
           }
         }
       }
+      // a body that ended because Stop aborted it is never a whole answer
+      if (opts.signal?.aborted) throw new LlmError('stopped', 'stopped')
       const text = streamer.text.trim()
       if (!text) throw new LlmError('empty', 'empty')
       if (REFUSAL.test(text.slice(0, 400))) throw new LlmError('refused', 'refused')
@@ -199,6 +207,8 @@ export async function askDeskStream(prompt: string, onReply: (t: string) => void
     return { text, ms: Date.now() - t0, ttft_ms: ttft, model, hedged, streamed: true }
   } catch (e) {
     ctls.forEach((c) => c?.abort())
+    // Stop (2026-11-19): what was already said stays; no second answer is fetched
+    if (opts.signal?.aborted) throw new LlmError('stopped', 'stopped')
     if (winner >= 0) throw e // it already spoke; a half answer is an error, not a retry
     const b = await askDesk(prompt, { maxTokens: opts.maxTokens, fetchImpl: opts.fetchImpl })
     // the same rule on the buffered path: a write turn streams no prose

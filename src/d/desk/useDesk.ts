@@ -3,7 +3,7 @@
 // and a send draws Ivan's bubble plus a reserved answer bubble at once.
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { currentUserId, readSwr, redactCapability, writeSwr } from '../../lib/swr'
-import { cancelAction, commitAction, readJobs, readMessages, sendDesk, subscribeDesk, undoAction, warmDesk, type ActionResult } from './api'
+import { cancelAction, commitAction, readJobs, readMessages, sendDesk, stopDesk, subscribeDesk, undoAction, warmDesk, type ActionResult } from './api'
 import { MOCK_USER, mockOn } from './mock'
 import {
   cacheable, mergeRows, newKey, olderThan, optimisticPair, patch,
@@ -34,6 +34,15 @@ export type DeskHandle = {
   editAndSend: (m: DeskMessage) => void
   /** The text "Edit and send" put into the composer, with a counter so the same text can be put twice. */
   prefill: { text: string; n: number } | null
+  /** An answer is being written for a send from this tab: Stop can end it. */
+  streaming: boolean
+  /** Stop was tapped and the answer has not ended yet. */
+  stopping: boolean
+  /** Stop the answer being written now (what is already shown stays; it runs no change). */
+  stop: () => void
+  /** The newest plain answer can be asked again: same question, a new read-only answer. */
+  canAskAgain: (m: DeskMessage) => boolean
+  askAgain: (m: DeskMessage) => void
 }
 
 // Held actions commit on the SERVER, timed from the moment the row was first visibly on screen
@@ -71,6 +80,11 @@ export function useDesk(): DeskHandle {
   const [jobs, setJobs] = useState<Record<string, T3Job>>({})
   const [busy, setBusy] = useState(false)
   const [n, setN] = useState(0)
+  // The send being answered now (Stop): its key, whether the server has its question row yet, and a Stop
+  // tapped before that ack (sent the moment the ack lands).
+  const live = useRef<{ key: string; acked: boolean; stop: boolean } | null>(null)
+  const [streaming, setStreaming] = useState(false)
+  const [stopping, setStopping] = useState(false)
   const topic = `desk:${useId()}`
   const listRef = useRef(messages)
   listRef.current = messages
@@ -180,19 +194,25 @@ export function useDesk(): DeskHandle {
     return () => document.removeEventListener('visibilitychange', onVis)
   }, [])
 
-  const run = useCallback((text: string, key: string, opts: { attachments?: DeskAttachment[]; voice?: boolean; chip?: boolean }) => {
+  const run = useCallback((text: string, key: string, opts: { attachments?: DeskAttachment[]; voice?: boolean; chip?: boolean; regen_of?: string }) => {
     setBusy(true)
     const phId = `stream:${key}`
     let acked = false
+    live.current = { key, acked: false, stop: false }
+    setStreaming(true); setStopping(false)
     void sendDesk({ text, client_key: key, ...opts }, {
       onAck: a => {
         acked = true
+        if (live.current?.key === key) {
+          live.current.acked = true
+          if (live.current.stop) void stopDesk(key)
+        }
         // Journal the stored question NOW, not inside the queued state update: a stale history read
         // resolving in the same batch must not drop it (Sol desk-ui r3 #3).
         const mine = listRef.current.find(m => m.id === `local:${key}`)
         const stored: DeskMessage = {
           ...(mine ?? { role: 'user' as const, origin: 'operator' as const, body: text, status: 'done' as const, client_key: key, created_at: new Date().toISOString(),
-            meta: { ...(opts.attachments?.length ? { attachments: opts.attachments } : {}), ...(opts.voice ? { voice: true } : {}) } }),
+            meta: { ...(opts.attachments?.length ? { attachments: opts.attachments } : {}), ...(opts.voice ? { voice: true } : {}), ...(opts.regen_of ? { regen_of: opts.regen_of } : {}) } }),
           id: a.user_message_id || `local:${key}`, local: undefined,
         }
         if (a.user_message_id) note([stored])
@@ -223,6 +243,7 @@ export function useDesk(): DeskHandle {
       },
     }).then(end => {
       setBusy(false)
+      if (live.current?.key === key) { live.current = null; setStreaming(false); setStopping(false) }
       ended.current.add(key)
       // The socket dropped before the answer: the row is the truth, so drop the bubble and read it back
       // (realtime brings the answer too, whenever the function finishes writing it). A send that never
@@ -265,8 +286,40 @@ export function useDesk(): DeskHandle {
         .concat(ph),
       [],
     ))
-    run(asked.body, key, { attachments: asked.meta.attachments, voice: asked.meta.voice })
+    // an Ask again keeps its regen_of, so its retry stays the read-only re-ask it was (never a fresh turn)
+    run(asked.body, key, { attachments: asked.meta.attachments, voice: asked.meta.voice, ...(asked.meta.regen_of ? { regen_of: asked.meta.regen_of } : {}) })
   }, [run])
+
+  const stop = useCallback(() => {
+    const l = live.current
+    if (!l || l.stop) return
+    l.stop = true
+    setStopping(true)
+    if (l.acked) void stopDesk(l.key)
+  }, [])
+
+  // Ask again: only the newest answer in the list, a stored plain answer from the desk (no change cards, no
+  // cloud job, no error) whose question is loaded, stored and has no photo. The server checks all of it again.
+  const askable = useCallback((m: DeskMessage) => {
+    if (m.role !== 'assistant' || m.answers || m.local || m.status !== 'done' || m.origin !== 'desk') return null
+    if (m.meta.actions?.length || m.meta.t3_job || m.meta.error || !m.meta.client_key) return null
+    const list = listRef.current
+    const last = [...list].reverse().find(x => x.role === 'assistant')
+    if (last?.id !== m.id) return null
+    const q = list.find(x => x.role === 'user' && x.client_key === m.meta.client_key)
+    if (!q || q.local || !q.body.trim() || q.meta.attachments?.length) return null
+    return q
+  }, [])
+  const canAskAgain = useCallback((m: DeskMessage) => !!askable(m), [askable])
+  const askAgain = useCallback((m: DeskMessage) => {
+    const q = askable(m)
+    if (!q) return
+    const key = newKey()
+    // the re-asked question row is hidden in the list (meta.regen_of); the new answer lands under the old one
+    const [me, ph] = optimisticPair(q.body, key, new Date(), { regen_of: m.id })
+    setMessages(prev => [...prev, me, ph])
+    run(q.body, key, { regen_of: m.id })
+  }, [askable, run])
 
   const act = useCallback(async (kind: 'undo' | 'commit' | 'cancel', actionId: string) => {
     const r = await (kind === 'undo' ? undoAction(actionId) : kind === 'commit' ? commitAction(actionId) : cancelAction(actionId))
@@ -313,5 +366,6 @@ export function useDesk(): DeskHandle {
     openDesks.add(refreshSelf)
     return () => { openDesks.delete(refreshSelf) }
   }, [refreshSelf])
-  return { messages, jobs, fromCache, loaded, readFailed, busy, send, retry, act, reload, canRetry, awaitingAnswer, refresh: refreshOpenDesks, editAndSend, prefill }
+  return { messages, jobs, fromCache, loaded, readFailed, busy, send, retry, act, reload, canRetry, awaitingAnswer, refresh: refreshOpenDesks, editAndSend, prefill,
+    streaming, stopping, stop, canAskAgain, askAgain }
 }

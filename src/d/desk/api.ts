@@ -9,14 +9,14 @@ import { mockApi, mockOn } from './mock'
 
 const FN = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/content-desk`
 
-export type SendBody = { text: string; client_key: string; attachments?: DeskAttachment[]; voice?: boolean; chip?: boolean }
+export type SendBody = { text: string; client_key: string; attachments?: DeskAttachment[]; voice?: boolean; chip?: boolean; regen_of?: string }
 export type SendHandlers = {
   onAck?: (a: { user_message_id: string; client_key: string }) => void
   onDelta?: (text: string) => void
   onFinal?: (m: DeskMessage) => void
   onError?: (code: string, detail?: string) => void
 }
-export type ActionResult = { ok: boolean; message?: DeskMessage; error?: string }
+export type ActionResult = { ok: boolean; message?: DeskMessage; error?: string; detail?: string }
 
 function evalOn(): boolean {
   try { return localStorage.getItem('desk-eval') === '1' } catch { return false }
@@ -134,7 +134,15 @@ async function op(o: 'undo' | 'commit' | 'cancel', actionId: string): Promise<Ac
   if ('skipped' in r) return { ok: false, error: 'No connection.' } // never: a fixed payload is always sent
   const j = r.j ?? {} as ActionResult
   if (!r.okHttp) return { ok: false, error: j.error ?? `http_${r.status}` }
-  return { ok: j.ok !== false, message: j.message ? asMessage(j.message) : undefined, error: j.error }
+  // the server's own sentence for a refusal (an Undo too late, a post changed since) rides along as detail
+  return { ok: j.ok !== false, message: j.message ? asMessage(j.message) : undefined, error: j.error, ...(typeof j.detail === 'string' ? { detail: j.detail } : {}) }
+}
+
+/** Stop the answer being written for this question (its client key). Best effort: a turn past the model finishes. */
+export async function stopDesk(clientKey: string): Promise<boolean> {
+  if (mockOn()) return mockApi.stop(clientKey)
+  const r = await post<{ ok?: boolean }>({ op: 'stop', client_key: clientKey })
+  return r.ok && 'j' in r && r.j?.ok === true
 }
 
 /** Per action id, from the stored row (also when it was already armed): its state, when it was first

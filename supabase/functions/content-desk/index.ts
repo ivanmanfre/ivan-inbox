@@ -23,6 +23,7 @@ import { authorize } from './auth.ts'
 import { planTriggers } from './triggers.ts'
 import { queueT3Job, sweepT3Stalls } from '../_shared/desk-t3.ts'
 import { deskUnfurl } from './unfurl.ts'
+import { draftCards } from './cards.ts'
 import { notify } from '../_shared/notify.ts'
 
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined
@@ -64,6 +65,7 @@ const CLIENT_TEXT: Record<string, string> = {
   turn_in_progress: 'That message is still being answered.',
   key_mismatch: 'That message id was already used for a different message.',
   desk_failed: 'The desk could not answer just now. Send it again in a moment.',
+  regen_refused: 'That answer cannot be asked again. Send the question as a new message.',
 }
 const safeCode = (c: string) => (c in CLIENT_TEXT ? c : 'desk_failed')
 // Plain, fixed reasons for a failed action (no raw database text in the chat).
@@ -92,6 +94,8 @@ function failText(e: unknown): string {
     human_edited: 'It has your hand edits, and the writer will not overwrite them.',
     in_queue: 'This one is already in the queue. Move it in the calendar.', stored_differs: 'The calendar did not store the time on the card, so I changed nothing.', writer_refused: 'The writer refused it, so the draft is back as it was.', no_action: 'I could not match this to its saved action, so I did nothing.',
     claim_failed: 'I could not reach the database, so nothing ran. Tap again.', undo_failed: 'The undo did not go through, so I left it as it is.',
+    too_late: 'Its time is under 15 minutes away or past, so I left it off the schedule. Date it again in the calendar.',
+    slot_taken: 'Its old slot is not free any more, so I left it off the schedule. Date it again in the calendar.',
   }
   // the exact code first (queue_changed must never read as changed), then a code inside a longer message
   if (known[m]) return known[m]
@@ -261,10 +265,43 @@ async function visibleDrafts(userDb: any): Promise<Map<string, boolean> | null> 
 async function recentMessages(svc: any, userId: string, evalMode = false) {
   // Eval items are independent questions: they carry no history. Real turns never see eval rows.
   if (evalMode) return []
-  const { data } = await svc.from('desk_messages').select('role, origin, body, created_at, meta')
+  const { data } = await svc.from('desk_messages').select('id, role, origin, body, created_at, meta')
     .eq('user_id', userId).order('created_at', { ascending: false }).limit(30)
   return (data ?? []).filter((m: { meta?: { test?: boolean } }) => m.meta?.test !== true).slice(0, 11).reverse()
 }
+/**
+ * Stop (2026-11-19): marks Ivan's own question row; the turn answering it reads the mark while the model writes
+ * and stops there. A turn already past the model (planning or saving) finishes as normal.
+ */
+// deno-lint-ignore no-explicit-any
+async function stopTurn(svc: any, userId: string, clientKey: string): Promise<{ ok: boolean; error?: string }> {
+  if (!clientKey) return { ok: false, error: 'bad_key' }
+  const { data: row, error } = await svc.from('desk_messages').select('id, meta').eq('user_id', userId).eq('role', 'user').eq('client_key', clientKey).maybeSingle()
+  if (error) return { ok: false, error: 'read_failed' }
+  if (!row) return { ok: false, error: 'not_found' }
+  const { error: uErr } = await svc.from('desk_messages').update({ meta: { ...(row.meta ?? {}), stop_at: new Date().toISOString() } }).eq('id', row.id)
+  return uErr ? { ok: false, error: 'write_failed' } : { ok: true }
+}
+
+/**
+ * Ask again (2026-11-19): the question behind one of Ivan's plain desk answers, from the answer's own reply_to.
+ * Refused for an answer with change cards, a cloud job, an error or a photo: those are never re-run.
+ */
+// deno-lint-ignore no-explicit-any
+async function regenQuestion(svc: any, userId: string, answerId: string): Promise<{ text: string } | { error: string }> {
+  const { data: a, error } = await svc.from('desk_messages').select('id, role, origin, status, meta').eq('id', answerId).eq('user_id', userId).maybeSingle()
+  if (error) return { error: 'turn_in_progress' }
+  const m = (a?.meta ?? {}) as { actions?: unknown[]; t3_job?: unknown; error?: unknown; reply_to?: string }
+  if (!a || a.role !== 'assistant' || a.origin !== 'desk' || a.status !== 'done' || (Array.isArray(m.actions) && m.actions.length) || m.t3_job || m.error || !m.reply_to) {
+    return { error: 'regen_refused' }
+  }
+  const { data: q, error: qErr } = await svc.from('desk_messages').select('id, role, body, meta').eq('id', m.reply_to).eq('user_id', userId).maybeSingle()
+  if (qErr) return { error: 'turn_in_progress' }
+  const qm = (q?.meta ?? {}) as { attachments?: unknown[] }
+  if (!q || q.role !== 'user' || !String(q.body ?? '').trim() || (Array.isArray(qm.attachments) && qm.attachments.length)) return { error: 'regen_refused' }
+  return { text: String(q.body).trim() }
+}
+
 // deno-lint-ignore no-explicit-any
 async function openJobs(svc: any, userId: string) {
   const { data } = await svc.from('desk_t3_jobs').select('title, status, created_at, t3_link')
@@ -302,7 +339,7 @@ async function runReads(svc: any, userDb: any, r: Rendered, reads: Act[]): Promi
 }
 
 // ---- the turn ------------------------------------------------------------------
-type SendBody = { text?: unknown; client_key?: unknown; attachments?: unknown; voice?: unknown; chip?: unknown }
+type SendBody = { text?: unknown; client_key?: unknown; attachments?: unknown; voice?: unknown; chip?: unknown; regen_of?: unknown }
 
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin')
@@ -353,6 +390,7 @@ Deno.serve(async (req) => {
   if (op === 'undo' || op === 'commit' || op === 'cancel') {
     return json(await settle(svc, userDb, userId, op, String(body.action_id ?? ''), dry), 200, origin)
   }
+  if (op === 'stop') return json(await stopTurn(svc, userId, String(body.client_key ?? '').slice(0, 80)), 200, origin)
   if (op !== 'send') return json({ error: 'bad_op' }, 400, origin)
   return await send(req, origin, svc, userDb, userId, body as SendBody, { evalMode, fixtures, dry, t3Test, t3On: cfg.t3_enabled === true || evalMode })
 })
@@ -361,15 +399,25 @@ Deno.serve(async (req) => {
 async function send(_req: Request, origin: string | null, svc: any, userDb: any, userId: string, body: SendBody,
   mode: { evalMode: boolean; fixtures: boolean; dry: boolean; t3Test: boolean; t3On: boolean }): Promise<Response> {
   const t0 = Date.now()
-  const text = typeof body.text === 'string' ? body.text.trim() : ''
+  let text = typeof body.text === 'string' ? body.text.trim() : ''
   const clientKey = typeof body.client_key === 'string' ? body.client_key.slice(0, 80) : crypto.randomUUID()
+  // Ask again (2026-11-19): a new answer to a stored question, read-only. The SERVER takes the question from
+  // the answer's own reply_to (never the client's text), and only for a plain answer: no cards, no error, no photo.
+  const regenOf = typeof body.regen_of === 'string' && /^[0-9a-f-]{36}$/i.test(body.regen_of) ? body.regen_of : null
+  if (regenOf) {
+    const q = await regenQuestion(svc, userId, regenOf)
+    if ('error' in q) return json({ error: q.error, detail: CLIENT_TEXT[q.error] }, 409, origin)
+    if (text && text !== q.text) return json({ error: 'key_mismatch' }, 409, origin)
+    text = q.text
+    if (Array.isArray(body.attachments) && body.attachments.length) return json({ error: 'regen_refused' }, 409, origin)
+  }
   const attachments = (Array.isArray(body.attachments) ? body.attachments : [])
     .filter((a): a is { kind: string; url: string; name?: string } => !!a && typeof a === 'object' && typeof (a as { url?: unknown }).url === 'string' && /^https:\/\//.test((a as { url: string }).url))
     .slice(0, MAX_ATTACH).map((a) => ({ kind: a.kind === 'photo' ? 'photo' : 'link', url: a.url.slice(0, 1000), ...(a.name ? { name: String(a.name).slice(0, 120) } : {}) }))
   if (!text && !attachments.length) return json({ error: 'empty' }, 400, origin)
   if (text.length > MAX_TEXT) return json({ error: 'too_long' }, 413, origin)
 
-  const userMeta = { attachments, voice: body.voice === true, chip: body.chip === true, ...(mode.evalMode ? { test: true } : {}) }
+  const userMeta = { attachments, voice: body.voice === true, chip: body.chip === true, ...(regenOf ? { regen_of: regenOf } : {}), ...(mode.evalMode ? { test: true } : {}) }
 
   // Sol r1 #5 / the UI's contract: one key = one turn. The user row is written before the stream:
   // a new key runs the turn; a known key with the same text and a stored answer gets ack + final and
@@ -387,7 +435,7 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
       const prevAtt = ((again.meta as { attachments?: { kind?: string; url?: string; name?: string }[] } | null)?.attachments ?? [])
       const sameAtt = prevAtt.length === attachments.length &&
         prevAtt.every((a, i) => a?.kind === attachments[i].kind && a?.url === attachments[i].url && (a?.name ?? null) === ((attachments[i] as { name?: string }).name ?? null))
-      if (again.body !== text || !sameAtt) return json({ error: 'key_mismatch' }, 409, origin)
+      if (again.body !== text || !sameAtt || ((again.meta as { regen_of?: string } | null)?.regen_of ?? null) !== regenOf) return json({ error: 'key_mismatch' }, 409, origin)
       const { data: prior, error: pErr } = await svc.from('desk_messages').select('*').eq('user_id', userId).eq('role', 'assistant')
         .filter('meta->>reply_to', 'eq', again.id).order('created_at', { ascending: false }).limit(1).maybeSingle()
       // a failed answer lookup fails closed: it never reads as "no answer" (that would close a live turn)
@@ -431,7 +479,10 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
         timings.ack_ms = Date.now() - t0
         timings.brief_ms = brief.ms
         later(sweepT3Stalls(svc), 't3_sweep')
-        const r = render(applyVisibility(brief.json, visible ?? new Map()), recent.filter((m: { role: string; body: string; created_at: string }) => !(m.role === 'user' && m.body === text && Date.now() - Date.parse(m.created_at) < 60_000)).slice(-10), jobs)
+        const r = render(applyVisibility(brief.json, visible ?? new Map()), recent.filter((m: { id?: string; role: string; body: string; created_at: string; meta?: { regen_of?: string } }) =>
+          !(m.role === 'user' && m.body === text && Date.now() - Date.parse(m.created_at) < 60_000)
+          // Ask again: the answer being replaced is not shown to the model, and neither is a re-asked question
+          && m.id !== regenOf && !m.meta?.regen_of).slice(-10), jobs)
         let prompt = buildPrompt({ brief: r.text, message: text || '(no text, see attachment)', attachments, voice: body.voice === true, banned })
         // Token streaming through the proxy's opt-in stream (DESK_STREAM=1): the reply reaches
         // the phone as it is written. Otherwise the whole answer goes out the moment it exists.
@@ -439,14 +490,17 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
         let streamed = false
         // any model prose already shown: a write in the same turn is refused (Sol r10 #6)
         let proseReleased = false
+        // the prose released so far (a stopped answer keeps exactly this)
+        let shownSoFar = ''
         // call-line handles are stripped BEFORE a delta goes out: a short tail is held back across
         // delta boundaries so a split "L" + "1" is never shown (Sol r7 #8)
         const hs = new HandleStream(r.lines.keys())
         const onReply = (t: string) => {
           if (!t) return
           if (!streamed) { streamed = true; timings.ttft_ms = Date.now() - t0 }
+          if (stopCtl.signal.aborted) return   // nothing after Stop
           const out = hs.push(t)
-          if (out) { proseReleased = true; emit('delta', { text: out }) }
+          if (out) { proseReleased = true; shownSoFar += out; emit('delta', { text: out }) }
         }
         // a write turn shows only server text (Sol r9 #4): the model acts first, no prose streams, and
         // one fixed status line goes out at once; the final body is the server echo from action results
@@ -458,26 +512,52 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
           if (!streamed) { streamed = true; timings.ttft_ms = Date.now() - t0 }
           emit('delta', { text: WORKING })
         }
-        const ask = (p: string) => streaming ? askDeskStream(p, onReply, { onWrite }) : askDesk(p)
-        const m1 = await ask(prompt)
-        timings.model_ms = m1.ms; if (m1.hedged) timings.hedged = 1
-        let parsed = parse(m1.text)
-        if (parsed.reads.length && !parsed.actions.length) {
-          toolCalls += parsed.reads.length
-          const results = await runReads(svc, userDb, r, parsed.reads)
-          prompt = buildPrompt({ brief: r.text, message: text, attachments, voice: body.voice === true, readResults: results, banned })
-          const m2 = await ask(prompt)
-          timings.model_ms += m2.ms
-          parsed = parse(m2.text)
+        // Stop (2026-11-19): Ivan's Stop sets a flag on his question row (op stop); while the model writes, this
+        // turn reads it about once a second and aborts the call. What was already shown stays as the answer, and
+        // a stopped turn runs no action at all. A dropped connection is never a stop.
+        const stopCtl = new AbortController()
+        const stopPoll = setInterval(() => {
+          svc.from('desk_messages').select('meta').eq('id', userRow.id).maybeSingle()
+            .then(({ data }: { data: { meta?: { stop_at?: string } } | null }) => { if (data?.meta?.stop_at) stopCtl.abort() }, () => {})
+        }, 800)
+        const ask = (p: string) => streaming ? askDeskStream(p, onReply, { onWrite, signal: stopCtl.signal }) : askDesk(p, { signal: stopCtl.signal })
+        let model = DESK_MODEL()
+        let parsed: ReturnType<typeof parse>
+        let stopped = false
+        try {
+          const m1 = await ask(prompt)
+          model = m1.model
+          timings.model_ms = m1.ms; if (m1.hedged) timings.hedged = 1
+          parsed = parse(m1.text)
+          if (parsed.reads.length && !parsed.actions.length) {
+            toolCalls += parsed.reads.length
+            const results = await runReads(svc, userDb, r, parsed.reads)
+            prompt = buildPrompt({ brief: r.text, message: text, attachments, voice: body.voice === true, readResults: results, banned })
+            const m2 = await ask(prompt)
+            timings.model_ms += m2.ms
+            parsed = parse(m2.text)
+          }
+          if (!parsed.reply && !parsed.actions.length && !parsed.reads.length) {
+            // an empty answer is never shown as an answer: ask once more, buffered
+            const again = await askDesk(prompt, { signal: stopCtl.signal })
+            timings.model_ms += again.ms; timings.retried = 1
+            parsed = parse(again.text)
+          }
+        } catch (e) {
+          if (!(e instanceof LlmError && e.code === 'stopped')) throw e
+          stopped = true
+          // only the text Ivan already saw: no actions, no reads, no chips
+          parsed = { reply: writeShown ? '' : shownSoFar, actions: [], reads: [], chips: [] }
+        } finally {
+          clearInterval(stopPoll)
         }
-        if (!parsed.reply && !parsed.actions.length && !parsed.reads.length) {
-          // an empty answer is never shown as an answer: ask once more, buffered
-          const again = await askDesk(prompt)
-          timings.model_ms += again.ms; timings.retried = 1
-          parsed = parse(again.text)
-        }
-        const reply = parsed.reply || (parsed.actions.length ? 'On it.' : 'I could not put an answer together. Send it again?')
-        { const tail = hs.flush(); if (tail) { proseReleased = true; emit('delta', { text: tail }) } }
+        // Ask again is read-only: a proposed change is dropped and he is told to send it as a new message
+        const regenDropped = !!regenOf && parsed.actions.length > 0
+        if (regenDropped) parsed = { ...parsed, actions: [], chips: [] }
+        const reply = stopped ? (parsed.reply.trim() ? parsed.reply : 'Stopped.')
+          : regenDropped ? (parsed.reply.trim() || 'That asks for a change. Send it as a new message and I will set it up for your tap.')
+          : parsed.reply || (parsed.actions.length ? 'On it.' : 'I could not put an answer together. Send it again?')
+        if (!stopped) { const tail = hs.flush(); if (tail) { proseReleased = true; emit('delta', { text: tail }) } }
         if (!streamed) {
           timings.ttft_ms = Date.now() - t0
           if (parsed.actions.length) emit('delta', { text: WORKING })
@@ -490,7 +570,7 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
         // insert the assistant row now so actions can reference it
         const { data: aRow } = await svc.from('desk_messages').insert({
           user_id: userId, role: 'assistant', origin: 'desk', body: parsed.actions.length ? WORKING : sanitize(reply, r.lines.keys()), status: 'streaming',
-          meta: { model: m1.model, reply_to: userRow.id, client_key: clientKey, turn_token: turnToken, ...(mode.evalMode ? { test: true } : {}) },
+          meta: { model, reply_to: userRow.id, client_key: clientKey, turn_token: turnToken, ...(mode.evalMode ? { test: true } : {}) },
         }).select('id').single()
         if (!aRow?.id) throw new LlmError('desk_failed', 'answer row')
         const messageId = aRow.id as string
@@ -669,9 +749,12 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
         const sideEffects = await turnSideEffects(svc, messageId)
         timings.total_ms = Date.now() - t0
         const t3 = echoes.find((e) => e.t3_job)?.t3_job
+        // post cards (2026-11-19): the drafts a plain answer names by their opening words, so a tap opens them
+        const cards = echoes.length || stopped ? [] : draftCards(reply, r.drafts)
         const meta = {
-          model: m1.model, reply_to: userRow.id, client_key: clientKey, timings, tool_calls: toolCalls, brief_chars: r.text.length,
+          model, reply_to: userRow.id, client_key: clientKey, timings, tool_calls: toolCalls, brief_chars: r.text.length,
           ...(echoes.length ? { actions: echoes, notes: notes.map((n) => sanitize(n, r.lines.keys())) } : {}), ...(chips.length ? { chips: oneText(chips) } : {}), ...(t3 ? { t3_job: t3 } : {}),
+          ...(cards.length ? { drafts: cards } : {}), ...(stopped ? { stopped: true } : {}), ...(regenOf ? { regen_of: regenOf } : {}),
           turn_token: turnToken, side_effects: sideEffects, ...(mode.evalMode ? { test: true } : {}),
         }
         // The final row (with its echoes) is the only thing that lets a hold arm: held_seen and commit
@@ -949,8 +1032,9 @@ async function settle(svc: any, userDb: any, userId: string, op: string, actionI
   let resDetail: string | undefined
   if (op === 'undo') {
     if (state !== 'done' || a.undone_at || !a.undo) return { ok: false, error: 'nothing_to_undo' }
-    if ((a.undo as { op?: string }).op === 'draft_v4') {
-      // a draft write (date, remove date, photo): ONE locked SQL call takes only the action id, claims the
+    const undoOp = (a.undo as { op?: string }).op
+    if (undoOp === 'draft_v4' || undoOp === 'pull_v1') {
+      // a draft write (date, remove date, photo, approve, delete; a pull as pull_v1): ONE locked SQL call takes only the action id, claims the
       // owned row (done -> undoing), loads target, before and applied from it, compares the whole columns
       // with applied and restores before; any refusal rolls the claim back (round 14 #4)
       const { data, error } = await svc.rpc('desk_undo', { p_action: actionId })
@@ -960,6 +1044,8 @@ async function settle(svc: any, userDb: any, userId: string, op: string, actionI
         const code = String(r.error ?? 'undo_failed')
         if (code === 'nothing_to_undo') return { ok: false, error: 'nothing_to_undo' }
         const refused = code === 'changed_since' || code === 'gone'
+        // a pull's Undo is refused close to the post's time, or when the old slot is no longer free (2026-11-19)
+        if (code === 'too_late' || code === 'slot_taken') return { ok: false, error: code, detail: failText(code) }
         return { ok: false, error: code === 'in_queue' ? 'in_queue' : refused ? 'changed_since' : 'undo_failed', detail: refused ? failText(new UndoRefused(code)) : failText(code) }
       }
     } else {

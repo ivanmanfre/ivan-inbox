@@ -318,7 +318,8 @@ Deno.test('r4#4 held pull: another queue row, no row or an unreadable queue fail
   assertEquals(await planForTarget({ ...base, svc: svcWith({ data: [], error: null }) } as never, { ...act }, { ...snap('q-A'), first_line_sha: sha }), { refuse: 'queue_changed' })
   assertEquals(await planForTarget({ ...base, svc: svcWith({ data: null, error: { message: 'down' } }) } as never, { ...act }, { ...snap('q-B'), first_line_sha: sha }), { refuse: 'queue_read_failed' })
   const ok = await planForTarget({ ...base, svc: svcWith(qB) } as never, { ...act }, { ...snap('q-B'), first_line_sha: sha }) as { run?: (a: string, c?: string) => Promise<unknown> }
-  await ok.run!('A1', 'C1')
+  // 2026-11-19: desk_pull stores its pull_v1 undo on the action row itself
+  assertEquals((await ok.run!('A1', 'C1') as { undoInDb?: boolean }).undoInDb, true)
   assertEquals(rpcs, [['desk_pull', { p_action: 'A1', p_claim: 'C1', p_draft: ID1, p_expected_updated_at: 'U1', p_queue_ids: ['q-B'], p_next_queue: 'q-B', p_next_slot: future, p_reason: 'wrong week', p_expected_scheduled_at: future }]])
   // a second live queue row that was not there when it was authorized: refused before any write
   const qAB = { data: [...qB.data, { id: 'q-C', scheduled_at: future, status: 'queued_v2', platform: 'x', is_repost: false }], error: null }
@@ -1280,4 +1281,17 @@ Deno.test('round 21 #2: a converted remove date passes the SAVED Next slot to de
   assertEquals(p.echo.kind, 'pull')
   await p.run!('A1', 'C1')
   assertEquals(calls[0][0], 'desk_pull'); assertEquals(calls[0][1].p_next_slot, saved); assertEquals(calls[0][1].p_next_queue, 'q-A')
+})
+
+Deno.test('2026-11-19 undo: approve and delete store their exact undo in SQL; a brain Keep keeps none', async () => {
+  const rpcs: string[] = []
+  const svc = { rpc: (n: string) => { rpcs.push(n); return Promise.resolve({ data: { ok: true }, error: null }) }, from: () => { throw new Error('no table read') } }
+  for (const [brain, kind, rpc, inDb] of [[false, 'approve', 'desk_approve', true], [true, 'approve', 'desk_keep', undefined], [false, 'delete', 'desk_delete', true]] as const) {
+    const d = draft(ID1, 'Snow in the park this morning', { updated_at: 'U1', brain })
+    const r = render(brief([d]))
+    const p = await plan({ brief: r, attachments: [], text: '', env: () => undefined, userDb: forbidden, svc } as never, { kind, draft: r.handleOf.get(ID1)!, line: 'Snow in the park' })
+    if (brain && kind === 'approve') assertEquals(p.echo.state, 'held')
+    const res = await p.run!('A1', 'C1') as { undoInDb?: boolean; undo?: unknown }
+    assertEquals(rpcs.at(-1), rpc); assertEquals(res.undoInDb, inDb, `${kind} brain=${brain}`); assertEquals(res.undo, undefined)
+  }
 })

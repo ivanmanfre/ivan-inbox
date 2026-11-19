@@ -8,8 +8,12 @@ import { CIcon } from '../claude/icons'
 import { uploadDeskPhoto } from './api'
 import type { DeskAttachment } from './model'
 
-export function DeskComposer({ busy, onSend, prefill, suggest, autoFocus, onUploading }: {
+export function DeskComposer({ busy, onSend, prefill, suggest, autoFocus, onUploading, streaming, stopping, onStop }: {
   busy: boolean
+  /** An answer is being written: the send key becomes Stop (what is shown stays; nothing is changed). */
+  streaming?: boolean
+  stopping?: boolean
+  onStop?: () => void
   /** The photo upload is part of the turn: the desk holds every other send while it runs. */
   onUploading?: (on: boolean) => void
   /** Desktop: the field takes the focus when the desk opens (never on the phone: it would raise the keyboard). */
@@ -156,7 +160,9 @@ export function DeskComposer({ busy, onSend, prefill, suggest, autoFocus, onUplo
             </button>
           )}
           <span className="dk-comp-gap" />
-          <button type="button" className="dk-key dk-send" aria-label="Send" disabled={!canSend} onClick={() => void send()}><CIcon name="up" /></button>
+          {streaming && onStop
+            ? <button type="button" className="dk-key dk-send dk-stop" aria-label={stopping ? 'Stopping the answer' : 'Stop the answer'} disabled={stopping} onClick={onStop}><CIcon name="stop" /></button>
+            : <button type="button" className="dk-key dk-send" aria-label="Send" disabled={!canSend} onClick={() => void send()}><CIcon name="up" /></button>}
         </div>
       </div>
     </div>

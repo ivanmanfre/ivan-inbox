@@ -45,6 +45,8 @@ type Listener = { message: (m: DeskMessage) => void; job?: (j: T3Job) => void }
 const listeners = new Set<Listener>()
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 let n = 10
+// Stop: the keys whose answer was stopped (the stream checks between words, as the server checks its flag)
+const stops = new Set<string>()
 
 function push(m: DeskMessage) {
   rows = rows.filter(r => r.id !== m.id).concat(m)
@@ -73,31 +75,48 @@ function answerFor(text: string, id: string): DeskMessage {
     })()
     return { ...base, body: 'That needs real work, so I opened a T3 thread for it.', meta: { ...base.meta, t3_job: { id: jid, status: 'queued', title: 'Made up build job' } } }
   }
-  return { ...base, body: 'Two posts are dated next week. Belief 4 has nothing yet, so the Thursday slot is the one to fill. I can draft it from the last call if you want.', meta: { ...base.meta, chips: [{ send: 'draft the thursday slot from the last call' }] } }
+  if (/long|explain/.test(t)) return { ...base, body: Array.from({ length: 12 }, (_, i) => `Point ${i + 1}: a made up line about the week that goes on for a while so Stop has time.`).join(' ') }
+  // A plain answer names two posts by their opening words: the server turns them into cards that open the post.
+  return { ...base, body: 'Two posts are dated next week: "A made up post about trains" on Tuesday and "A made up post about a quiet Monday" with no date yet. Belief 4 has nothing yet, so the Thursday slot is the one to fill.',
+    meta: { ...base.meta, chips: [{ send: 'draft the thursday slot from the last call' }], drafts: [
+      { handle: '#a1b2c', id: '00000000-0000-4000-8000-0000000000a1', first_line: 'A made up post about trains in the rain.', status: 'scheduled', scheduled_at: at(60 * 25) },
+      { handle: '#d3e4f', id: '00000000-0000-4000-8000-0000000000d3', first_line: 'A made up post about a quiet Monday.', status: 'review', scheduled_at: null },
+    ] } }
 }
 
 export const mockApi = {
   async send(body: SendBody, h: SendHandlers): Promise<'final' | 'error' | 'dropped'> {
     const uid = `u-${++n}`
     await sleep(60)
-    const user: DeskMessage = { id: uid, role: 'user', origin: 'operator', body: body.text, status: 'done', meta: { ...(body.attachments ? { attachments: body.attachments } : {}), ...(body.voice ? { voice: true } : {}) }, client_key: body.client_key, created_at: new Date().toISOString() }
+    const user: DeskMessage = { id: uid, role: 'user', origin: 'operator', body: body.text, status: 'done', meta: { ...(body.attachments ? { attachments: body.attachments } : {}), ...(body.voice ? { voice: true } : {}), ...(body.regen_of ? { regen_of: body.regen_of } : {}) }, client_key: body.client_key, created_at: new Date().toISOString() }
     rows = rows.concat(user)
     h.onAck?.({ user_message_id: uid, client_key: body.client_key })
     if (/fail please/.test(body.text)) { await sleep(400); h.onError?.('upstream_error', 'The model did not answer.'); return 'error' }
-    const ans = answerFor(body.text, `r-${++n}`)
+    let ans = answerFor(body.text, `r-${++n}`)
+    // Ask again is read-only on the server: a fresh plain answer, never a change card
+    if (body.regen_of) ans = { ...ans, body: `${ans.meta.actions?.length ? 'That asks for a change. Send it as a new message.' : 'Asked again: ' + ans.body}`, meta: { model: 'mock', regen_of: body.regen_of, ...(ans.meta.drafts ? { drafts: ans.meta.drafts } : {}) } }
+    ans.meta = { ...ans.meta, client_key: body.client_key, reply_to: uid }
     await sleep(700)
     const words = ans.body.split(/(?<= )/)
-    for (let i = 0; i < words.length; i += 3) { h.onDelta?.(words.slice(i, i + 3).join('')); await sleep(60) }
+    let said = ''
+    for (let i = 0; i < words.length; i += 3) {
+      if (stops.has(body.client_key)) { ans = { ...ans, body: said.trim() || 'Stopped.', meta: { model: 'mock', client_key: body.client_key, reply_to: uid, stopped: true } }; break }
+      const chunk = words.slice(i, i + 3).join(''); said += chunk
+      h.onDelta?.(chunk); await sleep(60)
+    }
     // Stamped when it is stored, as the function stores it: after the stream.
     ans.created_at = new Date().toISOString()
     rows = rows.concat(ans)
     h.onFinal?.(ans)
     return 'final'
   },
+  async stop(clientKey: string): Promise<boolean> { await sleep(40); stops.add(clientKey); return true },
   async op(o: 'undo' | 'commit' | 'cancel', actionId: string): Promise<ActionResult> {
     await sleep(150)
     const m = rows.find(r => r.meta.actions?.some(a => a.id === actionId))
     if (!m) return { ok: false, error: 'not_found' }
+    // a pull whose time is too close: the server refuses the Undo with its own sentence
+    if (o === 'undo' && /late/.test(actionId)) return { ok: false, error: 'too_late', detail: 'Its time is under 15 minutes away or past, so I left it off the schedule. Date it again in the calendar.' }
     const state = o === 'undo' ? 'undone' : o === 'commit' ? 'done' : 'cancelled'
     const next: DeskMessage = { ...m, meta: { ...m.meta, actions: m.meta.actions!.map(a => (a.id === actionId ? { ...a, state, undo: o === 'commit' } : a)) } }
     push(next)
