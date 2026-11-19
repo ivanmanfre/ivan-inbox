@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { asMessage, cacheable, cleanLabel, holdLeft, holdStart, linksIn, mergeRows, optimisticPair, parseSse, type DeskMessage } from './model'
+import { asMessage, cacheable, cleanLabel, labelRef, holdLeft, holdStart, linksIn, mergeRows, optimisticPair, parseSse, type DeskMessage } from './model'
 import { keyboardInset, keyboardOpen } from './useKeyboardInset'
 
 const row = (over: Partial<DeskMessage> & { id: string }): DeskMessage => asMessage({ role: 'assistant', origin: 'desk', body: 'x', created_at: '2026-11-18T10:00:00.000Z', ...over })
@@ -115,5 +115,13 @@ describe('cleanLabel: server sentences read once, with no ref and no duplicated 
   })
   it('without a matching target the post text stays', () => {
     expect(cleanLabel('Saved as an idea: "Post on DMs". The scorer picks it up next.').text).toBe('Saved as an idea: "Post on DMs". The scorer picks it up next.')
+  })
+})
+
+describe('labelRef: only the reference of the card itself', () => {
+  it('reads the opening ref and never one quoted in a reason', () => {
+    expect(labelRef('Proposed (ref 1a2b3c4d): delete "A made up post" (no date).')).toBe('1a2b3c4d')
+    expect(labelRef('Moved (ref 5e6f7a8b) "A made up post" to Tue 9 Mar')).toBe('5e6f7a8b')
+    expect(labelRef('Not done: it clashes with the post at (ref 9c9c9c9c), so I left it.')).toBeNull()
   })
 })

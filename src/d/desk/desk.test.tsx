@@ -255,6 +255,17 @@ describe('Desk polish (review of the new layout)', () => {
     expect(screen.queryByText('#target')).toBeNull()
   })
 
+  it('a reply that started before the desk opened and finished during the first read is announced', async () => {
+    const started = new Date(Date.now() - 5000).toISOString()
+    vi.mocked(api.readMessages).mockResolvedValueOnce([
+      stored({ id: 'old1', body: 'An old answer.', created_at: '2026-11-17T09:00:00Z', updated_at: '2026-11-17T09:00:05Z' }),
+      stored({ id: 'late1', body: 'A late answer.', created_at: started, updated_at: new Date(Date.now() + 1000).toISOString() }),
+    ])
+    const { container } = render(<Desk layout="phone" />)
+    await screen.findByText('A late answer.')
+    await waitFor(() => expect(container.querySelector('.dk-sr')!.textContent).toBe('The desk answered.'))
+  })
+
   it('a cancelled proposal never keeps "It runs only when you tap Do it now" above its card', async () => {
     vi.mocked(api.readMessages).mockResolvedValueOnce([stored({ id: 'p2',
       body: 'Proposed (ref 1a2b3c4d): move "A made up post about trains." (no date) to Thu 26 Nov, 09:30 (UTC+01:00). It runs only when you tap Do it now.',

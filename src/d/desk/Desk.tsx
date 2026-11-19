@@ -183,7 +183,9 @@ function DeskList({ desk, locked, layout }: { desk: DeskHandle; locked: boolean;
     if (!desk.loaded) return
     const done = messages.filter(m => m.role === 'assistant' && !m.answers && m.status === 'done')
     if (!seenReplies.current) {
-      seenReplies.current = new Set(done.filter(m => Date.parse(m.created_at) < openedAt.current - 2000).map(m => m.id))
+      // By when it FINISHED (its last write), so a reply that started before opening and finished during the
+      // first read is still announced.
+      seenReplies.current = new Set(done.filter(m => Date.parse(m.updated_at ?? m.created_at) < openedAt.current - 2000).map(m => m.id))
     }
     // Every reply that is new since the last announcement, even when several land in one update.
     const fresh = done.filter(m => !seenReplies.current!.has(m.id))
