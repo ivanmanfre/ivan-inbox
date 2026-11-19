@@ -1,3 +1,4 @@
+import { changeDraftFile } from './DraftFile'
 import { editHeldDm, sendRejectedDm } from '../../lib/rejectedDm'
 import { parseEmailCc } from '../../lib/emailCc'
 // Every DM write, wired to TODAY'S lib calls with today's payloads, guards and order
@@ -169,6 +170,13 @@ export function useDmVerbs(ctx: VerbCtx) {
       } catch (e) { fail(`Channel choice not saved: ${errText(e)}`); return false }
     }
 
+    async function updateDraftFile(t: Thread, change: File | { action: 'remove'; file_id: string }) {
+      if (!t.draft || t.client_id !== 'ivan') throw new Error('Open a LinkedIn reply draft first.')
+      const evidence = await changeDraftFile(t.draft.id, t.draft.draft_evidence?.dm_attachment?.id ?? null, change)
+      ctx.patch([t.draft.id], { draft_evidence: evidence })
+      ctx.refresh()
+    }
+
     /** Approve & send (both legs on a pair). Always asks first, as today's thread does.
      *  `onDeclined`: he cancelled the confirm, so nothing was written (the caller re-arms any autosave it paused). */
     async function send(t: Thread, ed: Edits, onDeclined?: () => void): Promise<string | null> {
@@ -198,7 +206,9 @@ export function useDmVerbs(ctx: VerbCtx) {
             ? `Approve this scan and send its delivery message from Anna’s LinkedIn. Review the scan page first.${draft.draft_evidence.scan.blockers_overridden || draft.draft_evidence.scan.blockers?.length ? ' The builder reported unresolved findings; approving accepts them.' : ''}`
             : comp ? `Both legs go out: the ${legName(draft)} and the ${legName(comp)}. The sender picks them up within about 2 minutes.`
             : channelChoice ? `${mode === 'email' ? `Only the email to ${draft.recipient_email}${emailSenderLabel(t.client_id)}` : mode === 'both' ? `The LinkedIn DM and email to ${draft.recipient_email}${emailSenderLabel(t.client_id)}` : 'Only the LinkedIn DM'} will be sent. The sender picks it up within about 2 minutes.`
-              : 'The sender picks it up within about 2 minutes.',
+              : draft.draft_evidence?.dm_attachment
+                ? `This sends the LinkedIn DM with ${draft.draft_evidence.dm_attachment.name} attached.`
+                : 'The sender picks it up within about 2 minutes.',
           confirmText: comp ? 'Approve & send both' : channelChoice ? mode === 'email' ? 'Send email' : mode === 'both' ? 'Send both' : 'Send DM' : 'Approve & send',
           verb: 'confirm-send',
         })
@@ -711,7 +721,7 @@ export function useDmVerbs(ctx: VerbCtx) {
       await bulkDiscard(stale, '', { title: `Discard ${stale.length} stale draft${stale.length === 1 ? '' : 's'}?`, message: 'These threads already have your own reply after the last inbound message. Nothing is sent.', confirmText: 'Discard stale' })
     }
 
-    return { quickDiscard, sendVia, rowDiscard, discardStale, send, redraft, sendAnyways, editHeld, discardHeld, discard, solved, later, bringBackNow, saveEdit, autosave, compose, bringBack, cameBackDismiss, spam, notSpam, deleteSeat, followUp, followUpClear, holdDiscard, holdRelease, askOwner, bulkDiscard, isFollowUp }
+    return { quickDiscard, sendVia, updateDraftFile, rowDiscard, discardStale, send, redraft, sendAnyways, editHeld, discardHeld, discard, solved, later, bringBackNow, saveEdit, autosave, compose, bringBack, cameBackDismiss, spam, notSpam, deleteSeat, followUp, followUpClear, holdDiscard, holdRelease, askOwner, bulkDiscard, isFollowUp }
   }, [ctx, confirm, toast, askDiscard, askDate])
 }
 

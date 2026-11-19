@@ -43,3 +43,6 @@ verify_jwt = false
 # trigger tick (pg_cron) authenticates with x-desk-secret in the handler.
 [functions.content-desk]
 verify_jwt = false
+
+[functions.inbox-dm-draft-file]
+verify_jwt = false

@@ -12,6 +12,7 @@ import { ago } from './model'
 import { dayMonth } from './threadRows'
 import type { Edits } from './verbs'
 import type { SaveState } from './useAutosave'
+import { DraftFile } from './DraftFile'
 import { EmailCcField, EmailDraftEditor } from './EmailDraftEditor'
 
 const SCAN_DELIVERY_MODEL = 'rise_dm2_scan_delivery_v1'
@@ -127,7 +128,7 @@ const SAVE_WORD: Record<SaveState, string> = { idle: '', saving: 'Saving…', sa
 /** The draft is the last bubble of the conversation, on our side, and it IS the editor (Ivan 09-27:
  *  "I want the direct editing capabilities"): type in it, it saves itself (useAutosave). Its email
  *  leg and the mirror email edit the same way. */
-export function Draft({ t, edits, setEdits, save, onBlur, onRetrySave, now, onRetry, v4 = false, strips, foot, onSend, onSendVia, deliveryBusy = false, emailLoading = false, emailUnavailable = false, phone = false }: {
+export function Draft({ t, edits, setEdits, save, onBlur, onRetrySave, now, onRetry, v4 = false, strips, foot, onSend, onSendVia, deliveryBusy = false, emailLoading = false, emailUnavailable = false, phone = false, onFileChange }: {
   t: Thread; edits: Edits; setEdits: (e: Edits) => void; save: SaveState; onBlur: () => void; onRetrySave: () => void; now: number; onRetry: () => void
   /** #16: on desktop the draft box grows to fit (no inner scroll); the phone keeps the 240px cap. */
   phone?: boolean
@@ -137,6 +138,7 @@ export function Draft({ t, edits, setEdits, save, onBlur, onRetrySave, now, onRe
   onSendVia?: (mode: DraftSendVia) => void; deliveryBusy?: boolean
   onSend?: () => void
   emailLoading?: boolean; emailUnavailable?: boolean
+  onFileChange?: (file: File | { action: 'remove'; file_id: string }) => Promise<void>
 }) {
   const draft = t.draft
   if (!draft) return null
@@ -165,6 +167,12 @@ export function Draft({ t, edits, setEdits, save, onBlur, onRetrySave, now, onRe
     <option value="both">DM + email</option>
   </select>{deliveryBusy && <span role="status">Saving…</span>}</label>
   const hold = holdReason(draft)
+  const attached = draft.draft_evidence?.dm_attachment ?? null
+  const canAttach = t.client_id === 'ivan' && mode === 'dm' && !draft.email_mirror_text?.trim() && !comp && !email && !inmail &&
+    draft.ai_model === 'inbox_on_demand_reply' && !!draft.unipile_chat_id &&
+    !t.draftStale && !draft.approved_at && !draft.sent_at && !draft.send_blocked_at && !draft.draft_evidence_unavailable
+  const files = (attached || (canAttach && onFileChange)) &&
+    <DraftFile key={draft.id} draftId={draft.id} file={attached} locked={deliveryBusy} onChange={canAttach ? onFileChange : undefined} />
   const sendKey = onSend ? (e: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); onSend() } } : undefined
   const envelope = emailDetails(draft, t)
   const emailDisabled = emailLoading || emailUnavailable
@@ -209,6 +217,7 @@ export function Draft({ t, edits, setEdits, save, onBlur, onRetrySave, now, onRe
           {inmail && <p className="dm-meta">InMail to {t.prospect_name}</p>}
           {email ? mainEmail : inmail ? <EmailEdit subjectLabel="InMail subject" fixedSubject={fixedSubject} value={edits.main} onChange={main => setEdits({ ...edits, main })} onBlur={onBlur} label="The draft" onKeyDown={sendKey} />
             : <BubbleEdit value={edits.main} onChange={main => setEdits({ ...edits, main })} onBlur={onBlur} label="The draft" max={grow} onKeyDown={sendKey} />}
+          {files}
         </div> : null}
         {comp && (
           <div className={`dm-leg dx-leg${messageChannel(comp) === 'email' ? ' dm-email-leg' : ''}`}>
@@ -262,6 +271,7 @@ export function Draft({ t, edits, setEdits, save, onBlur, onRetrySave, now, onRe
         {inmail && <p className="dm-meta">InMail to {t.prospect_name}</p>}
         {email ? mainEmail : inmail ? <EmailEdit subjectLabel="InMail subject" fixedSubject={fixedSubject} value={edits.main} onChange={main => setEdits({ ...edits, main })} onBlur={onBlur} label="The draft" />
           : <BubbleEdit value={edits.main} onChange={main => setEdits({ ...edits, main })} onBlur={onBlur} label="The draft" max={grow} />}
+        {files}
       </div> : null}
       {comp && (
         <div className={`dm-leg${messageChannel(comp) === 'email' ? ' dm-email-leg' : ''}`}>

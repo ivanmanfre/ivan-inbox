@@ -1679,7 +1679,9 @@ export type DraftContextGap = { question: string | null; why: string | null; cha
 
 export type DraftEvidenceFact = { id: string; fact: string; topic: string; at: string; from: string | null }
 export type DraftEvidenceExemplar = { they: string | null; reply: string | null; at: string | null; prospect: string | null }
+export type DmDraftFile = { id: string; name: string; size: number; sha256: string }
 export type DraftEvidence = {
+  dm_attachment?: DmDraftFile
   instantly_reply?: { eaccount?: string; subject?: string | null } | null
   client_id?: string
   author?: string
@@ -1891,6 +1893,17 @@ export async function approveDraft(id: string, editedText: string, chatId?: stri
     return
   }
   if (draft?.ai_model === 'inbox_on_demand_reply') {
+    const file = draft.draft_evidence?.dm_attachment
+    if ((file?.id ?? null) !== (snapshot?.draft_evidence?.dm_attachment?.id ?? null)) {
+      throw new Error('The attached PDF changed. Refresh before sending.')
+    }
+    if (file) {
+      const { error } = await supabase.rpc('approve_inbox_on_demand_reply_with_file', {
+        p_message_id: id, p_text: editedText, p_chat_id: chatId ?? null, p_file_id: file.id,
+      })
+      if (error) throw error
+      return
+    }
     const { error } = await supabase.rpc('approve_inbox_on_demand_reply', {
       p_message_id: id, p_text: editedText, p_chat_id: chatId ?? null,
     })

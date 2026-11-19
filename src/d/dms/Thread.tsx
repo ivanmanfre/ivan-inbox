@@ -277,6 +277,12 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
       toast.show({ message: `That did not finish${m ? `: ${m.replace(/^(AbortError|TimeoutError): /, '')}` : '.'}`, sub: 'Look at the thread before you try again.', tone: 'failed' })
     } finally { release() }
   }
+  const updateDraftFile = async (change: File | { action: 'remove'; file_id: string }) => {
+    if (paneBusy(t.prospect_id)) throw new Error('Wait for the current draft action to finish.')
+    const release = holdPane(t.prospect_id)
+    try { await verbs.updateDraftFile(t, change) }
+    finally { release() }
+  }
   // A press that cannot start says so (it used to do nothing at all while a send was stuck).
   const stillBusy = () => {
     if (!overrideBusy.current && !paneBusy(t.prospect_id)) return false
@@ -325,6 +331,7 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
   }) }
   const send = () => { if (busy || emailLoading || emailSettling || emailDetailsError || draftFormattingError) return; return run(async () => { if (scheduledPending) return; const hadEdit = saver.isPending(); saver.cancel(); await verbs.send(t, edits, () => { if (hadEdit) saver.retry() }) }) }
   const openSchedule = () => run(async () => {
+    if (t.draft?.draft_evidence?.dm_attachment) return
     saver.cancel(); setScheduleFailure('')
     if (reply.trim()) { setSchedule({ ids: [], texts: [reply.trim()], manual: true }); return }
     if (!t.draft) return
@@ -413,7 +420,7 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
     const sendV4 = canSendDraft
       ? <Key primary={!t.draftStale && !reply.trim()} verb="send" className="dm-send" disabled={busy || scheduledPending || emailLoading || !!emailDetailsError || draftFormattingError} onClick={() => void send()}>{replyingByEmail && (!v4 || handEmailOpen) ? `Draft: ${sendLabel}` : sendLabel}</Key>
       : primary
-    const scheduleKey = !t.spam && t.client_id !== 'anna' && !swishReply && !scheduledPending && !composeOff && !replyingByEmail && (hasDraft || reply.trim())
+    const scheduleKey = !t.draft?.draft_evidence?.dm_attachment && !t.spam && t.client_id !== 'anna' && !swishReply && !scheduledPending && !composeOff && !replyingByEmail && (hasDraft || reply.trim())
       ? <Btn verb="schedule-send" className="dm-k dm-schedule-key" disabled={busy} onClick={() => void openSchedule()}>{reply.trim() ? 'Schedule reply' : 'Schedule send'}</Btn> : null
     return <ThreadV4 name={t.prospect_name} phone={phone} pid={t.prospect_id} scrollRef={scroll} dockRef={dock}
       head={<HeadV4 t={t} phone={phone} onBack={onBack} onCopy={() => void copy()} copied={copied} onAsk={onAsk} onMore={() => setMenu(m => (m ? null : 'top'))} moreOpen={menu === 'top'}
@@ -427,7 +434,7 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
         <Banners v4 questionDirty={questionDirty} t={t} verbs={verbs} now={now} owed={owed} hasDraft={hasDraft} onNote={() => setSheet('context')} reload={reload} fuTick={fuTick} sending={busy} onSendAnyways={t.draft && t.client_id !== 'anna' ? () => void sendAnyways({ ...t.draft!, message_text: edits.main }) : undefined} />
         {!referredLead && referral}
         {t.client_id === 'swishdm' && <SwishReferral key={'swish-referral:' + t.prospect_id} t={t} />}
-        <Draft v4 phone={phone} onSendVia={sendVia} deliveryBusy={busy} emailLoading={emailLoading} emailUnavailable={!!emailDetailsError} t={t} edits={edits} setEdits={setEdits} save={saver.state} onBlur={() => void saver.flush()} onRetrySave={saver.retry} now={now} onRetry={reload}
+        <Draft v4 phone={phone} onFileChange={updateDraftFile} onSendVia={sendVia} deliveryBusy={busy} emailLoading={emailLoading} emailUnavailable={!!emailDetailsError} t={t} edits={edits} setEdits={setEdits} save={saver.state} onBlur={() => void saver.flush()} onRetrySave={saver.retry} now={now} onRetry={reload}
           strips={<DraftStrips t={t} verbs={verbs} />}
           foot={t.draft && <DraftWhy v4 t={t} draft={t.draft} edited={edits.main} onRetry={reload} />}
           onSend={canSendDraft ? () => { if (!busy && !scheduledPending) void send() } : undefined} />
@@ -470,7 +477,7 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
         <Banners questionDirty={questionDirty} t={t} verbs={verbs} now={now} owed={owed} hasDraft={hasDraft} onNote={() => setSheet('context')} reload={reload} fuTick={fuTick} sending={busy} onSendAnyways={t.draft && t.client_id !== 'anna' ? () => void sendAnyways({ ...t.draft!, message_text: edits.main }) : undefined} />
         {!referredLead && referral}
         {t.client_id === 'swishdm' && <SwishReferral key={'swish-referral:' + t.prospect_id} t={t} />}
-        <Draft phone={phone} onSendVia={sendVia} deliveryBusy={busy} emailLoading={emailLoading} emailUnavailable={!!emailDetailsError} t={t} edits={edits} setEdits={setEdits} save={saver.state} onBlur={() => void saver.flush()} onRetrySave={saver.retry} now={now} onRetry={reload} />
+        <Draft phone={phone} onFileChange={updateDraftFile} onSendVia={sendVia} deliveryBusy={busy} emailLoading={emailLoading} emailUnavailable={!!emailDetailsError} t={t} edits={edits} setEdits={setEdits} save={saver.state} onBlur={() => void saver.flush()} onRetrySave={saver.retry} now={now} onRetry={reload} />
         {t.draft && <DraftWhy t={t} draft={t.draft} edited={edits.main} onRetry={reload} />}
         <RestoreStrip t={t} verbs={verbs} />
         <RedraftStatus t={t} now={now} reload={reload} />
