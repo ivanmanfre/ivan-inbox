@@ -98,6 +98,13 @@ describe('cleanLabel: server sentences read once, with no ref and no duplicated 
     const r = cleanLabel('Proposed (ref 1a2b3c4d): move "A made up post about trains in the rain and a long\n\nplatform wait." (no date) to Tue 9 Mar 2027, 10:45 (UTC+01:00).', tgt)
     expect(r).toEqual({ text: 'Move this post to Tue 9 Mar 2027, 10:45 (UTC+01:00).', stated: true })
   })
+  it('an opener with a quote and "to" inside is replaced whole or not at all', () => {
+    const line = 'A made up post: "send it to the team" was the whole brief'
+    expect(cleanLabel(`Proposed (ref 1a2b3c4d): move "${line}" (no date) to Thu 26 Nov, 09:30 (UTC+01:00).`, { first_line: line }).text)
+      .toBe('Move this post to Thu 26 Nov, 09:30 (UTC+01:00).')
+    expect(cleanLabel(`Proposed (ref 1a2b3c4d): move "A different opener" to Thu 26 Nov.`, { first_line: line }).text)
+      .toBe('Move "A different opener" to Thu 26 Nov.')
+  })
   it('a quote inside the post does not cut it short', () => {
     const r = cleanLabel('Proposed (ref 1a2b3c4d): pull "A made up post about trains in the rain, "late again" said the man" (Thu 19 Nov, 18:30).', { first_line: 'A made up post about trains in the rain, "late again" said the man' })
     expect(r.text).toBe('Pull this post (Thu 19 Nov, 18:30).')

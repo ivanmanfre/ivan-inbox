@@ -259,11 +259,22 @@ describe('Desk polish (review of the new layout)', () => {
     const started = new Date(Date.now() - 5000).toISOString()
     vi.mocked(api.readMessages).mockResolvedValueOnce([
       stored({ id: 'old1', body: 'An old answer.', created_at: '2026-11-17T09:00:00Z', updated_at: '2026-11-17T09:00:05Z' }),
-      stored({ id: 'late1', body: 'A late answer.', created_at: started, updated_at: new Date(Date.now() + 1000).toISOString() }),
+      stored({ id: 'late1', body: 'A late answer.', created_at: started, meta: { timings: { total_ms: 6000 } } }),
     ])
     const { container } = render(<Desk layout="phone" />)
     await screen.findByText('A late answer.')
     await waitFor(() => expect(container.querySelector('.dk-sr')!.textContent).toBe('The desk answered.'))
+  })
+
+  it('an old reply whose card changed during the first read is not announced as new', async () => {
+    vi.mocked(api.readMessages).mockResolvedValueOnce([
+      stored({ id: 'old2', body: '', created_at: '2026-11-17T09:00:00Z', updated_at: new Date().toISOString(),
+        meta: { timings: { total_ms: 3000 }, notes: [], actions: [{ id: 'act-o', kind: 'date', label: 'Undone.', state: 'undone', undo: false }] } }),
+    ])
+    const { container } = render(<Desk layout="phone" />)
+    await screen.findByText('Back as it was.')
+    await act(async () => { await new Promise(r => setTimeout(r, 50)) })
+    expect(container.querySelector('.dk-sr')!.textContent).toBe('')
   })
 
   it('a cancelled proposal never keeps "It runs only when you tap Do it now" above its card', async () => {

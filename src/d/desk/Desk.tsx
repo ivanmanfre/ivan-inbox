@@ -97,14 +97,14 @@ export function Desk({ layout, onBack }: { layout: 'phone' | 'desktop'; onBack?:
       </header>
       {/* Desktop has no head (the page names it), so a stale or offline read says so above the conversation. */}
       {layout === 'desktop' && (desk.readFailed || desk.fromCache) && <div className={`dk-status${desk.readFailed ? ' dk-status-off' : ''}`} role="status">{status}</div>}
-      <DeskList desk={desk} locked={locked} layout={layout} />
+      <DeskList desk={desk} locked={locked} />
       <DeskComposer busy={locked} onSend={desk.send} prefill={desk.prefill} suggest={quiet ? STARTERS : undefined}
         autoFocus={layout === 'desktop'} onUploading={setUploading} />
     </section>
   )
 }
 
-function DeskList({ desk, locked, layout }: { desk: DeskHandle; locked: boolean; layout: 'phone' | 'desktop' }) {
+function DeskList({ desk, locked }: { desk: DeskHandle; locked: boolean }) {
   const list = useRef<HTMLDivElement>(null)
   const content = useRef<HTMLDivElement>(null)
   const pinned = useRef(true)
@@ -183,9 +183,11 @@ function DeskList({ desk, locked, layout }: { desk: DeskHandle; locked: boolean;
     if (!desk.loaded) return
     const done = messages.filter(m => m.role === 'assistant' && !m.answers && m.status === 'done')
     if (!seenReplies.current) {
-      // By when it FINISHED (its last write), so a reply that started before opening and finished during the
-      // first read is still announced.
-      seenReplies.current = new Set(done.filter(m => Date.parse(m.updated_at ?? m.created_at) < openedAt.current - 2000).map(m => m.id))
+      // By when it FINISHED: its start plus the turn's own recorded duration (never the row's last write, which a
+      // later commit, cancel or Undo moves). A reply that started before opening and finished during the first read
+      // is still announced; an old reply whose card changed is not.
+      const finished = (m: DeskMessage) => Date.parse(m.created_at) + (Number(m.meta.timings?.total_ms) || 0)
+      seenReplies.current = new Set(done.filter(m => finished(m) < openedAt.current - 2000).map(m => m.id))
     }
     // Every reply that is new since the last announcement, even when several land in one update.
     const fresh = done.filter(m => !seenReplies.current!.has(m.id))
@@ -203,7 +205,6 @@ function DeskList({ desk, locked, layout }: { desk: DeskHandle; locked: boolean;
         : one.origin === 'proactive' ? 'The desk wrote first.' : one.origin === 't3' ? 'A result came back from T3.' : 'The desk answered.')
     })
   }, [doneKey, desk.loaded]) // eslint-disable-line react-hooks/exhaustive-deps
-  const lastUser = (() => { for (let i = messages.length - 1; i >= 0; i--) if (messages[i].role === 'user') return i; return -1 })()
   let day = ''
   let prevRole: DeskMessage['role'] | null = null
   return (
@@ -223,7 +224,7 @@ function DeskList({ desk, locked, layout }: { desk: DeskHandle; locked: boolean;
             day = d
             prevRole = m.role
             return [head, <Row key={m.answers ? `a-${m.answers}` : m.id} m={m} desk={desk} fresh={fresh} locked={locked}
-              recent={i >= messages.length - 4} editable={i === lastUser && layout === 'desktop'} />]
+              recent={i >= messages.length - 4} />]
           })}
         </div>
       </div>
@@ -374,8 +375,8 @@ function Chips({ chips, locked, onPick }: { chips: { send: string }[]; locked: b
   )
 }
 
-function Row({ m, desk, fresh, locked, recent, editable }: {
-  m: DeskMessage; desk: DeskHandle; fresh: boolean; locked: boolean; recent: boolean; editable: boolean
+function Row({ m, desk, fresh, locked, recent }: {
+  m: DeskMessage; desk: DeskHandle; fresh: boolean; locked: boolean; recent: boolean
 }) {
   if (m.role === 'user') {
     // Stored, but its answer has not arrived: Check again and a same-key Retry stay until it does.
@@ -387,8 +388,6 @@ function Row({ m, desk, fresh, locked, recent, editable }: {
         {m.body && <div className="dk-me-t">{m.body}</div>}
         <small className={trouble ? 'dk-warn' : undefined}>
           {m.meta.voice ? 'Voice · ' : ''}{m.local === 'sending' ? 'Sending' : m.local === 'failed' ? (m.error ?? 'Not sent') : m.local === 'unconfirmed' ? (m.error ?? 'Not confirmed: the app could not check.') : waiting ? 'No answer yet.' : warsawHm(m.created_at)}
-          {/* Edit the last ask (desktop): its text goes back into the composer; only Ivan's Send makes a new turn. */}
-          {editable && !trouble && !m.local && m.body && <button type="button" className="dk-edit" disabled={locked} onClick={() => desk.editAndSend(m)}>Edit</button>}
         </small>
         {trouble && <div className="dk-me-keys">
           {(m.local === 'unconfirmed' || waiting || m.mismatch) && <button type="button" className="dk-pill" onClick={desk.reload}>Check again</button>}

@@ -223,17 +223,17 @@ export function newKey(): string {
 // The UTC offset stays: on the autumn change day 02:30 happens twice, and the card must say which one.
 const STATED = /^(done|undone|cancelled|not done|not confirmed|could not|couldn't|moved|removed|saved|added|rewriting|opened|proposed|failed|nothing|back|i |i'|the |this |that |["“])/i
 
+/** Where the label quotes the card's post: the whole opener exactly as the server writes it ("<first line>"), or
+ *  its clipped form ("<start>…"). Anything less certain returns null and the sentence stays as the server wrote it. */
 function quotedPost(label: string, firstLine: string): [number, number] | null {
-  const head = firstLine.replace(/\s+/g, ' ').trim().slice(0, 16)
-  if (head.length < 8) return null
-  const flat = label
-  const start = flat.indexOf(`"${head}`)
-  if (start < 0) return null
-  // The quote closes where the sentence goes on: ` (`, ` to `, `.`/`,` then space or end, or the end.
-  const rest = flat.slice(start + 1 + head.length)
-  const m = /"(?=\s\(|\s+to\s|[.,](?:\s|$)|\s*$)/.exec(rest)
-  if (!m) return null
-  return [start, start + 1 + head.length + m.index + 1]
+  const flat = firstLine.replace(/\s+/g, ' ').trim()
+  if (flat.length < 8) return null
+  const whole = label.indexOf(`"${flat}"`)
+  if (whole >= 0) return [whole, whole + flat.length + 2]
+  // The clipped form: an opening quote, a start of the opener, then "…" and the closing quote.
+  const m = /"([^"]{8,}?)…"/.exec(label)
+  if (m && flat.startsWith(m[1].trim())) return [m.index, m.index + m[0].length]
+  return null
 }
 
 /** The server's short reference for the post a card targets ("ref 1a2b3c4d"): read only from the label's own
