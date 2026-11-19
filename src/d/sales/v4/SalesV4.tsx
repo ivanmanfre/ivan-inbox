@@ -16,6 +16,7 @@ import { filterFortnight, SalesFilter, tokenLine, useSalesTokens } from '../Filt
 import { nextCall, packIndex, readFortnight, throughLabel } from '../model'
 import { OrbitHost } from '../OrbitHost'
 import { EmailListsLink, EmailListsPage } from '../EmailLists'
+import { CallResultsLink, CallResultsPage } from '../CallResults'
 import { useSalesData } from '../useSalesData'
 import '../sales.css'
 import './sales4.css'
@@ -64,6 +65,7 @@ export default function SalesPage({ layout, route, navigate }: PlaceProps) {
   // Orbit opens inside the frame; the default view is today's (Ivan, 30 days).
   const orbit = (
     <>
+      <CallResultsLink navigate={navigate} />
       <EmailListsLink navigate={navigate} />
       <a href={ORBIT} className="sl-orbit" data-verb="open-orbit" onClick={e => { e.preventDefault(); navigate(ORBIT) }}><DIcon name="eye" /><span>Orbit</span></a>
     </>
@@ -82,6 +84,7 @@ export default function SalesPage({ layout, route, navigate }: PlaceProps) {
 
   if (route.sub === 'orbit') return <OrbitHost navigate={navigate} layout={layout} />
   if (route.sub === 'email') return <EmailListsPage navigate={navigate} layout={layout} />
+  if (route.sub === 'results') return <CallResultsPage navigate={navigate} />
 
   const soft = [
     data.state.events === 'failed' && data.events.length > 0 ? `The calendar refresh failed (${data.eventsError}); showing the last read.` : '',

@@ -212,3 +212,5 @@
 .sl-em-st b{color:var(--t1);font-weight:600}
 .sl-em-unused{margin:8px 0 0;border-top:1px solid var(--line);padding-top:8px}
 .sl-em-foot{padding:0 14px 18px;margin:0}
+.sl-results{list-style:none;margin:0;padding:8px 14px 18px;width:min(100%,720px);box-sizing:border-box}
+.sl-results a{color:var(--t1);font-weight:600;text-decoration:underline;text-underline-offset:3px}
