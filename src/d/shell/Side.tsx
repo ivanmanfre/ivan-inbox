@@ -1,3 +1,4 @@
+import { useDeskNav } from '../desk/useDeskNav'
 import { ClaudeWorking, useClaudePill } from '../claude/Island'
 import { PLACES } from '../places'
 import { dHash } from '../route'
@@ -149,6 +150,7 @@ function ClaudeKey() {
 
 export function Side({ min = false, setMin }: { min?: boolean; setMin?: (m: boolean) => void }) {
   const f = useFrame()
+  useDeskNav() // the Claude place's nav slot follows desk_config.nav_visible live
   const { items } = useNavModel()
   const main = items.filter(i => PLACES[i.id].nav === 'main')
   const low = items.filter(i => PLACES[i.id].nav === 'low')

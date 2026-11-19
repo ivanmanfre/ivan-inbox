@@ -83,7 +83,7 @@ export function Markdown({ text, caret, onRecall, cites, recallOff }: {
         if (b.t === 'p') return <p key={i}>{inline(b.nodes, o, claim)}{end}</p>
         if (b.t === 'h') return <p key={i} className="dcl-h">{inline(b.nodes, o, claim)}{end}</p>
         if (b.t === 'code') return <pre key={i}><code>{b.text}</code>{end}</pre>
-        if (b.t === 'table') return <div key={i} className="dcl-table"><table>
+        if (b.t === 'table') return <div key={i} className="dcl-table" role="region" aria-label="Table" tabIndex={0}><table>
           <thead><tr>{b.head.map((c, j) => <th key={j}>{inline(c, o, { used: true })}</th>)}</tr></thead>
           <tbody>{b.rows.map((r, j) => <tr key={j}>{r.map((c, k) => <td key={k}>{inline(c, o, { used: true })}</td>)}</tr>)}</tbody>
         </table>{end}</div>

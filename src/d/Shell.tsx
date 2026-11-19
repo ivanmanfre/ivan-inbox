@@ -12,7 +12,6 @@ import { PLACES, type Layout } from './places'
 import { canonicalHash, dHash, dLandingHash, isForeignHash, parseDHash, toDHash, type DRoute } from './route'
 import { BellButton, BellFeed } from './shell/Bell'
 import { ForegroundAlerts } from './shell/ForegroundAlerts'
-import { useTodayCard } from './content/today/store'
 import { FrameCtx, useFrame, type Frame } from './shell/frame'
 import { lastSynced } from './shell/navModel'
 import { DLayer } from './shell/Layer'
@@ -50,8 +49,6 @@ import './shell/phone-ox.css'
 // ---------------------------------------------------------------------------
 
 const ClaudeDrawer = lazy(() => import('./claude/Drawer'))
-// The day's post card toast: loaded only while a card waits, so the shell's first paint never carries it.
-const CardToast = lazy(() => import('./content/today/CardToast'))
 // The same specifiers places.ts lazy-loads: Vite maps each to one chunk, so these only warm the cache.
 const PLACE_CHUNKS = [() => import('./home'), () => import('./lanes'), () => import('./dms'), () => import('./content'),
   () => import('./ops'), () => import('./sales'), () => import('./claude'), () => import('./settings'), () => import('./claude/Drawer')]
@@ -201,11 +198,6 @@ function ForegroundInD() {
   return <ForegroundAlerts host={{ bellOpen: f.bellOpen, openBell: () => f.setBellOpen(true), navigate: f.navigate, refreshBell: () => c.refresh('bell') }} />
 }
 
-/** Today's post card slides in on any screen while it waits (content/today/CardToast). */
-function CardToastInD() {
-  const t = useTodayCard()
-  return t.active ? <Suspense fallback={null}><CardToast /></Suspense> : null
-}
 
 /** Exported for the S0 structure test (shellLayout.test.tsx) only. */
 export function Desktop({ setTitleSlot, setToolsSlot, sideMin, setSideMin, drawer = true }: {
@@ -390,7 +382,8 @@ export default function DShell() {
           <ToastProvider>
             <DConfirmProvider>
               <ForegroundInD />
-              <CardToastInD />
+              {/* No sliding post card (Ivan 2026-11-18: "so annoying"): today's post lives on Home and the
+                  Content landing, and the 11:00 push still rings once. content/today/CardToast stays unmounted. */}
               {layout === 'desktop'
                 ? <Desktop setTitleSlot={setTitleSlot} setToolsSlot={setToolsSlot} sideMin={sideMin} setSideMin={setSideMin} drawer={!claudeHere} />
                 : <PhoneFrame setToolsSlot={setToolsSlot} panelOpen={panelOpen} setPanelOpen={setPanelOpen} />}

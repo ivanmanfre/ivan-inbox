@@ -15,10 +15,27 @@ import './today.css'
 // (Shell), so the shell stays light.
 
 export const CARD_TOAST_ID = 'content-card'
-/** The days whose card already slid in since the app opened (module memory: a reload is a new open). */
+// Once a DAY on this device (Ivan 2026-11-18: "super annoying" when it came back on every open): the day it slid in
+// is kept, so closing it, or seeing it once, holds until tomorrow's card. Home and Review still show the card.
+const SEEN_KEY = 'ct-toast-day-v1'
 const slid = new Set<string>()
+function seenToday(day: string): boolean {
+  if (slid.has(day)) return true
+  try { return localStorage.getItem(SEEN_KEY) === day } catch { return false }
+}
+function markSeen(day: string): void {
+  slid.add(day)
+  try { localStorage.setItem(SEEN_KEY, day) } catch { /* the module memory still holds it for this open */ }
+}
 /** Tests only. */
-export function resetSlidForTest(): void { slid.clear() }
+export function resetSlidForTest(): void {
+  slid.clear()
+  try { localStorage.removeItem(SEEN_KEY) } catch { /* */ }
+}
+/** The chat screens (the Content desk, the Claude place) are never covered by it. */
+function quietRoute(r: { place: string; sub?: string | null }): boolean {
+  return r.place === 'claude' || (r.place === 'content' && r.sub === 'desk')
+}
 
 export default function CardToast() {
   const t = useTodayCard()
@@ -36,16 +53,18 @@ function Live({ card, version }: { card: LiveCard; version: number }) {
   // that lands on it, before the list has read its rows).
   const shown = useCardBlockShown()
   const here = cardRoute(f.route, card.draft.id) || shown
+  const quiet = quietRoute(f.route)
   const [open, setOpen] = useState(false)
   const ready = !!keys.slot && keys.ready
 
   useEffect(() => {
-    if (slid.has(card.day) || !ready) return
-    slid.add(card.day)
+    // On a chat screen it waits: it can still slide in once Ivan leaves it.
+    if (quiet || seenToday(card.day) || !ready) return
+    markSeen(card.day)
     if (!here) setOpen(true)
-  }, [ready, here, card.day])
-  // The card opened some other way (the Content key, the push): the toast leaves.
-  useEffect(() => { if (open && here) { dismiss(CARD_TOAST_ID); setOpen(false) } }, [open, here, dismiss])
+  }, [ready, here, quiet, card.day])
+  // The card opened some other way (the Content key, the push), or Ivan went into a chat: the toast leaves.
+  useEffect(() => { if (open && (here || quiet)) { dismiss(CARD_TOAST_ID); setOpen(false) } }, [open, here, quiet, dismiss])
   // When the card leaves (posted, skipped, changed), the component unmounts: the toast goes with it.
   useEffect(() => () => dismiss(CARD_TOAST_ID), [dismiss])
 
@@ -55,7 +74,7 @@ function Live({ card, version }: { card: LiveCard; version: number }) {
     const leave = () => { dismiss(CARD_TOAST_ID); setOpen(false) }
     show({
       id: CARD_TOAST_ID, incoming: true, onClose: () => setOpen(false),
-      message: <CardPeek body={body} keys={{ ...keys, post: () => { leave(); keys.post() } }}
+      message: <CardPeek compact body={body} keys={{ ...keys, post: () => { leave(); keys.post() } }}
         onOpen={() => { leave(); f.navigate(dHash('content', 'now', { focus: card.draft.id })) }}
         onCheck={() => { leave(); f.navigate(dHash('content', 'now', { focus: card.draft.id })) }} />,
     })

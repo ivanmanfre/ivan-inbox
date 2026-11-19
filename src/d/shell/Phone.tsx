@@ -1,3 +1,4 @@
+import { useDeskNav } from '../desk/useDeskNav'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { dmNumbers, contentNumbers, opsNumbers, seatFailed, useFrameCounts } from '../counts/useFrameCounts'
 import { PLACES, PLACE_ORDER } from '../places'
@@ -74,6 +75,7 @@ export function Dock() {
 }
 
 export function PhonePanel({ onClose }: { onClose: () => void }) {
+  useDeskNav() // the Claude place's nav slot follows desk_config.nav_visible live
   const f = useFrame()
   const { items } = useNavModel()
   useEffect(() => {

@@ -3,11 +3,13 @@ import { dHash } from '../route'
 import { useFrame } from '../shell/frame'
 import { Sheet } from '../ui/Sheet'
 import type { Lane } from './model'
+import { useDeskFlags } from '../desk/flags'
+import '../desk/entry.css'
 
-export type Sub = 'plan' | 'calendar' | 'now' | 'x' | 'ideas' | 'results' | 'strategy' | 'styles' | 'planner' | 'review' | 'inputs' | 'magnets' | 'errors' | 'queue' | 'markets' | 'brain'
+export type Sub = 'plan' | 'calendar' | 'now' | 'x' | 'ideas' | 'results' | 'strategy' | 'styles' | 'planner' | 'review' | 'inputs' | 'magnets' | 'errors' | 'queue' | 'markets' | 'brain' | 'desk'
 // X (Ivan's X review) is a tab here since daily-brief-trim Task 6.1; it was its own place before.
 export const SUBS: readonly Sub[] = ['plan', 'calendar', 'ideas', 'now', 'x', 'magnets', 'results']
-export const SUB_LABEL: Record<Sub, string> = { plan: 'Plan', calendar: 'Calendar', now: 'Review', x: 'X', ideas: 'Ideas', results: 'Performance', strategy: 'Strategy', styles: 'Styles', planner: 'Planner', review: 'Review', inputs: 'Outliers', magnets: 'Lead magnets', errors: 'Errors', queue: 'Publish queue', markets: 'Outliers & Markets', brain: 'Content Brain' }
+export const SUB_LABEL: Record<Sub, string> = { plan: 'Plan', calendar: 'Calendar', now: 'Review', x: 'X', ideas: 'Ideas', results: 'Performance', strategy: 'Strategy', styles: 'Styles', planner: 'Planner', review: 'Review', inputs: 'Outliers', magnets: 'Lead magnets', errors: 'Errors', queue: 'Publish queue', markets: 'Outliers & Markets', brain: 'Content Brain', desk: 'Desk' }
 export const PLANNING: readonly { sub: Sub; section: string | null; label: string }[] = []
 /** The More sheet: every place that left the daily row, under the job it does. */
 const MORE: readonly { group: string; items: readonly { label: string; sub: Sub; q?: Record<string, string>; small?: string }[] }[] = [
@@ -33,6 +35,7 @@ export function subOf(s: string | null, query = new URLSearchParams()): Sub {
   // The card's own address: Review on the pick while the card waits (index.tsx), else the Plan under the done line.
   if (s === 'today') return 'plan'
   if (s === 'planner' || s === 'queue') return 'calendar'
+  if (s === 'desk') return 'desk'
   return s === 'brain' || s === 'plan' || s === 'calendar' || s === 'x' || s === 'ideas' || s === 'results' || s === 'strategy' || s === 'styles' || s === 'inputs' || s === 'magnets' ? s : 'now'
 }
 /** Old bookmarks keep their row/client identities and reach the corresponding review view. */
@@ -40,7 +43,7 @@ export function contentRedirect(sub: string | null, query: URLSearchParams): str
   // The old planner (a tab, then a "Planner →" link inside Review) is the Calendar now.
   if (sub === 'now' && query.get('view') === 'planner') { const q = new URLSearchParams(query); q.delete('view'); q.delete('from'); return dHash('content', 'calendar', q) }
   if (sub === 'brain' && query.get('view') !== 'patterns') { const q = new URLSearchParams(query); q.set('insights', '1'); return dHash('content', 'plan', q) }
-  if (sub === 'brain' || sub === 'plan' || sub === 'calendar' || sub === 'now' || sub === 'x' || sub === 'ideas' || sub === 'results' || sub === 'strategy' || sub === 'styles' || sub === 'inputs' || sub === 'magnets' || sub === 'today') return null
+  if (sub === 'brain' || sub === 'plan' || sub === 'calendar' || sub === 'now' || sub === 'x' || sub === 'ideas' || sub === 'results' || sub === 'strategy' || sub === 'styles' || sub === 'inputs' || sub === 'magnets' || sub === 'today' || sub === 'desk') return null
   const q = new URLSearchParams(query)
   if (sub === 'errors') q.set('view', 'posts')
   return dHash('content', subOf(sub, q), q)
@@ -58,6 +61,9 @@ export function SubNav({ on, attention = false, lane = 'ivan', section, v2 = fal
   const f = useFrame()
   const context = { lane }
   const [more, setMore] = useState(false)
+  // The Content Desk's key (desk_config.desk_enabled): one link beside the ⋯, nothing else moves.
+  // A tab like the others (the open-tab pill glides to it), right after them.
+  const desk = useDeskFlags().desk_enabled ? <a href={dHash('content', 'desk')} className={on === 'desk' ? 'cn-on' : ''} data-sub="desk" data-verb="open-desk" aria-current={on === 'desk' ? 'page' : undefined}>Desk</a> : null
   const tabs = useRef<HTMLElement>(null)
   // Phone: the tab row scrolls sideways; the open tab is brought into view only when it is off-screen, and then
   // whole (left edge on the row's 20px gutter), so the row never opens on a half-cut tab (never the page: scrollLeft only).
@@ -111,6 +117,7 @@ export function SubNav({ on, attention = false, lane = 'ivan', section, v2 = fal
           {SUB_LABEL[s]}{bad && <b className="cv2-tabn" aria-label="X count could not be read">!</b>}{!bad && n !== undefined && <b className="cv2-tabn" aria-label={n == null ? 'counting' : `${n} waiting`}>{n == null ? '…' : n}</b>}
         </a>
       })}
+      {desk}
       <span className="cn-grow" />
       <button type="button" className="cn-more-key cv2-tabs-more" data-verb="content-more" aria-label="Sources, history and more" aria-expanded={more} onClick={() => setMore(true)}>⋯</button>
     </nav>
@@ -121,6 +128,7 @@ export function SubNav({ on, attention = false, lane = 'ivan', section, v2 = fal
       {SUBS.map(s => <a key={s} href={dHash('content', s, context)} className={s === on ? 'cn-on' : ''} aria-current={s === on ? 'page' : undefined}>
         {SUB_LABEL[s]}{s === 'now' && attention && <i className="cn-attention" aria-label="Needs a tap" />}
       </a>)}
+      {desk}
       <span className="cn-grow" />
     </nav>
     <nav className="cn-planning" aria-label="Content planning">

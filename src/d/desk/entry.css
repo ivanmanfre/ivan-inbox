@@ -1,0 +1,9 @@
+/* D · the Content Desk's two entry points (desk_config.desk_enabled). Tokens from d.css. */
+/* entry points: the pinned Content row in the chats list, the Desk key on the Content tab */
+.dk-pin{display:flex;align-items:center;gap:12px;width:100%;min-height:60px;padding:8px 12px;border:1px solid var(--line2);border-radius:14px;background:var(--p1);text-align:left;margin:0 0 10px;color:var(--t1);text-decoration:none}
+.dk-pin b{font:600 14px var(--f)}
+.dk-pin small{display:block;font:400 11.5px var(--m);color:var(--t3)}
+.dk-entry{min-height:44px;display:inline-flex;align-items:center;padding:0 14px;border-radius:22px;border:1px solid var(--line2);color:var(--t1);text-decoration:none;font:500 13px var(--f);flex:none;white-space:nowrap}
+
+.dk-pin-m{flex:none;width:36px;height:36px;border-radius:11px;background:var(--t1);color:var(--bg);display:grid;place-items:center}
+.dk-pin-m svg{width:16px;height:16px;fill:currentColor}
