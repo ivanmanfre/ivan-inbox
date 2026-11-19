@@ -18,8 +18,8 @@ export function EmailCcField({ value, onChange, onBlur, label = 'CC recipients',
   </>
 }
 
-export function EmailDraftEditor({ value, onChange, label, subjectLabel = 'Email subject', subject: fallbackSubject, from, to, cc, onCcChange, ccLabel = 'CC recipients', onBlur, onKeyDown, transport = 'native', composition, onRichChange, disabled = false }: {
-  value: string; onChange: (text: string) => void; label: string; subjectLabel?: string; subject?: string | null
+export function EmailDraftEditor({ value, onChange, label, subjectLabel = 'Email subject', subject: fallbackSubject, fixedSubject, from, to, cc, onCcChange, ccLabel = 'CC recipients', onBlur, onKeyDown, transport = 'native', composition, onRichChange, disabled = false }: {
+  value: string; onChange: (text: string) => void; label: string; subjectLabel?: string; subject?: string | null; fixedSubject?: string
   from: string; to: string | null; cc: string; onCcChange: (cc: string) => void; ccLabel?: string
   onBlur: () => void; onKeyDown?: (event: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => void
   transport?: 'native' | 'mirror'
@@ -30,7 +30,7 @@ export function EmailDraftEditor({ value, onChange, label, subjectLabel = 'Email
   // The send parser trims subject whitespace; the input must retain it between keystrokes.
   const directHeader = /^[ \t]*Subject:/i.test(value)
   const split = directHeader ? splitEmailDraft(value) : splitEmailForSend(value, { subject: fallbackSubject, transport })
-  const subject = split.subject
+  const subject = fixedSubject ?? split.subject
   let rich: EmailComposition | null = null
   let rendered: ReturnType<typeof renderEmailComposition> | null = null
   let formattingError = false
@@ -68,7 +68,7 @@ export function EmailDraftEditor({ value, onChange, label, subjectLabel = 'Email
         <div className="dm-email-field"><span className="dm-email-field-name">From</span><span>{from}</span></div>
         <div className="dm-email-field"><span className="dm-email-field-name">To</span><span>{to || 'Recipient unavailable'}</span></div>
         <EmailCcField value={cc} onChange={onCcChange} onBlur={onBlur} label={ccLabel} disabled={editingDisabled} />
-        <label className="dm-email-field dm-email-subject-field"><span className="dm-email-field-name">Subject</span><input aria-label={subjectLabel} autoComplete="off" data-autosave value={subject} placeholder="Add an email subject" disabled={editingDisabled} onChange={event => updateSubject(event.target.value)} onBlur={onBlur} onKeyDown={onKeyDown} /></label>
+        <label className="dm-email-field dm-email-subject-field"><span className="dm-email-field-name">Subject</span><input aria-label={subjectLabel} autoComplete="off" data-autosave readOnly={fixedSubject !== undefined} value={subject} placeholder="Add an email subject" disabled={editingDisabled} onChange={event => updateSubject(event.target.value)} onBlur={onBlur} onKeyDown={onKeyDown} /></label>
       </div>
       {formattingError ? <p className="dm-email-error" role="alert">Saved email formatting changed. Refresh email details before editing or sending.</p>
         : rich ? <div onKeyDownCapture={event => { if (onKeyDown && event.key === 'Enter' && (event.metaKey || event.ctrlKey)) onKeyDown(event as unknown as KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) }}>

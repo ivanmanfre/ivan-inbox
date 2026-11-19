@@ -38,15 +38,6 @@ export function ReferralCard({ t, onUseAcknowledgement, onStaged }: { t: Thread;
     <h3>{r?.status === 'verified' ? `Draft for ${r.name}` : 'Referred contact'}</h3>
     {!result && <p role="status">Researching the referred person and preparing a DM for review…</p>}
     {result?.error && <p role="alert">{result.error}</p>}
-    {r?.acknowledgement && !answered && !t.draft && <>
-      <h4>Acknowledgement to {t.prospect_name.split(' ')[0]}</h4>
-      <textarea aria-label={`Acknowledgement draft for ${t.prospect_name}`} readOnly value={r.acknowledgement} rows={2} />
-      <div className="dm-referral-actions">
-        {onUseAcknowledgement && <button type="button" className="dm-k" onClick={() => onUseAcknowledgement(r.acknowledgement!)}>Use acknowledgement</button>}
-        <button type="button" className="dm-k" onClick={() => void copy('ack')}>{copied === 'ack' ? 'Copied acknowledgement' : 'Copy acknowledgement'}</button>
-      </div>
-      <p className="dm-meta">Review before sending.</p>
-    </>}
     {r?.status === 'unresolved' && !r.lead_prospect_id && <p>{r.reason || 'The referred person needs clarification.'}</p>}
     {r?.lead_prospect_id && <a className="d-link" href={`#exp/d/dms?thread=${encodeURIComponent(r.lead_prospect_id)}`}>Open referred lead</a>}
     {contact && <>
@@ -62,6 +53,15 @@ export function ReferralCard({ t, onUseAcknowledgement, onStaged }: { t: Thread;
     </>}
     {r?.email && inbound && <ReferralEmailDraft key={stamp} t={t} inbound={inbound} email={r.email} referredName={r.name} referredCompany={r.company} onStaged={onStaged} />}
     {r?.email_reason && <p>{r.email_reason}</p>}
+    {r?.acknowledgement && !answered && !t.draft && <>
+      <h4>Acknowledgement to {t.prospect_name.split(' ')[0]}</h4>
+      <textarea aria-label={`Acknowledgement draft for ${t.prospect_name}`} readOnly value={r.acknowledgement} rows={2} />
+      <div className="dm-referral-actions">
+        {onUseAcknowledgement && <button type="button" className="dm-k" onClick={() => onUseAcknowledgement(r.acknowledgement!)}>Use acknowledgement</button>}
+        <button type="button" className="dm-k" onClick={() => void copy('ack')}>{copied === 'ack' ? 'Copied acknowledgement' : 'Copy acknowledgement'}</button>
+      </div>
+      <p className="dm-meta">Review before sending.</p>
+    </>}
     {copyError && <p role="alert">Could not copy. Select the draft above and copy it.</p>}
     {(result?.error || r?.email_reason || r?.status === 'unresolved' && !r.lead_prospect_id) && <button type="button" className="dm-k" onClick={() => setRetry(n => n + 1)}>Retry research</button>}
   </section>

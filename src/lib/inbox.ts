@@ -510,7 +510,7 @@ export function holdReason(m: InboxMessage): string | null {
   }
   if (!isRecoverableHold(r)) return null
   // The sender also writes unseen_outbound / turn_outbound: the side is the suffix.
-  if (isRaceHold(r)) return r.endsWith('outbound')
+  if (r && isRaceHold(r)) return r.endsWith('outbound')
     ? 'Came back: a message went out on this thread while it was queued. Re-read the thread, then approve again.'
     : 'Came back: they wrote while it was queued. Re-read their message, then approve again.'
   if (r?.startsWith('lint_calendar_')) return 'Not sent: the calendar check held this draft. Review the proposed time or edit the invitation before sending again.'
@@ -1680,7 +1680,7 @@ export type DraftContextGap = { question: string | null; why: string | null; cha
 export type DraftEvidenceFact = { id: string; fact: string; topic: string; at: string; from: string | null }
 export type DraftEvidenceExemplar = { they: string | null; reply: string | null; at: string | null; prospect: string | null }
 export type DraftEvidence = {
-  instantly_reply?: { eaccount?: string } | null
+  instantly_reply?: { eaccount?: string; subject?: string | null } | null
   client_id?: string
   author?: string
   anna_snapshot?: string

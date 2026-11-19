@@ -1,5 +1,5 @@
 import { emailDraftText, splitEmailDraft } from '../../lib/emailSubject'
-import { emailDetails } from '../../lib/emailPresentation'
+import { emailDetails, instantlyReplySubject } from '../../lib/emailPresentation'
 // The draft on the tape (mock `.tape`), its email leg (`.df-leg`, Send both), the mirror email
 // rider, and the warnings today's card carries (held, email check failed, you already replied).
 // The tape IS the editor: typing saves (useAutosave); Send sends what is in it.
@@ -169,11 +169,11 @@ export function Draft({ t, edits, setEdits, save, onBlur, onRetrySave, now, onRe
   const envelope = emailDetails(draft, t)
   const emailDisabled = emailLoading || emailUnavailable
   const mainEmail = <EmailDraftEditor value={edits.main} onChange={main => setEdits({ ...edits, main, mainComposition: null })} composition={edits.mainComposition}
-    onRichChange={(main, mainComposition) => setEdits({ ...edits, main, mainComposition })} label="The draft" subject="Quick question"
+    onRichChange={(main, mainComposition) => setEdits({ ...edits, main, mainComposition })} label="The draft" fixedSubject={instantlyReplySubject(draft)} subject={envelope.subject ?? 'Quick question'}
     from={envelope.from ?? 'Sender unavailable'} to={envelope.to.join(', ') || null} cc={edits.cc ?? ''} onCcChange={cc => setEdits({ ...edits, cc })} onBlur={onBlur} onKeyDown={sendKey} disabled={emailDisabled} />
   const compEnvelope = comp ? emailDetails(comp, t) : null
   const companionEmail = comp && <EmailDraftEditor value={edits.companion ?? ''} onChange={companion => setEdits({ ...edits, companion, companionComposition: null })} composition={edits.companionComposition}
-    onRichChange={(companion, companionComposition) => setEdits({ ...edits, companion, companionComposition })} label="The other leg" subjectLabel="Email leg subject" subject="Quick question"
+    onRichChange={(companion, companionComposition) => setEdits({ ...edits, companion, companionComposition })} label="The other leg" subjectLabel="Email leg subject" fixedSubject={instantlyReplySubject(comp)} subject={compEnvelope?.subject ?? 'Quick question'}
     from={compEnvelope?.from ?? 'Sender unavailable'} to={compEnvelope?.to.join(', ') || null} cc={edits.companionCc ?? ''} ccLabel="Email leg CC recipients" onCcChange={companionCc => setEdits({ ...edits, companionCc })} onBlur={onBlur} onKeyDown={sendKey} disabled={emailDisabled} />
   const mirrorEmail = <EmailDraftEditor transport="mirror" value={edits.email ?? ''} onChange={email => setEdits({ ...edits, email, emailComposition: null })} composition={edits.emailComposition}
     onRichChange={(email, emailComposition) => setEdits({ ...edits, email, emailComposition })} label="The email that goes with it" subject={`Your ${t.prospect_company || 'your store'} growth scan`}

@@ -34,7 +34,9 @@ export function referralCandidate(text: string): boolean {
     // An email address is handled by the reply's email leg and supplies no named person to research.
     if (!/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/.test(handoff[1])) return true
   }
-  const named = text.match(/\b([\p{L}][\p{L}'-]*(?:\s+[\p{L}][\p{L}'-]*){0,3})\s+(?:handles?|does|manages?|runs?|looks after|is responsible for|is in charge of)\b/iu)
+  // A name may be followed by a title in apposition before the ownership verb.
+  const withoutTitle = text.replace(/,\s*(?:our|my|the|their)\s+[\p{L}][\p{L}\p{M} &’'-]{0,80},/giu, ' ')
+  const named = withoutTitle.match(/\b([\p{L}][\p{L}'-]*(?:\s+[\p{L}][\p{L}'-]*){0,3})\s+(?:handles?|does|manages?|runs?|looks after|is responsible for|is in charge of)\b/iu)
   return Boolean(named && !/\b(?:i|we|you|he|she|they|it)\b/i.test(named[1]))
 }
 

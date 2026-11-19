@@ -30,6 +30,21 @@ it('shows the actual sender fallback subject when an email draft has no Subject 
   expect((screen.getByRole('textbox', { name: 'Email subject' }) as HTMLInputElement).value).toBe('Quick question')
 })
 
+it('shows the Instantly thread subject and branded signature in the draft and preview', () => {
+  const row = msg({ prospect_id: 'andrejs', client_id: 'ivan', channel: 'email', message_type: 'email',
+    recipient_email: 'andrejs@example.com', message_text: 'Subject: Quick question\n\nHere you go.',
+    draft_evidence: { instantly_reply: { eaccount: 'ivan@getinboundonsteroids.com', subject: 'Re: linkedin' } } })
+  const t = threads([row])[0]
+  render(<Draft t={t} edits={{ main: row.message_text, email: null, companion: null }} setEdits={() => {}} save="saved" onBlur={() => {}} onRetrySave={() => {}} now={NOW} onRetry={() => {}} v4 />)
+  const subject = screen.getByRole('textbox', { name: 'Email subject' }) as HTMLInputElement
+  expect(subject.value).toBe('Re: linkedin')
+  expect(subject.readOnly).toBe(true)
+  fireEvent.click(screen.getByRole('button', { name: 'Preview' }))
+  const preview = screen.getByRole('region', { name: 'Email preview' })
+  expect(within(preview).getByRole('heading', { name: 'Re: linkedin' })).toBeTruthy()
+  expect(preview.textContent).toContain('InboundOnSteroids')
+})
+
 it('renders email subject and envelope separately while preserving mixed LinkedIn chronology', () => {
   const dm = msg({ prospect_id: 'email-ui', message_text: 'LinkedIn hello', sent_at: '2026-09-26T08:00:00Z' })
   const email = msg({ prospect_id: 'email-ui', direction: 'inbound', channel: 'email', message_type: 'email', recipient_email: 'alex@example.com', prospect_name: 'Alex Rivera', message_text: 'Subject: Re: Store review\n\nHi Ivan,\n\nSee https://example.com/review\n\nThanks,\nAlex', sent_at: '2026-09-26T09:00:00Z' })

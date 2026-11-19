@@ -21,7 +21,7 @@ import { useAsks } from './asks'
 import { canMarkSolved, writeSolved } from './solved'
 import { watchSend } from './sendWatch'
 import { splitEmailDraft } from '../../lib/emailSubject'
-import { emailPreview } from '../../lib/emailPresentation'
+import { emailPreview, instantlyReplySubject } from '../../lib/emailPresentation'
 import { threadKind } from '../../lib/inbox'
 import { saveEmailComposition, sameEmailComposition } from '../../lib/emailCompositionSave'
 import { buildEmailComposition } from '../../lib/emailCompositionDraft'
@@ -126,7 +126,7 @@ export function useDmVerbs(ctx: VerbCtx) {
       const oldComposition = row.draft_evidence?.[key] ?? null
       const desiredComposition = composition === undefined ? oldComposition : composition
       if (!prepareForSend && text === oldText && sameEmailComposition(desiredComposition, oldComposition)) return row
-      const next = buildEmailComposition(text, from, { transport: mirror ? 'mirror' : 'native', composition: desiredComposition })
+      const next = buildEmailComposition(text, from, { transport: mirror ? 'mirror' : 'native', fixedSubject: mirror ? undefined : instantlyReplySubject(row), composition: desiredComposition })
       if (next.source_text === oldText && sameEmailComposition(next, oldComposition)) return row
       const saved = await saveEmailComposition(row.id, next.source_text, next, mirror, oldText, oldComposition)
       ctx.patch([row.id], saved)

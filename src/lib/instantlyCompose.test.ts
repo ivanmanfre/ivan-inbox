@@ -22,8 +22,9 @@ describe('Ivan Instantly email threads (Mark Woodcock, 2026-11-06)', () => {
     expect(canComposeEmail(thread('risedtc', [row({ client_id: 'risedtc', draft_evidence: { email: instantly } as InboxMessage['draft_evidence'] })]))).toBe(false)
   })
   it('signs off "Iván" like the campaign email, and never twice', () => {
-    expect(renderEmailDocument(defaultEmailSignature('ivan@inboundonsteroidshq.com')!).text.trim()).toBe('Iván')
+    expect(renderEmailDocument(defaultEmailSignature('ivan@inboundonsteroidshq.com')!).text.trim()).toBe('Iván\nInboundOnSteroids')
     expect(stripLegacyEmailSignature('Hey Mark\n\nHere it is.\n\nIvan', 'ivan@tryinboundonsteroids.com')).toBe('Hey Mark\n\nHere it is.')
+    expect(stripLegacyEmailSignature('Hey Mark\n\nIván\nInboundOnSteroids', 'ivan@getinboundonsteroids.com')).toBe('Hey Mark')
     expect(defaultEmailSignature('im@ivanmanfredi.com')).toBeNull()
   })
 })
@@ -38,9 +39,10 @@ describe('sol r1 fixes', () => {
 describe('sol r2 fix', () => {
   it('a drafter Instantly reply shows its mailbox as From, so the editor signs "Iván"', async () => {
     const { emailDetails } = await import('./emailPresentation')
-    const draft = row({ direction: 'outbound', sent_at: null, recipient_email: 'mark@bigfootdigital.co.uk', message_text: 'Hey Mark',
-      draft_evidence: { instantly_reply: { eaccount: 'ivan@inboundonsteroidshq.com' } } as InboxMessage['draft_evidence'] })
+    const draft = row({ direction: 'outbound', sent_at: null, recipient_email: 'mark@bigfootdigital.co.uk', message_text: 'Subject: Quick question\n\nHey Mark',
+      draft_evidence: { instantly_reply: { subject: 'linkedin', eaccount: 'ivan@inboundonsteroidshq.com' } } as InboxMessage['draft_evidence'] })
+    expect(emailDetails(draft).subject).toBe('Re: linkedin')
     expect(emailDetails(draft).from).toBe('ivan@inboundonsteroidshq.com')
-    expect(renderEmailDocument(defaultEmailSignature(emailDetails(draft).from!)!).text.trim()).toBe('Iván')
+    expect(renderEmailDocument(defaultEmailSignature(emailDetails(draft).from!)!).text.trim()).toBe('Iván\nInboundOnSteroids')
   })
 })

@@ -20,6 +20,7 @@ export type EmailMetadata = {
 
 export type EmailDetailRow = {
   id: string; prospect_id: string; recipient_email?: string | null; email_mirror_text?: string | null
+  instantly_reply?: { eaccount?: string; subject?: string | null } | null
   email_metadata?: EmailMetadata | null; email_subject?: string | null; email_cc?: string[] | null
   email_headers?: Record<string, string> | null
   email_composition?: EmailComposition | null; email_mirror_composition?: EmailComposition | null
@@ -81,6 +82,13 @@ function mirrorSubject(m: InboxMessage, t?: Thread): string | null {
   return subjects.length === 1 ? subjects[0] : null
 }
 
+export function instantlyReplySubject(m: InboxMessage): string | undefined {
+  const reply = m.draft_evidence?.instantly_reply
+  if (m.direction !== 'outbound' || !reply) return undefined
+  const original = (reply.subject ?? '').replace(/[\r\n\0]+/g, ' ').trim()
+  return /^re:/i.test(original) ? original : ('Re: ' + original).trimEnd()
+}
+
 export function emailDetails(m: InboxMessage, t?: Thread): EmailDetails {
   const em = m.draft_evidence?.email
   const headers = m.draft_evidence?.email_headers
@@ -88,7 +96,7 @@ export function emailDetails(m: InboxMessage, t?: Thread): EmailDetails {
   const incoming = m.direction === 'inbound'
   // An Instantly reply row (drafter or compose) carries its sending mailbox in instantly_reply; the editor's From and
   // default signature must come from it, never the seat's Gmail address.
-  const instantlyFrom = (m.draft_evidence as { instantly_reply?: { eaccount?: string } | null } | null | undefined)?.instantly_reply?.eaccount
+  const instantlyFrom = m.draft_evidence?.instantly_reply?.eaccount
   const own = instantlyFrom ? instantlyFrom : em?.source === 'instantly' && em.our_mailbox ? em.our_mailbox : ['ivan', 'arch', 'risedtc', 'swishdm'].includes(m.client_id) ? emailRowSender(m.client_id) : null
   const preview = emailPreview(m.message_text ?? '', {
     subject: saved?.subject ?? em?.subject ?? m.draft_evidence?.email_subject ?? mirrorSubject(m, t),
@@ -107,7 +115,7 @@ export function emailDetails(m: InboxMessage, t?: Thread): EmailDetails {
       preview.html = rendered.html
     } catch { preview.formattingUnavailable = true }
   }
-  return { ...preview, fromName: saved?.fromName ?? nonempty(em?.from_name) ?? senderName(em?.from)
+  return { ...preview, subject: instantlyReplySubject(m) ?? preview.subject, fromName: saved?.fromName ?? nonempty(em?.from_name) ?? senderName(em?.from)
     ?? (incoming ? nonempty(m.prospect_name) : ({ arch: 'Davorin', risedtc: 'Mattan', swishdm: 'Jonathan', ivan: 'You' }[m.client_id] ?? null)),
     date: m.sent_at ?? m.created_at, messageId: saved?.messageId ?? nonempty(em?.message_id),
     references: saved?.references ?? nonempty(headers?.References ?? em?.references) }
@@ -123,6 +131,7 @@ export function hydrateEmailDetails(t: Thread, rows: readonly EmailDetailRow[]):
       recipient_email: r.recipient_email ?? m.recipient_email,
       email_mirror_text: m.email_mirror_text ?? r.email_mirror_text,
       draft_evidence: { ...m.draft_evidence, email: { ...m.draft_evidence?.email, ...r.email_metadata },
+        instantly_reply: Object.hasOwn(r, 'instantly_reply') ? r.instantly_reply : m.draft_evidence?.instantly_reply,
         email_composition: Object.hasOwn(r, 'email_composition') ? r.email_composition : m.draft_evidence?.email_composition,
         email_mirror_composition: Object.hasOwn(r, 'email_mirror_composition') ? r.email_mirror_composition : m.draft_evidence?.email_mirror_composition,
         email_subject: r.email_subject ?? m.draft_evidence?.email_subject,
