@@ -169,9 +169,10 @@ function DeskList({ desk, locked }: { desk: DeskHandle; locked: boolean }) {
   // same minute are both announced.
   const [said, setSaid] = useState('')
   const seenReplies = useRef<Set<string> | null>(null)
-  // What finished before the desk opened is history; a reply that lands while the first read is still on its
-  // way is new and is announced.
-  const openedAt = useRef(Date.now())
+  // History is what the first SUCCESSFUL read shows (no clocks: a failed read sets nothing). An answer to a
+  // message sent from this tab is always announced, even when it lands inside that first read.
+  const sentHere = useRef(new Set<string>())
+  for (const m of messages) if (m.role === 'user' && m.local && m.client_key) sentHere.current.add(m.client_key)
   // Replies waiting to be announced: kept until the line is actually published, so a second finish before the
   // next frame joins the same announcement instead of cancelling the first.
   const queued = useRef<DeskMessage[]>([])
@@ -182,12 +183,10 @@ function DeskList({ desk, locked }: { desk: DeskHandle; locked: boolean }) {
   useEffect(() => {
     if (!desk.loaded) return
     const done = messages.filter(m => m.role === 'assistant' && !m.answers && m.status === 'done')
+    const mine = (m: DeskMessage) => !!m.meta.client_key && sentHere.current.has(m.meta.client_key)
     if (!seenReplies.current) {
-      // By when it FINISHED: its start plus the turn's own recorded duration (never the row's last write, which a
-      // later commit, cancel or Undo moves). A reply that started before opening and finished during the first read
-      // is still announced; an old reply whose card changed is not.
-      const finished = (m: DeskMessage) => Date.parse(m.created_at) + (Number(m.meta.timings?.total_ms) || 0)
-      seenReplies.current = new Set(done.filter(m => finished(m) < openedAt.current - 2000).map(m => m.id))
+      if (desk.readFailed || desk.fromCache) return
+      seenReplies.current = new Set(done.filter(m => !mine(m)).map(m => m.id))
     }
     // Every reply that is new since the last announcement, even when several land in one update.
     const fresh = done.filter(m => !seenReplies.current!.has(m.id))
@@ -204,7 +203,7 @@ function DeskList({ desk, locked }: { desk: DeskHandle; locked: boolean }) {
       setSaid(all.length > 1 ? `${all.length} new messages from the desk.`
         : one.origin === 'proactive' ? 'The desk wrote first.' : one.origin === 't3' ? 'A result came back from T3.' : 'The desk answered.')
     })
-  }, [doneKey, desk.loaded]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [doneKey, desk.loaded, desk.readFailed, desk.fromCache]) // eslint-disable-line react-hooks/exhaustive-deps
   let day = ''
   let prevRole: DeskMessage['role'] | null = null
   return (

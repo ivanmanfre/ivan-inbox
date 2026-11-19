@@ -244,7 +244,9 @@ export function labelRef(label: string): string | null {
 
 export function cleanLabel(label: string, target?: { first_line: string } | null): { text: string; stated: boolean } {
   let t = label.replace(/\s+/g, ' ').trim()
-  t = t.replace(/\s*\(ref [0-9a-f]{6,}\)/gi, '').replace(/\s*\(no date\)/gi, '')
+  // Only the server's own markers go: the ref in the label's opening words, and "(no date)" right after the
+  // quoted post. The same words inside a quote (an idea, a post) stay as written.
+  t = t.replace(/^(\s*[A-Z][A-Za-z ]{0,30}?) \(ref [0-9a-f]{6,}\)/, '$1').replace(/"\s*\(no date\)/g, '"')
   if (target?.first_line) {
     const q = quotedPost(t, target.first_line)
     if (q) t = `${t.slice(0, q[0])}this post${t.slice(q[1])}`

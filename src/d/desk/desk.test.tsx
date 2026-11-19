@@ -255,15 +255,26 @@ describe('Desk polish (review of the new layout)', () => {
     expect(screen.queryByText('#target')).toBeNull()
   })
 
-  it('a reply that started before the desk opened and finished during the first read is announced', async () => {
-    const started = new Date(Date.now() - 5000).toISOString()
-    vi.mocked(api.readMessages).mockResolvedValueOnce([
-      stored({ id: 'old1', body: 'An old answer.', created_at: '2026-11-17T09:00:00Z', updated_at: '2026-11-17T09:00:05Z' }),
-      stored({ id: 'late1', body: 'A late answer.', created_at: started, meta: { timings: { total_ms: 6000 } } }),
-    ])
+  it('an answer to a message sent here is announced; the loaded history is not', async () => {
+    vi.mocked(api.readMessages).mockResolvedValueOnce([stored({ id: 'old1', body: 'An old answer.', created_at: '2026-11-17T09:00:00Z' })])
     const { container } = render(<Desk layout="phone" />)
-    await screen.findByText('A late answer.')
+    await screen.findByText('An old answer.')
+    await act(async () => { await new Promise(r => setTimeout(r, 50)) })
+    expect(container.querySelector('.dk-sr')!.textContent).toBe('')
+    type('whats going out this week')
+    await act(async () => { streamGate?.() })
     await waitFor(() => expect(container.querySelector('.dk-sr')!.textContent).toBe('The desk answered.'))
+  })
+
+  it('a failed first read sets no history: the first good read is history, not a burst of announcements', async () => {
+    vi.mocked(api.readMessages).mockRejectedValueOnce(new Error('offline'))
+    vi.mocked(api.readMessages).mockResolvedValueOnce([stored({ id: 'h9', body: 'Loaded after the outage.', created_at: '2026-11-17T09:00:00Z' })])
+    const { container } = render(<Desk layout="phone" />)
+    await screen.findByText(/Could not read the desk/)
+    fireEvent.click(screen.getByText('Try again'))
+    await screen.findByText('Loaded after the outage.')
+    await act(async () => { await new Promise(r => setTimeout(r, 50)) })
+    expect(container.querySelector('.dk-sr')!.textContent).toBe('')
   })
 
   it('an old reply whose card changed during the first read is not announced as new', async () => {

@@ -117,6 +117,10 @@ describe('cleanLabel: server sentences read once, with no ref and no duplicated 
     expect(cleanLabel('Undone.')).toEqual({ text: 'Back as it was.', stated: true })
     expect(cleanLabel('Cancelled. Nothing changed.')).toEqual({ text: 'Nothing changed.', stated: true })
   })
+  it('"(no date)" and a ref inside a quote stay as written', () => {
+    expect(cleanLabel('Saved as an idea: "Posts with (no date) and (ref 1a2b3c4d) in them". The scorer picks it up next.').text)
+      .toBe('Saved as an idea: "Posts with (no date) and (ref 1a2b3c4d) in them". The scorer picks it up next.')
+  })
   it('an imperative label keeps its prefix (not stated)', () => {
     expect(cleanLabel('Approve the trains post')).toEqual({ text: 'Approve the trains post', stated: false })
   })
