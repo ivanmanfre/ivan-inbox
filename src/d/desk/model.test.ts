@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { asMessage, cacheable, holdLeft, holdStart, linksIn, mergeRows, optimisticPair, parseSse, type DeskMessage } from './model'
-import { keyboardInset } from './useKeyboardInset'
+import { asMessage, cacheable, cleanLabel, labelRef, holdLeft, holdStart, linksIn, mergeRows, optimisticPair, parseSse, type DeskMessage } from './model'
+import { keyboardInset, keyboardOpen } from './useKeyboardInset'
 
 const row = (over: Partial<DeskMessage> & { id: string }): DeskMessage => asMessage({ role: 'assistant', origin: 'desk', body: 'x', created_at: '2026-11-18T10:00:00.000Z', ...over })
 
@@ -85,5 +85,54 @@ describe('small helpers', () => {
     expect(keyboardInset(844, 844, 0)).toBe(0)
     expect(keyboardInset(844, 820, 0)).toBe(0)
     expect(keyboardInset(844, 508, 0)).toBe(336)
+    // iOS panned the visual viewport up: nothing covered below, the keyboard is still open.
+    expect(keyboardInset(844, 508, 336)).toBe(0)
+    expect(keyboardOpen(844, 508)).toBe(true)
+    expect(keyboardOpen(844, 820)).toBe(false)
+  })
+})
+
+describe('cleanLabel: server sentences read once, with no ref and no duplicated state', () => {
+  const tgt = { first_line: 'A made up post about trains in the rain and a long platform wait.' }
+  it('a held proposal drops Proposed and the ref, keeps the UTC offset, and names the post as this post', () => {
+    const r = cleanLabel('Proposed (ref 1a2b3c4d): move "A made up post about trains in the rain and a long\n\nplatform wait." (no date) to Tue 9 Mar 2027, 10:45 (UTC+01:00).', tgt)
+    expect(r).toEqual({ text: 'Move this post to Tue 9 Mar 2027, 10:45 (UTC+01:00).', stated: true })
+  })
+  it('an opener with a quote and "to" inside is replaced whole or not at all', () => {
+    const line = 'A made up post: "send it to the team" was the whole brief'
+    expect(cleanLabel(`Proposed (ref 1a2b3c4d): move "${line}" (no date) to Thu 26 Nov, 09:30 (UTC+01:00).`, { first_line: line }).text)
+      .toBe('Move this post to Thu 26 Nov, 09:30 (UTC+01:00).')
+    expect(cleanLabel(`Proposed (ref 1a2b3c4d): move "A different opener" to Thu 26 Nov.`, { first_line: line }).text)
+      .toBe('Move "A different opener" to Thu 26 Nov.')
+  })
+  it('a quote inside the post does not cut it short', () => {
+    const r = cleanLabel('Proposed (ref 1a2b3c4d): pull "A made up post about trains in the rain, "late again" said the man" (Thu 19 Nov, 18:30).', { first_line: 'A made up post about trains in the rain, "late again" said the man' })
+    expect(r.text).toBe('Pull this post (Thu 19 Nov, 18:30).')
+  })
+  it('a done sentence stays as written and is marked stated', () => {
+    expect(cleanLabel('Moved "A made up post about trains…" to Tue 9 Mar, 10:45', tgt)).toEqual({ text: 'Moved this post to Tue 9 Mar, 10:45', stated: true })
+    expect(cleanLabel('Done (ref 1a2b3c4d): approve "A made up post about trains in the rain and a long platform wait."', tgt).text).toBe('Approve this post')
+  })
+  it('a bare state word becomes a plain sentence', () => {
+    expect(cleanLabel('Undone.')).toEqual({ text: 'Back as it was.', stated: true })
+    expect(cleanLabel('Cancelled. Nothing changed.')).toEqual({ text: 'Nothing changed.', stated: true })
+  })
+  it('"(no date)" and a ref inside a quote stay as written', () => {
+    expect(cleanLabel('Saved as an idea: "Posts with (no date) and (ref 1a2b3c4d) in them". The scorer picks it up next.').text)
+      .toBe('Saved as an idea: "Posts with (no date) and (ref 1a2b3c4d) in them". The scorer picks it up next.')
+  })
+  it('an imperative label keeps its prefix (not stated)', () => {
+    expect(cleanLabel('Approve the trains post')).toEqual({ text: 'Approve the trains post', stated: false })
+  })
+  it('without a matching target the post text stays', () => {
+    expect(cleanLabel('Saved as an idea: "Post on DMs". The scorer picks it up next.').text).toBe('Saved as an idea: "Post on DMs". The scorer picks it up next.')
+  })
+})
+
+describe('labelRef: only the reference of the card itself', () => {
+  it('reads the opening ref and never one quoted in a reason', () => {
+    expect(labelRef('Proposed (ref 1a2b3c4d): delete "A made up post" (no date).')).toBe('1a2b3c4d')
+    expect(labelRef('Moved (ref 5e6f7a8b) "A made up post" to Tue 9 Mar')).toBe('5e6f7a8b')
+    expect(labelRef('Not done: it clashes with the post at (ref 9c9c9c9c), so I left it.')).toBeNull()
   })
 })

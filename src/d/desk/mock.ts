@@ -59,7 +59,8 @@ function answerFor(text: string, id: string): DeskMessage {
   const t = text.toLowerCase()
   const base: DeskMessage = { id, role: 'assistant', origin: 'desk', body: '', status: 'done', meta: { model: 'mock' }, client_key: null, created_at: new Date().toISOString() }
   if (/approve/.test(t)) return { ...base, body: 'Approving the trains post.', meta: { ...base.meta, actions: [{ id: `a-${id}`, kind: 'approve', label: 'Approve #a1b2c', state: 'held', undo: false, hold_ms: 8000, target: { kind: 'draft', handle: '#a1b2c', first_line: 'A made up post about trains in the rain.' } }] } }
-  if (/move|thursday/.test(t)) return { ...base, body: 'Moved the Monday post to Thursday 09:30.', meta: { ...base.meta, actions: [{ id: `a-${id}`, kind: 'schedule', label: 'Moved #d3e4f to Thu 26 Nov 09:30', state: 'done', undo: true, target: { kind: 'draft', handle: '#d3e4f', first_line: 'A made up post about a quiet Monday.' } }] } }
+  // Every change to a post starts held, as on the server: Do it now applies it, then Undo is there.
+  if (/move|thursday/.test(t)) return { ...base, body: 'Ready to move the Monday post to Thursday 09:30.', meta: { ...base.meta, actions: [{ id: `a-${id}`, kind: 'date', label: 'Move #d3e4f to Thu 26 Nov 09:30', state: 'held', undo: false, target: { kind: 'draft', handle: '#d3e4f', first_line: 'A made up post about a quiet Monday.' } }] } }
   if (/poland|which one/.test(t)) return { ...base, body: 'Two drafts match. Tap the one you mean.', meta: { ...base.meta, chips: [{ send: 'move #a1b2c to thursday' }, { send: 'move #d3e4f to thursday' }] } }
   if (/build|fix|research/.test(t)) {
     const jid = `j-${id}`
@@ -98,7 +99,7 @@ export const mockApi = {
     const m = rows.find(r => r.meta.actions?.some(a => a.id === actionId))
     if (!m) return { ok: false, error: 'not_found' }
     const state = o === 'undo' ? 'undone' : o === 'commit' ? 'done' : 'cancelled'
-    const next: DeskMessage = { ...m, meta: { ...m.meta, actions: m.meta.actions!.map(a => (a.id === actionId ? { ...a, state } : a)) } }
+    const next: DeskMessage = { ...m, meta: { ...m.meta, actions: m.meta.actions!.map(a => (a.id === actionId ? { ...a, state, undo: o === 'commit' } : a)) } }
     push(next)
     return { ok: true, message: next }
   },
@@ -109,10 +110,11 @@ export const mockApi = {
     listeners.add(l)
     return () => { listeners.delete(l) }
   },
-  async heldSeen(ids: string[]): Promise<{ ok: boolean; results: { id: string; state: string; seen_at: string; hold_until: string }[] }> {
+  async heldSeen(ids: string[]): Promise<{ ok: boolean; results: { id: string; state: string; seen_at: string; hold_until: string | null }[] }> {
     await sleep(40)
     const at = Date.now()
-    return { ok: true, results: ids.map(id => ({ id, state: 'held', seen_at: new Date(at).toISOString(), hold_until: new Date(at + 8000).toISOString() })) }
+    // As the server answers since r19: the sighting is recorded, no deadline (the hold waits for Do it now).
+    return { ok: true, results: ids.map(id => ({ id, state: 'held', seen_at: new Date(at).toISOString(), hold_until: null })) }
   },
   async upload(file: File): Promise<string> { await sleep(200); return `https://example.com/mock/${encodeURIComponent(file.name || 'photo.jpg')}` },
 }

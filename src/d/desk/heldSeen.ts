@@ -8,8 +8,15 @@
 import { markHeldSeen, type HeldSeenResult } from './api'
 import { actionStore } from './actionGuards'
 
-type Seen = { state: 'pending' } | { state: 'armed'; until: number } | { state: 'failed' } | { state: 'settled' }
+// 'manual': the server recorded the sighting and set no deadline (every hold waits for Do it now, server r19+):
+// no countdown, and the report is never sent again.
+type Seen = { state: 'pending' } | { state: 'armed'; until: number } | { state: 'manual' } | { state: 'failed' } | { state: 'settled' }
 const seen = new Map<string, Seen>()
+const retryAt = new Map<string, { at: number; pause: number }>()
+function backOff(id: string): void {
+  const pause = Math.min(60_000, (retryAt.get(id)?.pause ?? 1000) * 2)
+  retryAt.set(id, { at: Date.now() + pause, pause })
+}
 const listeners = new Set<() => void>()
 let version = 0
 let queue: string[] = []
@@ -30,6 +37,9 @@ export function reportHeldSeen(id: string): void {
   if (actionStore.undoTapped(id)) return
   const prev = seen.get(id)
   if (prev && prev.state !== 'failed') return
+  // A failed report waits a growing pause before it is sent again (2 s, 4 s, ... a minute), whoever asks.
+  const wait = retryAt.get(id)
+  if (prev?.state === 'failed' && wait && Date.now() < wait.at) return
   seen.set(id, { state: 'pending' })
   queue.push(id)
   changed()
@@ -53,15 +63,20 @@ export function reportHeldSeen(id: string): void {
         if (!wanted(x)) { seen.delete(x); continue }
         const e = byId.get(x)
         const until = e?.hold_until ? Date.parse(e.hold_until) : NaN
-        if (!e || e.error) seen.set(x, { state: 'failed' })
+        if (!e || e.error) { seen.set(x, { state: 'failed' }); backOff(x) }
         else if (e.state && e.state !== 'held') seen.set(x, { state: 'settled' })
         else if (Number.isFinite(until)) seen.set(x, { state: 'armed', until })
-        else seen.set(x, { state: 'failed' }) // no deadline from the server: no countdown, keep the buttons
+        // Recorded with no deadline: a manual hold. Not a failure, so it is not reported again on every render.
+        else if (e.seen_at) seen.set(x, { state: 'manual' })
+        else { seen.set(x, { state: 'failed' }); backOff(x) } // no deadline and no record: no countdown, keep the buttons
       }
       changed()
     }
   })
 }
 
+/** The tab came back: a failed report may be sent again at once (Ivan returning is not a retry loop). */
+export function heldSeenTabBack(): void { retryAt.clear() }
+
 /** Tests only. */
-export function resetHeldSeen(): void { seen.clear(); listeners.clear(); queue = []; flushing = false; version = 0 }
+export function resetHeldSeen(): void { seen.clear(); retryAt.clear(); listeners.clear(); queue = []; flushing = false; version = 0 }

@@ -61,6 +61,7 @@ vi.mock('../../exp/v2c/chat/useStt', () => ({
   useStt: () => ({ state: 'idle', elapsedMs: 0, note: null, supported: true, toggle: vi.fn(), clip: null, clearClip: vi.fn() }),
 }))
 
+const api = await import('./api')
 const { Desk } = await import('./Desk')
 const { resetHeldSeen } = await import('./heldSeen')
 const { installVisibility, removeVisibility } = await import('./testVisibility')
@@ -107,7 +108,7 @@ describe('Desk', () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     type('approve the trains one')
     await act(async () => { streamGate?.() })
-    await waitFor(() => expect(document.querySelector('[data-state="held"]')?.textContent).toMatch(/Approve #a1b2c in \d+s/))
+    await waitFor(() => expect(document.querySelector('[data-state="held"]')?.textContent).toMatch(/Doing it in \d+s.*Approve #a1b2c/))
     fireEvent.click(screen.getByText('Undo'))
     await act(async () => { vi.advanceTimersByTime(9000) })
     await waitFor(() => expect(ops).toEqual([{ kind: 'cancel', id: 'act-1' }]))
@@ -120,5 +121,200 @@ describe('Desk', () => {
     await act(async () => { streamGate?.() })
     fireEvent.click(await screen.findByText('Undo'))
     await waitFor(() => expect(ops).toEqual([{ kind: 'undo', id: 'act-2' }]))
+  })
+})
+
+describe('Desk polish (review of the new layout)', () => {
+  it('a photo still uploading holds every other send: a chip waits', async () => {
+    vi.mocked(api.readMessages).mockResolvedValueOnce([stored({ id: 'h2', body: 'Two match.', meta: { chips: [{ send: 'move #a1b2c to thursday' }] } })])
+    let release: (u: string) => void = () => {}
+    vi.mocked(api.uploadDeskPhoto).mockImplementationOnce(() => new Promise<string>(r => { release = r }))
+    const { container } = render(<Desk layout="phone" />)
+    await screen.findByText('Two match.')
+    const file = new File([new Uint8Array([1])], 'x.png', { type: 'image/png' })
+    globalThis.URL.createObjectURL = vi.fn(() => 'blob:x'); globalThis.URL.revokeObjectURL = vi.fn()
+    fireEvent.change(container.querySelector('[data-desk-photo]')!, { target: { files: [file] } })
+    fireEvent.click(screen.getByLabelText('Send'))
+    await waitFor(() => expect((screen.getByText('move #a1b2c to thursday', { selector: 'button' }) as HTMLButtonElement).disabled).toBe(true))
+    expect(sent).toHaveLength(0)
+    await act(async () => { release('https://example.com/p.jpg') })
+    await waitFor(() => expect(sent).toHaveLength(1))
+  })
+
+  it('a failed first read with nothing saved is an error with Try again, never the empty starter screen', async () => {
+    vi.mocked(api.readMessages).mockRejectedValueOnce(new Error('offline'))
+    const { container } = render(<Desk layout="desktop" />)
+    await screen.findByText(/Could not read the desk/)
+    expect(container.querySelector('[data-desk-hero]')).toBeNull()
+    expect(screen.getByText('Try again')).toBeTruthy()
+  })
+
+  it('an old long answer shows a readable preview and a real disclosure (Show all / Show less, aria-expanded)', async () => {
+    const paras = Array.from({ length: 12 }, (_, i) => `Paragraph ${i} about a made up train ride, long enough to count.`)
+    vi.mocked(api.readMessages).mockResolvedValueOnce([
+      stored({ id: 'o1', body: paras.join('\n\n'), created_at: '2026-11-17T09:00:00Z' }),
+      ...['a', 'b', 'c', 'd'].map((k, i) => stored({ id: `n${k}`, body: `Short ${k}.`, created_at: `2026-11-17T10:0${i}:00Z` })),
+    ])
+    const { container } = render(<Desk layout="desktop" />)
+    const key = await screen.findByText('Show all')
+    expect(key.getAttribute('aria-expanded')).toBe('false')
+    const box = container.querySelector('#dk-t-o1')!
+    expect(box.hasAttribute('inert')).toBe(false)
+    expect(box.textContent).toContain('Paragraph 0')
+    expect(box.textContent).not.toContain('Paragraph 11')
+    fireEvent.click(key)
+    expect(screen.getByText('Show less').getAttribute('aria-expanded')).toBe('true')
+    expect(container.querySelector('#dk-t-o1')!.textContent).toContain('Paragraph 11')
+  })
+
+  it('a long list of choices shows six, then Show N more', async () => {
+    vi.mocked(api.readMessages).mockResolvedValueOnce([stored({ id: 'h3', body: 'Many match.', meta: { chips: Array.from({ length: 10 }, (_, i) => ({ send: `move #a${i} to thursday` })) } })])
+    render(<Desk layout="phone" />)
+    await screen.findByText('Many match.')
+    expect(document.querySelectorAll('.dk-chip')).toHaveLength(6)
+    fireEvent.click(screen.getByText('Show 4 more'))
+    expect(document.querySelectorAll('.dk-chip')).toHaveLength(10)
+  })
+
+  it('a change turn shows its cards and not their echo text; a note from the server sits on its card', async () => {
+    const label = 'Saved as an idea: "A made up idea about slow trains". The scorer picks it up next.'
+    vi.mocked(api.readMessages).mockResolvedValueOnce([stored({ id: 'p1',
+      body: `${label} It is already in Ideas from Monday.`,
+      meta: { actions: [{ id: 'act-p', kind: 'idea', label, detail: 'It is already in Ideas from Monday.', state: 'done', undo: true }] } })])
+    render(<Desk layout="phone" />)
+    await screen.findByText('It is already in Ideas from Monday.')
+    expect(document.querySelectorAll('[data-msg="p1"] .dk-text')).toHaveLength(0)
+    expect(screen.getByText(label)).toBeTruthy()
+  })
+
+  it('beside its cards, a turn shows the server notes (a post it could not match, a save warning) and no receipt', async () => {
+    const proposal = 'Proposed (ref 1a2b3c4d): move "A made up post about trains in the rain and a long platform wait."'
+    vi.mocked(api.readMessages).mockResolvedValueOnce([stored({ id: 'p3',
+      // as the server cuts it: the proposal split over two paragraphs, then a line with no card, then the save notice
+      body: `${proposal}\n\n(no date) to Thu 26 Nov, 09:30 (UTC+01:00). It runs only when you tap Do it now.\n\nNo draft matches "the ferry one". Say its first words.\n\n(I could not save this answer. The held actions were cancelled.)`,
+      meta: { actions: [{ id: 'act-r', kind: 'date', label: 'Cancelled: I could not save this answer.', state: 'cancelled', undo: false }],
+        notes: ['No draft matches "the ferry one". Say its first words.', '(I could not save this answer. The held actions were cancelled.)'] } })])
+    render(<Desk layout="phone" />)
+    await screen.findByText(/No draft matches "the ferry one"/)
+    expect(screen.getByText(/I could not save this answer\. The held actions were cancelled/)).toBeTruthy()
+    expect(screen.queryByText(/Proposed \(ref/)).toBeNull()
+    expect(screen.queryByText(/It runs only when you tap/)).toBeNull()
+  })
+
+  it('a folded preview never ends inside a code fence', async () => {
+    const code = ['```', 'line one', '', 'line two after a blank', '```'].join('\n')
+    const long = [code, ...Array.from({ length: 12 }, (_, i) => `Paragraph ${i} about a made up train ride, long enough to count.`)].join('\n\n')
+    vi.mocked(api.readMessages).mockResolvedValueOnce([
+      stored({ id: 'f1', body: long, created_at: '2026-11-17T09:00:00Z' }),
+      ...['a', 'b', 'c', 'd'].map((k, i) => stored({ id: `g${k}`, body: `Short ${k}.`, created_at: `2026-11-17T10:0${i}:00Z` })),
+    ])
+    const { container } = render(<Desk layout="desktop" />)
+    await screen.findByText('Show all')
+    expect(container.querySelector('#dk-t-f1')!.textContent).toContain('line two after a blank')
+  })
+
+  it('a finished change undone later does not keep its old "Moved (ref …)" sentence', async () => {
+    vi.mocked(api.readMessages).mockResolvedValueOnce([stored({ id: 'p4',
+      body: 'Moved (ref 1a2b3c4d) "A made up post about trains.\n\nNobody looked up." (no date) to Tue 9 Mar, 10:45',
+      meta: { actions: [{ id: 'act-s', kind: 'date', label: 'Undone.', state: 'undone', undo: false }] } })])
+    render(<Desk layout="phone" />)
+    await screen.findByText('Back as it was.')
+    expect(screen.queryByText(/Moved \(ref/)).toBeNull()
+    expect(screen.queryByText(/Nobody looked up/)).toBeNull()
+  })
+
+  it('an idea undone later does not bring its old receipt back above the card', async () => {
+    vi.mocked(api.readMessages).mockResolvedValueOnce([stored({ id: 'p5',
+      body: 'Saved as an idea: "A made up idea about slow trains". The scorer picks it up next.',
+      meta: { actions: [{ id: 'act-t', kind: 'idea', label: 'Undone.', state: 'undone', undo: false }], notes: [] } })])
+    render(<Desk layout="phone" />)
+    await screen.findByText('Back as it was.')
+    expect(screen.queryByText(/The scorer picks it up next/)).toBeNull()
+  })
+
+  it('a held delete says before the tap that it cannot be undone', async () => {
+    vi.mocked(api.readMessages).mockResolvedValueOnce([stored({ id: 'p6', body: '',
+      meta: { actions: [{ id: 'act-d', kind: 'delete', label: 'Deleting "A made up post"', state: 'held', undo: false }], notes: [] } })])
+    render(<Desk layout="phone" />)
+    await screen.findByText("Deleting can't be undone.")
+  })
+
+  it('two look-alike held deletes show their whole openers and their own refs', async () => {
+    const a = 'A made up post about trains. Line two. Line three. Line four ends with the ferry.'
+    const b = 'A made up post about trains. Line two. Line three. Line four ends with the tram.'
+    vi.mocked(api.readMessages).mockResolvedValueOnce([stored({ id: 'p7', body: '', meta: { notes: [], actions: [
+      { id: 'act-a', kind: 'delete', label: `Proposed (ref 1a2b3c4d): delete "${a}" (no date).`, state: 'held', undo: false, target: { kind: 'draft', handle: '#target', first_line: a } },
+      { id: 'act-b', kind: 'delete', label: `Proposed (ref 5e6f7a8b): delete "${b}" (no date).`, state: 'held', undo: false, target: { kind: 'draft', handle: '#target', first_line: b } },
+    ] } })])
+    render(<Desk layout="phone" />)
+    await screen.findByText('ref 1a2b3c4d')
+    expect(screen.getByText('ref 5e6f7a8b')).toBeTruthy()
+    expect(screen.getByText(/ends with the ferry/)).toBeTruthy()
+    expect(screen.getByText(/ends with the tram/)).toBeTruthy()
+    expect(document.querySelectorAll('.dk-act-post-full')).toHaveLength(2)
+    expect(screen.queryByText('#target')).toBeNull()
+  })
+
+  it('an answer to a message sent here is announced; the loaded history is not', async () => {
+    vi.mocked(api.readMessages).mockResolvedValueOnce([stored({ id: 'old1', body: 'An old answer.', created_at: '2026-11-17T09:00:00Z' })])
+    const { container } = render(<Desk layout="phone" />)
+    await screen.findByText('An old answer.')
+    await act(async () => { await new Promise(r => setTimeout(r, 50)) })
+    expect(container.querySelector('.dk-sr')!.textContent).toBe('')
+    type('whats going out this week')
+    await act(async () => { streamGate?.() })
+    await waitFor(() => expect(container.querySelector('.dk-sr')!.textContent).toBe('The desk answered.'))
+  })
+
+  it('a failed first read sets no history: the first good read is history, not a burst of announcements', async () => {
+    vi.mocked(api.readMessages).mockRejectedValueOnce(new Error('offline'))
+    vi.mocked(api.readMessages).mockResolvedValueOnce([stored({ id: 'h9', body: 'Loaded after the outage.', created_at: '2026-11-17T09:00:00Z' })])
+    const { container } = render(<Desk layout="phone" />)
+    await screen.findByText(/Could not read the desk/)
+    fireEvent.click(screen.getByText('Try again'))
+    await screen.findByText('Loaded after the outage.')
+    await act(async () => { await new Promise(r => setTimeout(r, 50)) })
+    expect(container.querySelector('.dk-sr')!.textContent).toBe('')
+  })
+
+  it('an old reply whose card changed during the first read is not announced as new', async () => {
+    vi.mocked(api.readMessages).mockResolvedValueOnce([
+      stored({ id: 'old2', body: '', created_at: '2026-11-17T09:00:00Z', updated_at: new Date().toISOString(),
+        meta: { timings: { total_ms: 3000 }, notes: [], actions: [{ id: 'act-o', kind: 'date', label: 'Undone.', state: 'undone', undo: false }] } }),
+    ])
+    const { container } = render(<Desk layout="phone" />)
+    await screen.findByText('Back as it was.')
+    await act(async () => { await new Promise(r => setTimeout(r, 50)) })
+    expect(container.querySelector('.dk-sr')!.textContent).toBe('')
+  })
+
+  it('a cancelled proposal never keeps "It runs only when you tap Do it now" above its card', async () => {
+    vi.mocked(api.readMessages).mockResolvedValueOnce([stored({ id: 'p2',
+      body: 'Proposed (ref 1a2b3c4d): move "A made up post about trains." (no date) to Thu 26 Nov, 09:30 (UTC+01:00). It runs only when you tap Do it now.',
+      meta: { actions: [{ id: 'act-q', kind: 'date', label: 'Cancelled. Nothing changed.', state: 'cancelled', undo: false }] } })])
+    render(<Desk layout="phone" />)
+    await screen.findByText('Nothing changed.')
+    expect(screen.queryByText(/It runs only when you tap/)).toBeNull()
+  })
+
+  it('Retry waits while another turn runs', async () => {
+    vi.mocked(api.readMessages).mockResolvedValueOnce([stored({ id: 'h4', body: 'Ready.' })])
+    vi.mocked(api.sendDesk).mockImplementationOnce(async (_b, h) => { h.onError?.('offline', 'No connection. Your message is kept.'); return 'error' })
+    render(<Desk layout="phone" />)
+    await screen.findByText('Ready.')
+    type('first try')
+    const retry = await screen.findByText('Retry')
+    expect((retry as HTMLButtonElement).disabled).toBe(false)
+    type('second message')
+    await waitFor(() => expect((screen.getByText('Retry') as HTMLButtonElement).disabled).toBe(true))
+    await act(async () => { streamGate?.() })
+    await waitFor(() => expect((screen.getByText('Retry') as HTMLButtonElement).disabled).toBe(false))
+  })
+
+  it('a change card shows the server sentence once, without a ref or a doubled state word', async () => {
+    vi.mocked(api.readMessages).mockResolvedValueOnce([stored({ id: 'u1', body: '', meta: { actions: [{ id: 'act-u', kind: 'date', label: 'Undone.', state: 'undone', undo: false }] } })])
+    render(<Desk layout="phone" />)
+    await screen.findByText('Back as it was.')
+    expect(screen.queryByText(/Undone: Undone/)).toBeNull()
   })
 })

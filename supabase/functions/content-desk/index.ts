@@ -575,10 +575,14 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
         timings.auth_ms = Date.now() - t0
         // 3) a durable journal row first ('pending'), then the guarded write, then the terminal state
         const bodyLines: string[] = []
+        // The lines that are no card (an unresolved reference, later a save notice), kept apart from the card
+        // receipts in meta.notes: the app shows these beside the cards, and the cards say their own part live.
+        const notes: string[] = []
         for (const { act, p, snap } of planned) {
           if (p.display) {
             // an ambiguous or unresolved reference: a line and chips only, NO action entry (Sol r10 #10)
             bodyLines.push(p.echo.label)
+            notes.push(p.echo.label)
             if (p.chips?.length) chips = [...p.chips, ...chips].slice(0, 3)
             continue
           }
@@ -667,7 +671,7 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
         const t3 = echoes.find((e) => e.t3_job)?.t3_job
         const meta = {
           model: m1.model, reply_to: userRow.id, client_key: clientKey, timings, tool_calls: toolCalls, brief_chars: r.text.length,
-          ...(echoes.length ? { actions: echoes } : {}), ...(chips.length ? { chips: oneText(chips) } : {}), ...(t3 ? { t3_job: t3 } : {}),
+          ...(echoes.length ? { actions: echoes, notes: notes.map((n) => sanitize(n, r.lines.keys())) } : {}), ...(chips.length ? { chips: oneText(chips) } : {}), ...(t3 ? { t3_job: t3 } : {}),
           turn_token: turnToken, side_effects: sideEffects, ...(mode.evalMode ? { test: true } : {}),
         }
         // The final row (with its echoes) is the only thing that lets a hold arm: held_seen and commit
@@ -695,9 +699,10 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
             if (a) await claimState(svc, a, 'held', 'cancelled')
             e.state = 'cancelled'; e.undo = false; e.label = 'Cancelled: I could not save this answer.'
           }
+          const notice = `(I could not save this answer.${held.length ? ' The held actions were cancelled.' : ''} If an action is listed as done, check before repeating it.)`
           final = { id: messageId, role: 'assistant', origin: 'desk', status: 'done',
-            body: shortParagraphs(`${finalBody}\n\n(I could not save this answer.${held.length ? ' The held actions were cancelled.' : ''} If an action is listed as done, check before repeating it.)`),
-            meta: { ...meta, actions: echoes }, created_at: new Date().toISOString() }
+            body: shortParagraphs(`${finalBody}\n\n${notice}`),
+            meta: { ...meta, actions: echoes, ...(echoes.length ? { notes: [...((meta as { notes?: string[] }).notes ?? []), notice] } : {}) }, created_at: new Date().toISOString() }
         }
         emit('final', { message: forClient(final) })
       } catch (e) {
@@ -809,7 +814,7 @@ async function recoverTurn(svc: any, prior: Record<string, any>): Promise<Record
   const sideEffects = await turnSideEffects(svc, String(prior.id))
   const { data: closed } = await svc.from('desk_messages').update({ status: 'done',
     body: 'This answer did not finish. Here is what was recorded; check Review before repeating anything.',
-    meta: { ...(prior.meta ?? {}), actions, recovered: true, side_effects: sideEffects }, updated_at: new Date().toISOString() })
+    meta: { ...(prior.meta ?? {}), actions, ...(actions.length ? { notes: ['This answer did not finish. Here is what was recorded; check Review before repeating anything.'] } : {}), recovered: true, side_effects: sideEffects }, updated_at: new Date().toISOString() })
     .eq('id', prior.id).eq('status', 'streaming').select('*').maybeSingle()
   if (closed) return closed
   // the worker's own save won after all: that stored answer is the record

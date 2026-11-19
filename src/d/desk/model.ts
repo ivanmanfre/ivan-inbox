@@ -31,6 +31,9 @@ export type DeskMeta = {
   /** On a terminal answer, from that turn's action journal (Sol backend r5 B11): 'none' only when the
    *  turn wrote nothing and queued no job. Shown as a note; it never makes the UI send anything. */
   side_effects?: 'none' | 'some' | 'unknown'
+  /** On a turn with change cards (server, Content Desk UI polish r5): the lines that are no card (a post it could not
+   *  match, a could-not-save notice, a recovery line), kept apart from the cards' own receipts. */
+  notes?: string[]
 }
 
 export type DeskMessage = {
@@ -209,4 +212,52 @@ export function newKey(): string {
   return typeof crypto !== 'undefined' && 'randomUUID' in crypto
     ? crypto.randomUUID()
     : `k${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`
+}
+
+// ---- action labels ---------------------------------------------------------
+
+/** The server writes most labels as whole sentences that already say what happened ("Moved "…" to Tue 9 Mar",
+ *  "Undone.", "Done (ref 1a2b3c4d): approve "…""). The card's eyebrow names the state, so a label is shown
+ *  cleaned (no ref, the post's own text as "this post" when the card shows the post below) and
+ *  without a second state word in front of it. An imperative label ("Approve the trains post") keeps its prefix. */
+// The UTC offset stays: on the autumn change day 02:30 happens twice, and the card must say which one.
+const STATED = /^(done|undone|cancelled|not done|not confirmed|could not|couldn't|moved|removed|saved|added|rewriting|opened|proposed|failed|nothing|back|i |i'|the |this |that |["“])/i
+
+/** Where the label quotes the card's post: the whole opener exactly as the server writes it ("<first line>"), or
+ *  its clipped form ("<start>…"). Anything less certain returns null and the sentence stays as the server wrote it. */
+function quotedPost(label: string, firstLine: string): [number, number] | null {
+  const flat = firstLine.replace(/\s+/g, ' ').trim()
+  if (flat.length < 8) return null
+  const whole = label.indexOf(`"${flat}"`)
+  if (whole >= 0) return [whole, whole + flat.length + 2]
+  // The clipped form: an opening quote, a start of the opener, then "…" and the closing quote.
+  const m = /"([^"]{8,}?)…"/.exec(label)
+  if (m && flat.startsWith(m[1].trim())) return [m.index, m.index + m[0].length]
+  return null
+}
+
+/** The server's short reference for the post a card targets ("ref 1a2b3c4d"): read only from the label's own
+ *  opening ("Proposed (ref …):", "Done (ref …):", "Moved (ref …)"), never from a reason that quotes another post. */
+export function labelRef(label: string): string | null {
+  return /^\s*[A-Z][A-Za-z ]{0,30}? \(ref ([0-9a-f]{6,})\)/.exec(label)?.[1] ?? null
+}
+
+export function cleanLabel(label: string, target?: { first_line: string } | null): { text: string; stated: boolean } {
+  let t = label.replace(/\s+/g, ' ').trim()
+  // Only the server's own markers go: the ref in the label's opening words, and "(no date)" right after the
+  // quoted post. The same words inside a quote (an idea, a post) stay as written.
+  t = t.replace(/^(\s*[A-Z][A-Za-z ]{0,30}?) \(ref [0-9a-f]{6,}\)/, '$1').replace(/"\s*\(no date\)/g, '"')
+  if (target?.first_line) {
+    const q = quotedPost(t, target.first_line)
+    if (q) t = `${t.slice(0, q[0])}this post${t.slice(q[1])}`
+  }
+  let stated = STATED.test(t)
+  // "Proposed: move …", "Done: approve …", "Not done: The write …": the eyebrow says the state, so the word goes.
+  const lead = /^(proposed|done|not done)\s*:\s*/i.exec(t)
+  if (lead) { t = t.slice(lead[0].length); stated = true }
+  // A label that is only its state word says nothing the eyebrow does not.
+  const bare = /^(undone|cancelled)\.?\s*/i.exec(t)
+  if (bare) { t = t.slice(bare[0].length) || (bare[1].toLowerCase() === 'undone' ? 'Back as it was.' : 'Nothing changed.'); stated = true }
+  if (t) t = t[0].toUpperCase() + t.slice(1)
+  return { text: t, stated }
 }
