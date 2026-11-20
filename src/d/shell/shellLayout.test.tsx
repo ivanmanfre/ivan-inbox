@@ -56,11 +56,11 @@ describe('Brief sidebar contract: the selectors bridge.js scrapes stay rendered 
   it('.d-side with nav links for every place, counts and the workflows key', () => {
     const { container } = renderDesktop(false)
     expect(container.querySelector('.d-app .d-side')).toBeTruthy()
-    for (const place of ['home', 'dms', 'content', 'lanes', 'ops', 'sales']) {
+    for (const place of ['home', 'dms', 'content', 'lanes', 'ops', 'sales', 'intel']) {
       expect(container.querySelector(`.d-nav a[href="#exp/d/${place}"]`), place).toBeTruthy()
     }
-    // Claude and Intel left the nav (daily-brief-trim Task 6.2): no link for the bridge to read.
-    for (const place of ['claude', 'intel']) expect(container.querySelector(`.d-nav a[href="#exp/d/${place}"]`), place).toBeNull()
+    // Claude left the nav (daily-brief-trim Task 6.2): no link for the bridge to read.
+    for (const place of ['claude']) expect(container.querySelector(`.d-nav a[href="#exp/d/${place}"]`), place).toBeNull()
     // Hidden from view (Ivan 10-08) but still in the DOM for Brief's bridge.
     expect(container.querySelector('[data-verb="workflows"]')?.hasAttribute('hidden')).toBe(true)
   })
@@ -108,20 +108,20 @@ describe('daily-brief-trim Task 10.1: the alert popup leaves the thread header a
 })
 
 describe('daily-brief-trim Task 6.2: Claude and Intel leave the nav, stay reachable', () => {
-  it('the side panel lists six places and settings', () => {
+  it('the side panel lists seven places and settings', () => {
     expect(PLACE_ORDER).toEqual(['home', 'dms', 'content', 'ops', 'sales', 'lanes', 'intel', 'claude', 'settings'])
-    expect(PLACE_ORDER.filter(id => PLACES[id].nav !== 'hidden')).toEqual(['home', 'dms', 'content', 'ops', 'sales', 'lanes', 'settings'])
+    expect(PLACE_ORDER.filter(id => PLACES[id].nav !== 'hidden')).toEqual(['home', 'dms', 'content', 'ops', 'sales', 'lanes', 'intel', 'settings'])
     const { container } = renderDesktop(false)
-    expect(sideIds(container)).toEqual(['home', 'dms', 'content', 'ops', 'sales', 'lanes', 'settings'])
+    expect(sideIds(container)).toEqual(['home', 'dms', 'content', 'ops', 'sales', 'lanes', 'intel', 'settings'])
   })
-  it('the phone panel lists the same six places and settings', () => {
+  it('the phone panel lists the same seven places and settings', () => {
     renderInFrame(<PhonePanel onClose={() => {}} />, { layout: 'phone', hash: '#exp/d/home' })
     const ids = [...document.querySelectorAll<HTMLAnchorElement>('.d-pn .d-nav a')].map(a => a.getAttribute('href')!.replace('#exp/d/', ''))
-    expect(ids).toEqual(['home', 'dms', 'content', 'ops', 'sales', 'lanes', 'settings'])
+    expect(ids).toEqual(['home', 'dms', 'content', 'ops', 'sales', 'lanes', 'intel', 'settings'])
   })
   it('a hidden place still routes', () => {
-    expect(parseDHash('#exp/d/claude?thread=t1').place).toBe('claude'); expect(parseDHash('#exp/d/intel').place).toBe('intel')
-    expect(PLACES.claude.nav).toBe('hidden'); expect(PLACES.intel.nav).toBe('hidden')
+    expect(parseDHash('#exp/d/claude?thread=t1').place).toBe('claude')
+    expect(PLACES.claude.nav).toBe('hidden'); expect(PLACES.intel.nav).toBe('main')
   })
   it('the Claude key toggles the drawer', () => {
     const { container } = renderInFrame(<DesktopWithDrawerState />, { layout: 'desktop', hash: '#exp/d/home' })
