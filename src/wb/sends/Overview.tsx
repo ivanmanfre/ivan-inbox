@@ -446,6 +446,7 @@ function Funnel({ accept, scans, outcomes, viewedBack, client, cc }: {
   const opens7 = sum(sRows, 'opens_7d'), opens30 = sum(sRows, 'opens_30d')
   const distinct = sum(sRows, 'distinct_prospects')
   const lastOpen = latestIso(sRows.map(r => r.last_open))
+  const unresolved7 = sum(sRows, 'unresolved_7d'), unresolved30 = sum(sRows, 'unresolved_30d')
 
   const vRows = viewedBack.filter(r => inClient(r.client_id, client))
   const inv7 = sum(vRows, 'invited_7d'), view7 = sum(vRows, 'viewed_7d')
@@ -501,7 +502,7 @@ function Funnel({ accept, scans, outcomes, viewedBack, client, cc }: {
         {cohort30 && confirmed30 !== null
           ? <>30d · confirmed invitations {confirmed30} · accepted ≤72 h {cohort30.accepted}/{cohort30.matured} matured {cohort30.rate === null ? '(—)' : `(${cohort30.rate}%)`}</>
           : <>30d · accepted {acc30}/{sent30}, message rows, unverified</>}
-        {' · '}scan opens 7d {opens7} / 30d {opens30} · {distinct} prospects{lastOpen ? ` · last ${ago(lastOpen)}` : ''} (legacy)
+        {' · '}scan opens 7d {opens7} / 30d {opens30} · {distinct} prospects{lastOpen ? ` · last ${ago(lastOpen)}` : ''}{unresolved30 ? ` · unresolved 7d ${unresolved7} / 30d ${unresolved30}` : ''} (legacy)
       </div>
       {(inv7 > 0 || inv30 > 0) && (
         <div className="a-sends-cap">

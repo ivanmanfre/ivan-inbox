@@ -114,7 +114,7 @@ export function WindowNotes({ seat, ctx }: { seat: Seat; ctx: BandCtx }) {
           : 'accept rate: nobody invited in this window'}
         <br /><b>{num(w.repliers)}</b> people replied · <b>{num(convos)}</b> conversations · <b>{num(calls)}</b> calls · InMail <b>{num(w.inmail)}</b> · {num(w.invFailed)} invites refused
         {viewed && <><br />Viewed your profile back: <b>{viewed[0]}</b> of {viewed[1]} invited (a floor)</>}
-        {sc && <><br />Scan opens: <b>{sc.opens_7d}</b> in 7d · {sc.opens_30d} in 30d · {sc.distinct_prospects} people{sc.last_open ? `, last ${dayMonth(sc.last_open)}` : ''}</>}
+        {sc && <><br />Scan opens: <b>{sc.opens_7d}</b> in 7d · {sc.opens_30d} in 30d · {sc.distinct_prospects} people{sc.last_open ? `, last ${dayMonth(sc.last_open)}` : ''}{sc.unresolved_30d ? ` · unresolved, not counted: ${sc.unresolved_7d ?? 0} in 7d, ${sc.unresolved_30d} in 30d` : ''}</>}
       </>}
     </div>
   )

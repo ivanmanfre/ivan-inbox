@@ -318,6 +318,7 @@ function Funnel({ accept, scans, outcomes, client }: {
   const opens7 = sum(sRows, 'opens_7d'), opens30 = sum(sRows, 'opens_30d')
   const distinct = sum(sRows, 'distinct_prospects')
   const lastOpen = latestIso(sRows.map(r => r.last_open))
+  const unresolved7 = sum(sRows, 'unresolved_7d'), unresolved30 = sum(sRows, 'unresolved_30d')
 
   const oRows = outcomes.filter(r => inClient(r.client_id, client))
   const convos7 = sum(oRows, 'convos_7d'), convosTotal = sum(oRows, 'convos_total')
@@ -366,7 +367,7 @@ function Funnel({ accept, scans, outcomes, client }: {
         Era totals · convos {convosTotal} · calls {callsTotal} · convos = replied at least once, optouts excluded.
       </div>
       <div className="ov-fcap">
-        30d · accepted {acc30}/{sent30} · scan opens 7d {opens7} / 30d {opens30} · {distinct} prospects{lastOpen ? ` · last ${ago(lastOpen)}` : ''}
+        30d · accepted {acc30}/{sent30} · scan opens 7d {opens7} / 30d {opens30} · {distinct} prospects{lastOpen ? ` · last ${ago(lastOpen)}` : ''}{unresolved30 ? ` · unresolved 7d ${unresolved7} / 30d ${unresolved30}` : ''}
       </div>
       <div className="ov-note">Ivan scope counts the warm-lane era only (since 07-11); Rise counts full history. Recent sends are still maturing — accept rate only rises.</div>
     </section>
