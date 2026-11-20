@@ -186,7 +186,7 @@ describe('draft readers move to the human class behind a cutover (306, Task 7)',
   it('P6: a human row that was never granted eligibility (a relabel made it human) is never evidence', async () => {
     const p = await person('ivan', '2 hours', [[30, 'human!']])
     expect(await evidence('ivan_scan_open_evidence', p.id)).toBeUndefined()
-    const q = await person('ivan', '5 hours', [[10, 'human'], [180, 'human!']])
+    const q = await person('ivan', '5 hours', [[10, 'human', undefined, 'www.linkedin.com'], [180, 'human!', undefined, 'www.linkedin.com']])
     for (const fn of ['came_back_cards', 'inbox_interest_cards'])
       expect((await db.query(`select 1 from ${fn}() where prospect_id = $1`, [q.id])).rows).toHaveLength(0)
   })
@@ -200,13 +200,17 @@ describe('draft readers move to the human class behind a cutover (306, Task 7)',
       expect((await db.query<{ r: string }>(`select pg_get_function_result('public.${fn}()'::regprocedure) r`)).rows[0].r)
         .toBe('TABLE(prospect_id uuid, scan_slug text, scan_sent_at timestamp with time zone, open_days integer, real_opens integer, first_open_at timestamp with time zone, last_open_at timestamp with time zone, replied_after_scan boolean)')
   })
+  it.each(['came_back_cards', 'inbox_interest_cards'])('%s requires a LinkedIn source for post-cutover scan reopens', async (fn) => {
+    const p = await person('ivan', '5 hours', [[10, 'human'], [180, 'human']])
+    expect((await db.query(`select 1 from ${fn}() where prospect_id = $1`, [p.id])).rows).toHaveLength(0)
+  })
   it('came back card needs a human reopen 1 hour after the first human open', async () => {
-    const p = await person('ivan', '5 hours', [[10, 'human', 'Mozilla/5.0 (Windows NT 10.0) Chrome/142', undefined], [180, 'human', 'Mozilla/5.0 (Windows NT 10.0) Chrome/142', undefined]])
+    const p = await person('ivan', '5 hours', [[2, 'human', undefined, 'www.linkedin.com'], [180, 'human', 'Mozilla/5.0 [LinkedInApp]']])
     for (const fn of ['came_back_cards', 'inbox_interest_cards']) {
       const card = (await db.query<{ signals: Array<{ kind: string }> }>(`select signals from ${fn}() where prospect_id = $1`, [p.id])).rows[0]
       expect(card?.signals.map(s => s.kind)).toEqual(['scan_open'])
     }
-    const q = await person('ivan', '5 hours', [[10, 'human'], [180, 'link_scanner']])
+    const q = await person('ivan', '5 hours', [[10, 'human', undefined, 'www.linkedin.com'], [180, 'link_scanner', undefined, 'www.linkedin.com']])
     for (const fn of ['came_back_cards', 'inbox_interest_cards'])
       expect((await db.query(`select 1 from ${fn}() where prospect_id = $1`, [q.id])).rows).toHaveLength(0)
   })

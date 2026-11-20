@@ -127,17 +127,15 @@ with sig as (
           from outreach_messages m
           where m.direction = 'outbound' and m.sent_at is not null and m.message_text ~ '/scan/[A-Za-z0-9_-]+'
           group by 1, 3) sl on lower(so.company_slug) = sl.slug
-    -- 306 (2026-11-17): a person is open_class = 'human' and eligible (open_is_signal: never a suspect row, never a row
-    -- that only a relabel made human). Links sent before the cutover also keep the old rule, so the relabel can only remove old evidence, never
-    -- add an old prospect to a card. Round 2 (finding 1): an open counts only AFTER the link went out, on both sides
-    -- of the cutover (an older open of the same page is never a reaction to this link).
+    -- Eligible human opens count after the send. Keep the LinkedIn source requirement for cards across the cutover
+    -- to limit the number of reopens that enter the inbox and drive follow-up drafts.
     where public.open_is_signal(so.open_class, so.eligible)
       and so.opened_at > sl.sent_at
+      and (so.referrer_host ilike '%linkedin%' or so.user_agent ilike '%LinkedInApp%')
       and (sl.sent_at >= public.open_class_cutover() or (
             so.is_owner = false
         and so.opened_at > sl.sent_at + interval '5 minutes'
-        and so.user_agent !~* 'headless|bot|crawler|spider|preview'
-        and (so.referrer_host ilike '%linkedin%' or so.user_agent ilike '%LinkedInApp%')))
+        and so.user_agent !~* 'headless|bot|crawler|spider|preview'))
   ) t
   where t.opened_at >= now() - interval '21 days'
     and t.opened_at > t.first_open_at + interval '1 hour'
@@ -238,17 +236,15 @@ with sig as (
           where m.direction = 'outbound' and m.sent_at is not null
             and m.message_text ~ '(/scan/[A-Za-z0-9_-]+|madebyarch\.com/[A-Za-z0-9_-]+-audit)'
           group by 1, 3) sl on lower(so.company_slug) = sl.slug
-    -- 306 (2026-11-17): a person is open_class = 'human' and eligible (open_is_signal: never a suspect row, never a row
-    -- that only a relabel made human). Links sent before the cutover also keep the old rule, so the relabel can only remove old evidence, never
-    -- add an old prospect to a card. Round 2 (finding 1): an open counts only AFTER the link went out, on both sides
-    -- of the cutover (an older open of the same page is never a reaction to this link).
+    -- Eligible human opens count after the send. Keep the LinkedIn source requirement for cards across the cutover
+    -- to limit the number of reopens that enter the inbox and drive follow-up drafts.
     where public.open_is_signal(so.open_class, so.eligible)
       and so.opened_at > sl.sent_at
+      and (so.referrer_host ilike '%linkedin%' or so.user_agent ilike '%LinkedInApp%')
       and (sl.sent_at >= public.open_class_cutover() or (
             so.is_owner = false
         and so.opened_at > sl.sent_at + interval '5 minutes'
-        and so.user_agent !~* 'headless|bot|crawler|spider|preview'
-        and (so.referrer_host ilike '%linkedin%' or so.user_agent ilike '%LinkedInApp%')))
+        and so.user_agent !~* 'headless|bot|crawler|spider|preview'))
   ) t
   where t.opened_at >= now() - interval '21 days'
     and t.opened_at > t.first_open_at + interval '1 hour'
