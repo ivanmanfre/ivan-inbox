@@ -58,8 +58,8 @@ export const PLACES: Record<PlaceId, PlaceDef> = {
 
   sales: { id: 'sales', label: 'Sales', icon: 'sales', nav: 'main', dock: true, today: '#exp/brain-b/sales', Page: lazy(() => import('./sales')) },
 
-  // Out of the nav since daily-brief-trim Task 6.2 (2026-11-17); #exp/d/intel still opens it.
-  intel: { id: 'intel', label: 'Intel', icon: 'intel', nav: 'hidden', dock: false, today: '#exp/d/intel', Page: lazy(() => import('./intel')) },
+  // Back in the main nav 2026-11-20 (Ivan asked for it after the 11-17 trim hid it).
+  intel: { id: 'intel', label: 'Intel', icon: 'intel', nav: 'main', dock: false, today: '#exp/d/intel', Page: lazy(() => import('./intel')) },
 
   // Out of the nav since daily-brief-trim Task 6.2: ⌘J and the panel's Claude key open the drawer;
   // #exp/d/claude?thread=&turn= (push links) still opens the place. Back in the main nav once the Content
