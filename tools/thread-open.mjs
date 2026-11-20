@@ -72,6 +72,8 @@ const readRpcs = new Set(['inbox_changed_since', 'inbox_interest_cards', 'inbox_
   'inbox_rise_ready',
   // The X review flag's list (src/lib/xReview.ts fetchXReview): a read of articles and quote posts, no writes.
   'x_review_list',
+  // The warm DM4 review list (src/lib/warmDm4Review.ts): STABLE security-definer, no writes.
+  'ivan_warm_review_queue',
   // The Signals post-engager read (src/d/dms/ownerEngagers.ts): STABLE security-definer, no writes.
   'owner_engager_cards',
   // Today's post card read (db/20261112_content_daily_card.sql content_card_today): STABLE security-definer, no writes.
