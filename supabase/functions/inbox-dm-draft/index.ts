@@ -146,12 +146,13 @@ Deno.serve(async req => {
         type Row = { id: string; direction: string; message_text?: string; sent_at?: string | null; created_at: string; send_blocked_reason?: string | null }
         const nowAll = (nowRows ?? []) as Row[], nowConv = nowAll.filter(m => m.message_text?.trim() && (m.direction === 'inbound' || m.sent_at))
         const nowHandoff = nowConv.find(m => m.id === cached.input_message_id)
-        const nowKey = storyKey(storyAfter(nowConv, cached.input_message_id), nowAll.filter(m => m.direction === 'outbound' && !m.sent_at && m.message_text?.trim()
-          && /^discarded/.test(m.send_blocked_reason ?? '') && (!nowHandoff || m.created_at >= nowHandoff.created_at)))
+        const nowDiscarded = nowAll.filter(m => m.direction === 'outbound' && !m.sent_at && m.message_text?.trim()
+          && /^discarded/.test(m.send_blocked_reason ?? '') && (!nowHandoff || m.created_at >= nowHandoff.created_at))
+        const nowKey = storyKey(storyAfter(nowConv, cached.input_message_id), nowDiscarded)
         if (nowKey !== leadStory) return respond({ error: 'The conversation changed. Refresh to see the current draft.' }, 409)
         const first = (cached.name ?? profile.name).split(/\s+/)[0]
         const { data: made, error: makeError } = await sb.rpc('inbox_referral_create_lead', {
-          p_referrer: id, p_input_message: actionMessage, p_revision: REFERRAL_REVISION, p_expected_url: leadUrl, p_later_ids: later.map(m => m.id), p_read_at: readAt,
+          p_referrer: id, p_input_message: actionMessage, p_revision: REFERRAL_REVISION, p_expected_url: leadUrl, p_later_ids: later.map(m => m.id), p_read_at: readAt, p_discarded_ids: nowDiscarded.map(m => m.id),
           p_lead: { linkedin_url: `https://www.linkedin.com/in/${profile.public_identifier}`, provider_id: profile.provider_id,
             name: cached.name ?? profile.name, headline: profile.headline, company: cached.company, title: cached.role,
             location: profile.location, country: profile.country, city: profile.city, state: profile.state,
@@ -186,7 +187,8 @@ Deno.serve(async req => {
       const envelopeFor = (r: ReferralDraft) => {
         type E = { recipient_email?: string | null; draft_evidence?: { referral_input_message_id?: string; email_cc?: string[] } | null; sent_at?: string | null; send_blocked_at?: string | null }
         const staged = ((emailRows ?? []) as E[]).find(m => !m.sent_at && !m.send_blocked_at && m.recipient_email && m.draft_evidence?.referral_input_message_id === r.input_message_id)
-        return staged ? emailEnvelope(staged.recipient_email!, staged.draft_evidence?.email_cc ?? []) : r.email?.to ? emailEnvelope(r.email.to, r.email.cc ?? []) : null
+        const to = staged ? staged.recipient_email! : r.email?.to, cc = staged ? staged.draft_evidence?.email_cc ?? [] : r.email?.cc ?? []
+        return to ? { key: emailEnvelope(to, cc), to: to.trim(), cc: cc.map(c => c.trim()).filter(Boolean) } : null
       }
       if (!pick) return respond({ referral: null })
       let target = pick.inbound
@@ -214,10 +216,10 @@ Deno.serve(async req => {
       const later = laterInbound(conversation, target.id)
       // Read for a hold whenever something can reach the person: a verified profile, or an email address to write to.
       const envelope = envelopeFor(referral)
-      if ((referral.status === 'verified' || referral.email) && !referral.lead_prospect_id && !referral.dismissed_at && !laterChecked(referral, later, envelope)) {
+      if ((referral.status === 'verified' || referral.email) && !referral.lead_prospect_id && !referral.dismissed_at && !laterChecked(referral, later, envelope?.key ?? null)) {
         try {
           const after = conversation.slice(conversation.findIndex(m => m.id === target.id) + 1).map(m => ({ speaker: speakerOf(m), text: m.message_text }))
-          referral = { ...referral, later: { ...await judgeLater({ referrer: rows[0].prospect_name, author: canon.author, person: `${referral.name ?? 'the referred person'}${envelope ? ` (the email goes to ${envelope.split('|')[0]}${envelope.split('|')[1] ? `, copying ${envelope.split('|')[1]}` : ''}; a hold on anyone on it counts)` : ''}`, handoffId: target.id, handoff: target.message_text, after, later }), envelope } }
+          referral = { ...referral, later: { ...await judgeLater({ referrer: rows[0].prospect_name, author: canon.author, person: `${referral.name ?? 'the referred person'}${envelope ? ` (the email goes to ${JSON.stringify(envelope.to)}${envelope.cc.length ? `, copying ${envelope.cc.map(c => JSON.stringify(c)).join(', ')}` : ''}; a hold on anyone on it counts)` : ''}`, handoffId: target.id, handoff: target.message_text, after, later }), envelope: envelope?.key ?? null } }
           changed = true
         } catch { /* stays unchecked: the card shows it and Create waits */ }
       }

@@ -71,7 +71,10 @@ export function referralTarget<T extends ReferralMessage>(messages: readonly T[]
   const inbound = ordered.filter(m => m.direction === 'inbound' && m.message_text?.trim())
   const latest = inbound.at(-1)
   if (!latest) return null
-  const anchor = openReferral(cached) ? inbound.find(m => m.id === cached.input_message_id) : undefined
+  // An email-only referral (no LinkedIn profile, an address to write to) stays open the same way.
+  const c = cached && typeof cached === 'object' ? cached as ReferralDraft : null
+  const emailOnly = Boolean(c && c.email && typeof c.email === 'object' && !c.lead_prospect_id && !c.dismissed_at)
+  const anchor = (openReferral(cached) || emailOnly) ? inbound.find(m => m.id === c!.input_message_id) : undefined
   const passed = anchor && Array.isArray((cached as ReferralDraft).passed_over) && (cached as ReferralDraft).passed_over!.includes(latest.id)
   // A handoff the operator dismissed stays closed, even while it is still the newest message.
   const dismissed = (m: T) => dismissedIds.includes(m.id) || Boolean(cached && typeof cached === 'object' && (cached as ReferralDraft).dismissed_at && (cached as ReferralDraft).input_message_id === m.id)

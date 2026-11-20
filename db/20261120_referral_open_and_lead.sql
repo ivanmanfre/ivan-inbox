@@ -106,7 +106,7 @@ grant execute on function public.inbox_referral_dismiss(uuid, uuid) to service_r
 -- profile (li_slug / member id) across every tenant first, because linkedin_url UNIQUE compares raw strings.
 -- An existing ARCH row is linked instead of copied. Another tenant's row, an earlier email to the person, a
 -- probable namesake row or a reply newer than the one the caller checked stops it. Never approves or sends.
-create or replace function public.inbox_referral_create_lead(p_referrer uuid, p_input_message uuid, p_revision integer, p_expected_url text, p_later_ids text[], p_read_at timestamptz, p_lead jsonb, p_text text, p_evidence jsonb)
+create or replace function public.inbox_referral_create_lead(p_referrer uuid, p_input_message uuid, p_revision integer, p_expected_url text, p_later_ids text[], p_read_at timestamptz, p_discarded_ids text[], p_lead jsonb, p_text text, p_evidence jsonb)
 returns jsonb
 language plpgsql
 set search_path to 'public'
@@ -145,6 +145,13 @@ begin
   -- Nothing was written, sent or discarded on the referrer's thread since the caller's last read of it.
   if p_read_at is null or exists (select 1 from outreach_messages m where m.prospect_id = p_referrer
        and (m.created_at > p_read_at or m.sent_at > p_read_at or m.send_blocked_at > p_read_at)) then
+    return jsonb_build_object('status', 'error', 'reason', 'The conversation changed. Refresh to see the current draft.');
+  end if;
+  -- The discarded drafts the note was written around are still discarded (an Undo clears the block time).
+  if (select coalesce(array_agg(x order by x), '{}') from unnest(p_discarded_ids) x) is distinct from
+     (select coalesce(array_agg(m.id::text order by m.id::text), '{}') from outreach_messages m, outreach_messages h
+       where h.id = p_input_message and m.prospect_id = p_referrer and m.direction = 'outbound' and m.sent_at is null
+         and nullif(btrim(m.message_text), '') is not null and m.send_blocked_reason like 'discarded%' and m.created_at >= h.created_at) then
     return jsonb_build_object('status', 'error', 'reason', 'The conversation changed. Refresh to see the current draft.');
   end if;
   if slug is null or li_slug(ref ->> 'linkedin_url') is distinct from slug then
@@ -236,8 +243,8 @@ begin
    where id = p_referrer;
   return jsonb_build_object('status', 'created', 'lead_prospect_id', lead, 'message_id', msg);
 end $function$;
-revoke all on function public.inbox_referral_create_lead(uuid, uuid, integer, text, text[], timestamptz, jsonb, text, jsonb) from public, anon, authenticated;
-grant execute on function public.inbox_referral_create_lead(uuid, uuid, integer, text, text[], timestamptz, jsonb, text, jsonb) to service_role;
+revoke all on function public.inbox_referral_create_lead(uuid, uuid, integer, text, text[], timestamptz, text[], jsonb, text, jsonb) from public, anon, authenticated;
+grant execute on function public.inbox_referral_create_lead(uuid, uuid, integer, text, text[], timestamptz, text[], jsonb, text, jsonb) to service_role;
 
 -- The referrer wrote again while the staged invite waits for Send: store the model's read, and on a hold or
 -- redirect take the invite back to review (never once it is sent).
@@ -259,7 +266,9 @@ begin
     -- "Go ahead after all": a hold this check put on the invite is lifted back to an unapproved draft (Send still decides).
     update outreach_messages set send_blocked_at = null, send_blocked_reason = null
      where id = (ref ->> 'lead_message_id')::uuid and ai_model = 'inbox_referral_lead_v1' and sent_at is null
-       and send_blocked_reason like 'referral_paused:%' and send_blocked_reason <> 'referral_paused: a newer handoff replaced this referral';
+       and send_blocked_reason like 'referral_paused:%'
+       -- only holds about the referrer's replies; a replaced, dismissed or changed referral stays held
+       and send_blocked_reason !~ '(newer handoff|referral changed|dismissed|recipients changed|not approved)';
   else
     update outreach_messages
        set approved_at = null, send_blocked_at = now(),
@@ -296,14 +305,10 @@ declare
   ref jsonb;
   referrer uuid;
   handoff text;
+  why text;
+  claim boolean := old.sent_at is null and new.sent_at is not null;
 begin
   if new.direction is distinct from 'outbound' then return new; end if;
-  -- A claim needs the row as approved and unheld right now: another sender run may hold a cached copy of a row
-  -- whose approval was withdrawn meanwhile.
-  if tg_op = 'UPDATE' and old.sent_at is null and new.sent_at is not null
-     and (old.approved_at is null or old.send_blocked_at is not null or old.send_blocked_reason is not null) then
-    raise exception 'This referral draft is not approved any more.';
-  end if;
   if new.ai_model = 'inbox_referral_lead_v1' then
     referrer := nullif(new.draft_evidence ->> 'referrer_prospect_id', '')::uuid;
   elsif new.ai_model = 'inbox_referral_email_v1' then
@@ -313,20 +318,26 @@ begin
   end if;
   handoff := new.draft_evidence ->> 'referral_input_message_id';
   select enrichment_data -> 'inbox_referral' into ref from outreach_prospects where id = referrer;
-  if ref is null or handoff is null or ref ->> 'input_message_id' is distinct from handoff then
-    raise exception 'This referral changed since the draft was made. Open the referrer''s conversation first.';
-  end if;
-  if ref ->> 'dismissed_at' is not null then
-    raise exception 'This referral was dismissed.';
-  end if;
-  -- A referral email goes only to the recipients the hold read covered (an added Cc is read again first).
-  if new.ai_model = 'inbox_referral_email_v1'
+  if claim and (old.approved_at is null or old.send_blocked_at is not null or old.send_blocked_reason is not null) then
+    why := 'the draft is not approved any more';
+  elsif ref is null or handoff is null or ref ->> 'input_message_id' is distinct from handoff then
+    why := 'the referral changed since this draft was made';
+  elsif ref ->> 'dismissed_at' is not null then
+    why := 'the referral was dismissed';
+  elsif new.ai_model = 'inbox_referral_email_v1'
      and ref -> 'later' ->> 'envelope' is distinct from inbox_referral_envelope(new.recipient_email, new.draft_evidence -> 'email_cc') then
-    raise exception 'The email recipients changed since the referrer''s replies were read. Open their conversation, then try again.';
+    why := 'the email recipients changed since the referrer''s replies were read';
+  elsif not inbox_referral_later_ok(referrer, ref) then
+    why := 'a reply from the referrer is not read yet, or it pauses the referral';
   end if;
-  if not inbox_referral_later_ok(referrer, ref) then
-    raise exception 'The referrer wrote again after this referral and it is not read yet, or it pauses the referral. Open their conversation, then try again.';
-  end if;
+  if why is null then return new; end if;
+  -- The sender's claim is a single-row PATCH whose error it skips: refuse it. An approval (the inbox Send, or the
+  -- shared scheduled release that approves many rows at once) is turned into a hold on this row only, never an
+  -- error that would roll back other messages.
+  if claim then raise exception 'Referral draft not sent: %.', why; end if;
+  new.approved_at := null;
+  new.send_blocked_at := now();
+  new.send_blocked_reason := left('referral_paused: ' || why, 300);
   return new;
 end $function$;
 create trigger inbox_referral_send_guard_approve before update of approved_at on public.outreach_messages
