@@ -1,6 +1,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
-import { referralCandidate } from './referral.ts'
-import { researchReferral, REFERRAL_REVISION } from './research.ts'
+import { draftBreaksRules, emailEnvelope, INVITE_NOTE_LIMIT, laterChecked, laterInbound, openReferral, referralTarget, storyAfter, storyKey, type ReferralDraft } from './referral.ts'
+import { judgeLater, redraftReferral, researchReferral, REFERRAL_REVISION } from './research.ts'
+import { apifyProfileDetails } from './apify.ts'
 import { readMentions } from './mention.ts'
 import { askClaude, DRAFT_MODEL } from './llm.ts'
 import { ANNA_AUTHOR, ANNA_IDENTITY_INSTRUCTION, ANNA_FOLLOWUP_INSTRUCTION } from './anna.ts'
@@ -45,26 +46,41 @@ Deno.serve(async req => {
   }
   let id: string
   let referralMode = false, retryReferral = false, annaMode: 'anna_auto' | 'anna_followup' | null = null
+  // Operator actions on a verified referral card. Signed-in owner only; the cron never takes them.
+  let referralAction: 'referral_lead' | 'referral_dismiss' | null = null, actionMessage = '', leadNote = '', leadUrl = '', leadStory = ''
+  const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
   try {
     const body = await req.json()
-    if (typeof body.prospect_id !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(body.prospect_id)) throw new Error()
+    if (typeof body.prospect_id !== 'string' || !UUID.test(body.prospect_id)) throw new Error()
     id = body.prospect_id
     referralMode = body.mode === 'referral'
     annaMode = body.mode === 'anna_auto' || body.mode === 'anna_followup' ? body.mode : null
     retryReferral = body.retry === true
+    if (body.mode === 'referral_lead' || body.mode === 'referral_dismiss') {
+      referralAction = body.mode
+      if (typeof body.input_message_id !== 'string' || !UUID.test(body.input_message_id)) throw new Error()
+      actionMessage = body.input_message_id
+      if (referralAction === 'referral_lead') {
+        if (typeof body.draft !== 'string' || typeof body.linkedin_url !== 'string') throw new Error()
+        leadNote = body.draft.replace(/\r\n/g, '\n').trim()
+        // The profile the operator reviewed: a research save in between (another person) never receives this note.
+        leadUrl = body.linkedin_url
+        leadStory = typeof body.story_key === 'string' ? body.story_key : ''
+      }
+    }
   } catch { return respond({ error: 'A conversation is required.' }, 400) }
   if ((server && ((!referralMode && !annaMode) || retryReferral)) || (annaMode && !server)) return respond({ error: 'Access denied.' }, 403)
   const sb = createClient(url, service, { auth: { persistSession: false } })
   try {
     const { data: rows, error } = await sb.from('inbox_messages_v')
-      .select('id,client_id,prospect_name,prospect_company,direction,channel,message_type,message_text,sent_at,created_at,prospect_blacklisted,prospect_stage')
+      .select('id,client_id,prospect_name,prospect_company,direction,channel,message_type,message_text,sent_at,created_at,prospect_blacklisted,prospect_stage,approved_at,send_blocked_reason,ai_model')
       .eq('prospect_id', id).order('created_at').order('id')
     if (error) throw error
     if (!rows?.length) return respond({ error: 'Conversation not found.' }, 404)
     const client = rows[0].client_id, canon = CANON[client]
     if (!canon || rows.some(m => m.client_id !== client)) return respond({ error: 'Conversation identity is unavailable.' }, 409)
     if (annaMode && client !== 'anna') return respond({ error: 'Access denied.' }, 403)
-    if (client === 'anna' && (referralMode || rows.some(m => m.channel === 'email' || m.message_type === 'email' || m.message_type === 'email_reply'))) return respond({ error: 'Anna drafting supports LinkedIn replies only.' }, 409)
+    if (client === 'anna' && (referralMode || referralAction || rows.some(m => m.channel === 'email' || m.message_type === 'email' || m.message_type === 'email_reply'))) return respond({ error: 'Anna drafting supports LinkedIn replies only.' }, 409)
     if (rows.some(m => m.prospect_blacklisted || ['archived', 'skipped', 'disqualified', 'unsubscribed', 'blacklisted'].includes(m.prospect_stage))) return respond({ error: 'This conversation is closed.' }, 409)
     const slugs = [...canon.slugs, 'forbidden-language', 'anti-ai-patterns-outreach-playbook']
     const { data: prompts, error: promptError } = await sb.from('content_prompts').select('slug,body,updated_at').in('slug', slugs).eq('is_active', true)
@@ -76,15 +92,138 @@ Deno.serve(async req => {
       .sort((a, b) => (a.sent_at || a.created_at).localeCompare(b.sent_at || b.created_at))
     if (annaMode === 'anna_auto' && conversation.at(-1)?.direction !== 'inbound') return respond({ error: 'An automatic reply requires an unanswered inbound message.' }, 409)
     if (annaMode === 'anna_followup' && (conversation.at(-1)?.direction !== 'outbound' || !conversation.at(-1)?.sent_at || conversation.at(-1)?.message_type === 'connection_note')) return respond({ error: 'A follow-up requires the latest message to be a sent reply.' }, 409)
-    if (referralMode) {
-      const inbound = conversation.filter(m => m.direction === 'inbound').at(-1)
-      if (!inbound || !referralCandidate(inbound.message_text)) return respond({ referral: null })
-      const cached = prospect.enrichment_data?.inbox_referral
-      if (!retryReferral && cached?.input_message_id === inbound.id && cached?.revision === REFERRAL_REVISION && offerFresh(cached.offer_verified_at)) return respond({ referral: cached })
-      const context = conversation.map(m => ({ speaker: m.direction === 'inbound' ? rows[0].prospect_name : canon.author, text: m.message_text }))
-      // No offer line in a referral first touch (Ivan 2026-11-04: the Preply list stacked on a pitch read
-      // as a sell to someone who never heard of us). One easy question closes it instead.
-      const referral = await researchReferral(sb, { id: inbound.id, text: inbound.message_text, company: rows[0].prospect_company, referrer: rows[0].prospect_name, referrerUrl: prospect.linkedin_url }, canon.author, prompts, context, await readMentions(sb, inbound.id))
+    if (referralMode || referralAction) {
+      const cached = prospect.enrichment_data?.inbox_referral as ReferralDraft | undefined
+      const inboundRows = conversation.filter(m => m.direction === 'inbound')
+      const latestIn = inboundRows.at(-1)
+      const speakerOf = (m: { direction: string }) => m.direction === 'inbound' ? rows[0].prospect_name : canon.author
+      // The whole story for the drafter (Ivan 2026-11-20, "memory"): the handoff, every later message in the
+      // referrer's thread, and what the operator discarded, so a "please hold off" or "talk to X instead" is honoured.
+      const discardedAfter = (handoff?: { created_at: string }) => rows.filter(m => m.direction === 'outbound' && !m.sent_at && m.message_text?.trim()
+        && /^discarded/.test(m.send_blocked_reason ?? '') && (!handoff || m.created_at >= handoff.created_at))
+      const story = (handoffId: string) => {
+        const at = conversation.findIndex(m => m.id === handoffId)
+        const handoff = conversation[at]
+        return {
+          messages: conversation.map(m => ({ speaker: speakerOf(m), text: m.message_text })),
+          referral_message: handoff ? { speaker: speakerOf(handoff), text: handoff.message_text, at: handoff.sent_at || handoff.created_at } : null,
+          later_messages: at < 0 ? [] : conversation.slice(at + 1).map(m => ({ speaker: speakerOf(m), text: m.message_text, at: m.sent_at || m.created_at })),
+          operator_decisions: discardedAfter(handoff).map(m => ({ decision: 'discarded by the operator, never offer it again', text: m.message_text, at: m.created_at })),
+        }
+      }
+      const keyFor = (handoffId: string) => storyKey(storyAfter(conversation, handoffId), discardedAfter(conversation.find(m => m.id === handoffId)))
+      const dismissedIds: string[] = Array.isArray(prospect.enrichment_data?.inbox_referral_dismissed) ? prospect.enrichment_data.inbox_referral_dismissed : []
+      if (referralAction) {
+        // Dismiss works for any referral the card can act on (an email-only one too); Create needs a verified profile.
+        if (!cached || cached.input_message_id !== actionMessage || cached.lead_prospect_id || cached.dismissed_at) return respond({ error: 'The referral changed. Refresh the conversation.' }, 409)
+        if (referralAction === 'referral_dismiss') {
+          const { data: ok, error: dismissError } = await sb.rpc('inbox_referral_dismiss', { p_referrer: id, p_input_message: actionMessage })
+          if (dismissError) throw dismissError
+          return ok === true ? respond({ dismissed: true }) : respond({ error: 'The referral changed. Refresh the conversation.' }, 409)
+        }
+        if (!openReferral(cached)) return respond({ error: 'The referral changed. Refresh the conversation.' }, 409)
+        // ARCH only: the referred person becomes an ARCH lead with ONE held first touch. Davorin approves it
+        // through the normal Send; nothing here approves or sends.
+        if (client !== 'arch') return respond({ error: 'Referred leads can be created for ARCH conversations only.' }, 409)
+        if (leadUrl !== cached.linkedin_url) return respond({ error: 'The referral changed. Refresh the conversation.' }, 409)
+        // The note the operator reviewed was drafted from the conversation as it stands now.
+        if (cached.story_key !== keyFor(cached.input_message_id) || leadStory !== cached.story_key) return respond({ error: 'The conversation changed. Refresh to see the current draft.' }, 409)
+        if (cached.revision !== REFERRAL_REVISION || !cached.draft) return respond({ error: 'The draft is being rewritten. Refresh in a minute.' }, 409)
+        const later = laterInbound(conversation, cached.input_message_id)
+        if (!laterChecked(cached, later)) return respond({ error: 'Their later messages are not checked yet. Refresh in a minute.' }, 409)
+        if (cached.later?.verdict !== 'go') return respond({ error: 'Paused: a later message changes this referral.' }, 409)
+        if (!leadNote || leadNote.length > INVITE_NOTE_LIMIT) return respond({ error: `It goes out as a LinkedIn invite note, which fits ${INVITE_NOTE_LIMIT} characters. This one has ${leadNote.length}.` }, 400)
+        if (draftBreaksRules(leadNote)) return respond({ error: 'The note breaks the copy rules (no dashes, no "!", no performance-only claims).' }, 400)
+        const slug = decodeURIComponent(new URL(cached.linkedin_url!).pathname.split('/').filter(Boolean)[1] ?? '')
+        let profile
+        try { profile = slug ? await apifyProfileDetails(sb, slug) : null }
+        catch { return respond({ error: 'The LinkedIn profile lookup is unavailable. Try again.' }, 503) }
+        if (!profile) return respond({ error: 'The LinkedIn profile could not be read. Try again.' }, 409)
+        // The lookup takes seconds: a message sent, a reply or a discard meanwhile means the note is no longer the one reviewed.
+        const readAt = new Date().toISOString()
+        const { data: nowRows, error: nowError } = await sb.from('inbox_messages_v').select('id,direction,message_text,sent_at,created_at,send_blocked_reason').eq('prospect_id', id).order('created_at').order('id')
+        if (nowError) throw nowError
+        type Row = { id: string; direction: string; message_text?: string; sent_at?: string | null; created_at: string; send_blocked_reason?: string | null }
+        const nowAll = (nowRows ?? []) as Row[], nowConv = nowAll.filter(m => m.message_text?.trim() && (m.direction === 'inbound' || m.sent_at))
+        const nowHandoff = nowConv.find(m => m.id === cached.input_message_id)
+        const nowDiscarded = nowAll.filter(m => m.direction === 'outbound' && !m.sent_at && m.message_text?.trim()
+          && /^discarded/.test(m.send_blocked_reason ?? '') && (!nowHandoff || m.created_at >= nowHandoff.created_at))
+        const nowKey = storyKey(storyAfter(nowConv, cached.input_message_id), nowDiscarded)
+        if (nowKey !== leadStory) return respond({ error: 'The conversation changed. Refresh to see the current draft.' }, 409)
+        const first = (cached.name ?? profile.name).split(/\s+/)[0]
+        const { data: made, error: makeError } = await sb.rpc('inbox_referral_create_lead', {
+          p_referrer: id, p_input_message: actionMessage, p_revision: REFERRAL_REVISION, p_expected_url: leadUrl, p_later_ids: later.map(m => m.id), p_read_at: readAt, p_discarded_ids: nowDiscarded.map(m => m.id),
+          p_lead: { linkedin_url: `https://www.linkedin.com/in/${profile.public_identifier}`, provider_id: profile.provider_id,
+            name: cached.name ?? profile.name, headline: profile.headline, company: cached.company, title: cached.role,
+            location: profile.location, country: profile.country, city: profile.city, state: profile.state,
+            email: cached.email?.to ?? null, referrer_name: rows[0].prospect_name },
+          p_text: leadNote,
+          p_evidence: { referred_name: cached.name, referrer_name: rows[0].prospect_name, linkedin_url: cached.linkedin_url, drafted_text: cached.draft, sent_as: 'connection_note',
+            review_note: `Check whether Davorin already messaged ${first} by hand on LinkedIn: messages sent outside the system are not in this inbox. This goes out as a connection invite with the note above; if Davorin is already connected to ${first}, discard it and message ${first} directly.` },
+        })
+        if (makeError) throw makeError
+        return made?.status === 'created' || made?.status === 'linked_existing' || made?.status === 'exists' ? respond({ lead: made }) : respond({ error: made?.reason ?? 'The lead could not be created.' }, 409)
+      }
+      // A staged invite waits for Send: a reply that arrives meanwhile is read too, and a hold takes the invite
+      // back to review (inbox_referral_lead_later). The approval trigger refuses it while a reply is unread.
+      if (!referralAction && cached?.status === 'verified' && cached.lead_message_id && !cached.dismissed_at) {
+        const handoff = inboundRows.find(m => m.id === cached.input_message_id)
+        const after = laterInbound(conversation, cached.input_message_id)
+        if (handoff && !laterChecked(cached, after)) {
+          try {
+            const checked = await judgeLater({ referrer: rows[0].prospect_name, author: canon.author, person: cached.name ?? 'the referred person', handoffId: handoff.id, handoff: handoff.message_text,
+              after: conversation.slice(conversation.findIndex(m => m.id === handoff.id) + 1).map(m => ({ speaker: speakerOf(m), text: m.message_text })), later: after })
+            const { error: laterError } = await sb.rpc('inbox_referral_lead_later', { p_referrer: id, p_input_message: handoff.id, p_later: checked })
+            if (laterError) throw laterError
+            cached.later = checked
+          } catch { /* stays unread: the approval trigger keeps the invite from being approved */ }
+        }
+      }
+      const pick = referralTarget(conversation, cached, dismissedIds)
+      // The email recipients the hold read must cover: a staged referral email as the operator left it, else the drafted one.
+      const { data: emailRows, error: emailError } = await sb.from('outreach_messages').select('recipient_email,draft_evidence,sent_at,send_blocked_at')
+        .eq('prospect_id', id).eq('ai_model', 'inbox_referral_email_v1')
+      if (emailError) throw emailError
+      const envelopeFor = (r: ReferralDraft) => {
+        type E = { recipient_email?: string | null; draft_evidence?: { referral_input_message_id?: string; email_cc?: string[] } | null; sent_at?: string | null; send_blocked_at?: string | null }
+        const staged = ((emailRows ?? []) as E[]).find(m => !m.sent_at && !m.send_blocked_at && m.recipient_email && m.draft_evidence?.referral_input_message_id === r.input_message_id)
+        const to = staged ? staged.recipient_email! : r.email?.to, cc = staged ? staged.draft_evidence?.email_cc ?? [] : r.email?.cc ?? []
+        return to ? { key: emailEnvelope(to, cc), to: to.trim(), cc: cc.map(c => c.trim()).filter(Boolean) } : null
+      }
+      if (!pick) return respond({ referral: null })
+      let target = pick.inbound
+      let referral: ReferralDraft
+      let changed = true
+      // Current = this revision AND drafted from the conversation as it stands (a new reply or discard redrafts it).
+      const current = (r: ReferralDraft | undefined, msgId: string) => r?.input_message_id === msgId && r.revision === REFERRAL_REVISION && offerFresh(r.offer_verified_at)
+        && (r.status !== 'verified' || r.story_key === keyFor(msgId))
+      const anchor = openReferral(cached) ? inboundRows.find(m => m.id === cached.input_message_id) : undefined
+      if (!retryReferral && current(cached, target.id)) { referral = cached!; changed = false }
+      else if (cached?.input_message_id === target.id && openReferral(cached)) referral = { ...await redraftReferral(cached, canon.author, prompts, story(target.id)), story_key: keyFor(target.id) }
+      else {
+        // No offer line in a referral first touch (Ivan 2026-11-04: the Preply list stacked on a pitch read
+        // as a sell to someone who never heard of us). One easy question closes it instead.
+        referral = { ...await researchReferral(sb, { id: target.id, text: target.message_text, company: rows[0].prospect_company, referrer: rows[0].prospect_name, referrerUrl: prospect.linkedin_url }, canon.author, prompts, story(target.id), await readMentions(sb, target.id)), story_key: keyFor(target.id) }
+        // A newer reply that only looks like a handoff ("you can reach out to someone else there") names nobody
+        // verifiable: the open referral stands and its card stays.
+        if (referral.status !== 'verified' && anchor && anchor.id !== target.id) {
+          const passedOver = [...(cached!.passed_over ?? []), target.id].slice(-20)
+          target = anchor
+          referral = { ...(current(cached, anchor.id) ? cached! : { ...await redraftReferral(cached!, canon.author, prompts, story(anchor.id)), story_key: keyFor(anchor.id) }), passed_over: passedOver }
+        }
+      }
+      // What the referrer wrote after the handoff: thanks or an emoji leave it standing; "hold off" pauses it.
+      const later = laterInbound(conversation, target.id)
+      // Read for a hold whenever something can reach the person: a verified profile, or an email address to write to.
+      const envelope = envelopeFor(referral)
+      if ((referral.status === 'verified' || referral.email) && !referral.lead_prospect_id && !referral.dismissed_at && !laterChecked(referral, later, envelope?.key ?? null)) {
+        try {
+          const after = conversation.slice(conversation.findIndex(m => m.id === target.id) + 1).map(m => ({ speaker: speakerOf(m), text: m.message_text }))
+          referral = { ...referral, later: { ...await judgeLater({ referrer: rows[0].prospect_name, author: canon.author, person: `${referral.name ?? 'the referred person'}${envelope ? ` (the email goes to ${JSON.stringify(envelope.to)}${envelope.cc.length ? `, copying ${envelope.cc.map(c => JSON.stringify(c)).join(', ')}` : ''}; a hold on anyone on it counts)` : ''}`, handoffId: target.id, handoff: target.message_text, after, later }), envelope: envelope?.key ?? null } }
+          changed = true
+        } catch { /* stays unchecked: the card shows it and Create waits */ }
+      }
+      if (!changed) return respond({ referral })
       const { data: freshRows, error: freshError } = await sb.from('inbox_messages_v').select('id,message_text,sent_at,created_at,prospect_stage,prospect_blacklisted')
         .eq('prospect_id', id).eq('direction', 'inbound').order('created_at').order('id')
       if (freshError) throw freshError
@@ -93,21 +232,21 @@ Deno.serve(async req => {
       type Fresh = { id: string; message_text?: string; sent_at?: string; created_at: string; prospect_stage: string; prospect_blacklisted: boolean }
       const fresh = ((freshRows ?? []) as Fresh[]).filter(m => m.message_text?.trim())
         .sort((a, b) => (a.sent_at || a.created_at).localeCompare(b.sent_at || b.created_at)).at(-1)
-      if (fresh?.id !== inbound.id || fresh.message_text !== inbound.message_text || fresh.prospect_blacklisted
-        || ['archived', 'skipped', 'disqualified', 'unsubscribed', 'blacklisted'].includes(fresh.prospect_stage)) return respond({ error: 'The conversation changed during referral research. Refresh and try again.' }, 409)
+      if (fresh?.id !== latestIn?.id || fresh?.message_text !== latestIn?.message_text || fresh?.prospect_blacklisted
+        || ['archived', 'skipped', 'disqualified', 'unsubscribed', 'blacklisted'].includes(fresh?.prospect_stage ?? '')) return respond({ error: 'The conversation changed during referral research. Refresh and try again.' }, 409)
       // Merge only this key server side. Other workers' enrichment survives, and a large row cannot
       // overflow the request URL (the old whole-JSON equality filter broke on rows over ~16 KB).
       // The cron warm-up and a card open can research the same message at once: with p_keep_verified
       // the save itself refuses to replace a verified answer for this message with a weaker one.
-      // Only an explicit retry replaces it.
-      const { data: saved, error: saveError } = await sb.rpc('inbox_set_referral_guarded', { p_prospect: id, p_referral: { ...referral, researched_at: new Date().toISOString() }, p_keep_verified: !retryReferral })
+      // Only an explicit retry replaces it. A referred lead or a dismissal recorded meanwhile is kept.
+      // p_expected_input: the handoff this run started from. A different handoff saved meanwhile (and maybe already
+      // dismissed or turned into a lead) is never overwritten by this older run.
+      const { data: saved, error: saveError } = await sb.rpc('inbox_set_referral_v2', { p_prospect: id, p_referral: { ...referral, researched_at: new Date().toISOString() }, p_keep_verified: !retryReferral, p_expected_input: cached?.input_message_id ?? null })
       if (saveError) throw saveError
       if (saved !== true) return respond({ error: 'The contact changed while saving research. Try again.' }, 409)
-      if (!retryReferral && referral.status !== 'verified') {
-        const { data: latest } = await sb.from('outreach_prospects').select('referral:enrichment_data->inbox_referral').eq('id', id).single()
-        const kept = latest?.referral
-        if (kept?.input_message_id === inbound.id && kept?.revision === REFERRAL_REVISION && kept?.status === 'verified' && offerFresh(kept.offer_verified_at)) return respond({ referral: kept })
-      }
+      const { data: latest } = await sb.from('outreach_prospects').select('referral:enrichment_data->inbox_referral').eq('id', id).single()
+      const kept = latest?.referral as ReferralDraft | null | undefined
+      if (kept?.input_message_id === target.id && kept?.revision === REFERRAL_REVISION && (kept?.status === 'verified' || referral.status !== 'verified') && offerFresh(kept.offer_verified_at)) return respond({ referral: kept })
       return respond({ referral })
     }
     // Sent invitations establish first-touch provenance. Counters and unsent drafts do not.

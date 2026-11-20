@@ -36,3 +36,26 @@ export async function apifyProfiles(sb: Db, input: { ids: string[] } | { query: 
   const items = await r.json()
   return Array.isArray(items) ? items.map(toProfile).filter((p): p is MentionProfile => p !== null) : []
 }
+
+export type ProfileDetails = { provider_id: string; public_identifier: string; name: string; headline: string | null
+  location: string | null; country: string | null; city: string | null; state: string | null }
+
+/** One profile by its public id, with the location the sender's geo check needs. No seat, no cookie. */
+export async function apifyProfileDetails(sb: Db, publicIdentifier: string): Promise<ProfileDetails | null> {
+  const { data: cfg } = await sb.from('integration_config').select('value').eq('key', 'apify_api_token').maybeSingle()
+  const token = cfg?.value || env('APIFY_TOKEN')
+  if (!token) throw new Error('Profile lookup is not configured.')
+  const r = await fetch(`https://api.apify.com/v2/acts/${SCRAPER}/run-sync-get-dataset-items?timeout=90&maxTotalChargeUsd=0.05`, {
+    method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ profileScraperMode: 'Profile details no email ($4 per 1k)', publicIdentifiers: [publicIdentifier] }),
+    signal: AbortSignal.timeout(100_000),
+  })
+  if (!r.ok) throw new Error(`Profile lookup unavailable (${r.status}).`)
+  const items = await r.json()
+  type Loc = { linkedinText?: string; parsed?: { country?: string; city?: string; state?: string } }
+  const p = (Array.isArray(items) ? items : []).find((x: Item & { location?: Loc }) => x?.publicIdentifier?.toLowerCase() === publicIdentifier.toLowerCase()) as (Item & { location?: Loc }) | undefined
+  if (!p?.id || !p.publicIdentifier || !p.firstName) return null
+  const text = (s: unknown) => typeof s === 'string' && s.trim() ? s.trim() : null
+  return { provider_id: p.id, public_identifier: p.publicIdentifier, name: `${p.firstName} ${p.lastName ?? ''}`.trim(), headline: text(p.headline),
+    location: text(p.location?.linkedinText), country: text(p.location?.parsed?.country), city: text(p.location?.parsed?.city), state: text(p.location?.parsed?.state) }
+}

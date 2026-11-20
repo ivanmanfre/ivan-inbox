@@ -1,36 +1,65 @@
 import { supabase } from './supabase'
 import { isRecoverableHold, type Thread } from './inbox'
 import { parseEmailCc } from './emailCc'
-import { referralCandidate, type ReferralDraft } from '../../supabase/functions/inbox-dm-draft/referral'
+import { referralTarget, type ReferralDraft } from '../../supabase/functions/inbox-dm-draft/referral'
 
-export function referralInbound(t: Thread) {
-  if (t.spam || t.blacklisted || t.channel === 'email' || !['ivan', 'arch', 'risedtc'].includes(t.client_id)
+const REFERRAL_CLIENTS = ['ivan', 'arch', 'risedtc']
+/** The inbound the referral card is about: a fresh handoff, or an open verified referral that later replies
+ * ("You too!", an emoji) must not hide. `cached` is the referrer's stored inbox_referral. */
+export function referralInbound(t: Thread, cached?: unknown, dismissed: readonly string[] = []) {
+  if (t.spam || t.blacklisted || t.channel === 'email' || !REFERRAL_CLIENTS.includes(t.client_id)
     || ['archived', 'skipped', 'disqualified', 'unsubscribed', 'blacklisted'].includes(t.stage)) return null
-  const last = t.messages.filter(m => m.direction === 'inbound').sort((a, b) => (a.sent_at || a.created_at).localeCompare(b.sent_at || b.created_at)).at(-1)
-  return last && referralCandidate(last.message_text) ? last : null
+  return referralTarget(t.messages, cached, dismissed)?.inbound ?? null
+}
+
+/** The referrer's stored referral and every handoff the operator dismissed, read before deciding whether the card shows. */
+export async function readStoredReferral(prospectId: string): Promise<{ referral: unknown; dismissed: string[] }> {
+  const { data, error } = await supabase.from('outreach_prospects').select('referral:enrichment_data->inbox_referral,dismissed:enrichment_data->inbox_referral_dismissed').eq('id', prospectId).single()
+  if (error) throw error
+  const row = data as { referral?: unknown; dismissed?: unknown } | null
+  return { referral: row?.referral ?? null, dismissed: Array.isArray(row?.dismissed) ? row!.dismissed.filter((x): x is string => typeof x === 'string') : [] }
+}
+
+async function callDraft(body: Record<string, unknown>, timeout: number): Promise<Record<string, unknown>> {
+  const { data } = await supabase.auth.getSession()
+  if (!data.session?.access_token) throw new Error('Sign in again to research this referral.')
+  const response = await window.fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/inbox-dm-draft`, {
+    method: 'POST', headers: { Authorization: `Bearer ${data.session.access_token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body), signal: AbortSignal.timeout(timeout),
+  })
+  const result = await response.json()
+  if (!response.ok) throw new Error(result.error || 'Referral research failed. Try again.')
+  return result
 }
 
 const pending = new Map<string, Promise<ReferralDraft | null>>()
-export async function requestDmReferral(t: Thread, retry = false): Promise<ReferralDraft | null> {
-  const inbound = referralInbound(t)
+export async function requestDmReferral(t: Thread, retry = false, cached?: unknown, dismissed: readonly string[] = []): Promise<ReferralDraft | null> {
+  const inbound = referralInbound(t, cached, dismissed)
   if (!inbound) return null
   const stamp = `${t.prospect_id}:${inbound.id}:${retry}`
   const running = pending.get(stamp)
   if (running) return running
   const job = (async () => {
-    const { data } = await supabase.auth.getSession()
-    if (!data.session?.access_token) throw new Error('Sign in again to research this referral.')
-    const response = await window.fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/inbox-dm-draft`, {
-      method: 'POST', headers: { Authorization: `Bearer ${data.session.access_token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prospect_id: t.prospect_id, mode: 'referral', retry }), signal: AbortSignal.timeout(140_000),
-    })
-    const result = await response.json()
-    if (!response.ok) throw new Error(result.error || 'Referral research failed. Try again.')
-    if (result.referral && result.referral.input_message_id !== inbound.id) throw new Error('The conversation changed. Refresh before researching the referral.')
-    return result.referral as ReferralDraft | null
+    const result = await callDraft({ prospect_id: t.prospect_id, mode: 'referral', retry }, 140_000)
+    const referral = result.referral as ReferralDraft | null
+    // The server may answer for the open referral when a newer reply only looked like a handoff.
+    if (referral && !t.messages.some(m => m.direction === 'inbound' && m.id === referral.input_message_id)) throw new Error('The conversation changed. Refresh before researching the referral.')
+    return referral
   })()
   pending.set(stamp, job)
   try { return await job } finally { pending.delete(stamp) }
+}
+
+/* REFERRED LEAD (Ivan 2026-11-20): the verified person becomes an ARCH lead with ONE held invite note on their own
+   thread (approved_at and sent_at null). Davorin approves it through the normal Send; this never approves or sends. */
+export const REFERRAL_LEAD_MODEL = 'inbox_referral_lead_v1'
+export type ReferredLeadResult = { status: 'created' | 'linked_existing' | 'exists'; lead_prospect_id: string; stage?: string; sent?: number; drafts?: number }
+export async function createReferredLead(t: Thread, inputMessageId: string, draft: string, linkedinUrl: string, storyKey: string): Promise<ReferredLeadResult> {
+  const result = await callDraft({ prospect_id: t.prospect_id, mode: 'referral_lead', input_message_id: inputMessageId, draft, linkedin_url: linkedinUrl, story_key: storyKey }, 140_000)
+  return result.lead as ReferredLeadResult
+}
+export async function dismissReferral(t: Thread, inputMessageId: string): Promise<void> {
+  await callDraft({ prospect_id: t.prospect_id, mode: 'referral_dismiss', input_message_id: inputMessageId }, 30_000)
 }
 
 /* ==========================================================================

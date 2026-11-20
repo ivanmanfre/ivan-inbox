@@ -131,11 +131,11 @@ describe('referral researcher', () => {
       expect(String(calls[1]?.body.searchQuery)).toMatch(/Saint Spritz$/)
     }
   })
-  it('stops before any lookup for an unnamed handoff', async () => {
+  it.each(['Our marketing team handles that', 'You can reach out to someone else from Northwind Games'])('an unnamed handoff names nobody, so no card and no lookup: %s', async text => {
     let calls = 0
     vi.stubGlobal('fetch', async () => { calls++; return claude('{"name":null}') })
-    const result = await researchReferral(db, { ...input, text: 'Our marketing team handles that' }, 'Mattan', [], [])
-    expect(result.status).toBe('unresolved')
+    const result = await researchReferral(db, { ...input, text }, 'Mattan', [], [])
+    expect(result.status).toBe('none')
     expect(result.draft).toBeNull()
     expect(calls).toBe(1)
   })

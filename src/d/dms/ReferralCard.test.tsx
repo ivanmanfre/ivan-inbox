@@ -9,7 +9,8 @@ import { isConversation } from '../../lib/inbox'
 const readLead = vi.hoisted(() => vi.fn())
 vi.mock('../../lib/supabase', () => ({ supabase: { from: () => ({ select: () => ({ eq: () => ({ single: readLead }) }) }), auth: { getSession: async () => ({ data: { session: { access_token: 'owner-token' } } }) } } }))
 const fetch = vi.fn()
-const referral = { status: 'verified', input_message_id: 'handoff', name: 'Ben Patton', company: 'Saint Spritz', role: 'CEO', summary: 'CEO at Saint Spritz.', linkedin_url: 'https://www.linkedin.com/in/ben-patton-9834411aa', draft: 'Hey Ben, Mallory said you handle paid growth at Saint Spritz. Want me to send you the growth scan?', reason: null, sources: [{ title: 'Saint Spritz', url: 'https://www.linkedin.com/company/saint-spritz' }] }
+const referral = { status: 'verified', input_message_id: 'handoff', name: 'Ben Patton', company: 'Saint Spritz', role: 'CEO', summary: 'CEO at Saint Spritz.', linkedin_url: 'https://www.linkedin.com/in/ben-patton-9834411aa', draft: 'Hey Ben, Mallory said you handle paid growth at Saint Spritz. Want me to send you the growth scan?', reason: null, sources: [{ title: 'Saint Spritz', url: 'https://www.linkedin.com/company/saint-spritz' }],
+  later: { through_message_id: 'handoff', message_ids: [], verdict: 'go', quote: null, checked_at: '2026-10-05T22:46:00Z' } }
 const thread = () => threads([msg({ id: 'handoff', prospect_id: 'mallory', prospect_name: 'Mallory Vaughan Patton', prospect_company: 'Saint Spritz', client_id: 'risedtc', direction: 'inbound', message_text: 'ben Patton does that side of biz', sent_at: '2026-10-05T22:45:00Z' })])[0]
 
 beforeEach(() => { cleanup(); vi.clearAllMocks(); vi.stubGlobal('fetch', fetch); window.fetch = fetch })
@@ -96,7 +97,8 @@ describe('referral card', () => {
   it('automatically researches a named handoff and keeps its DM addressed to Ben', async () => {
     fetch.mockResolvedValue({ ok: true, json: async () => ({ referral }) })
     render(<ReferralCard t={thread()} />)
-    expect(screen.getByRole('status')).toHaveTextContent(/researching/i)
+    // The stored referral is read first (it decides whether an older verified handoff stays open).
+    expect(await screen.findByRole('status')).toHaveTextContent(/researching/i)
     expect(await screen.findByRole('textbox', { name: 'DM draft for Ben Patton' })).toHaveValue(referral.draft)
     expect(screen.getByRole('link', { name: 'Open LinkedIn profile' })).toHaveAttribute('href', referral.linkedin_url)
     expect(screen.getByRole('link', { name: 'Saint Spritz' })).toHaveAttribute('href', referral.sources[0].url)
@@ -134,5 +136,68 @@ describe('referral card', () => {
     const t = thread(); t.messages[0].message_text = 'No thanks'
     render(<ReferralCard t={t} />)
     await waitFor(() => expect(fetch).not.toHaveBeenCalled())
+  })
+})
+
+// Invented fixtures (public repo): a referrer at a made-up studio points the author to a made-up colleague.
+describe('verified referral stays open and becomes a lead', () => {
+  const HANDOFF = '0b5a3d0e-1111-4c2a-9a55-000000000001'
+  const base = { prospect_id: 'priya', prospect_name: 'Priya Example', prospect_company: 'Northwind Games', client_id: 'arch' }
+  const rows = () => threads([
+    msg({ ...base, id: 'pitch', direction: 'outbound', message_text: 'Are you running creator campaigns?', sent_at: '2026-11-05T12:00:00Z', created_at: '2026-11-05T12:00:00Z' }),
+    msg({ ...base, id: HANDOFF, direction: 'inbound', message_text: 'You could contact Tomas Weller, he is the influencer manager here', sent_at: '2026-11-05T12:10:00Z', created_at: '2026-11-05T12:10:00Z' }),
+    msg({ ...base, id: 'ack', direction: 'outbound', message_text: "Thanks Priya, I'll reach out to Tomas.", sent_at: '2026-11-05T12:20:00Z', created_at: '2026-11-05T12:20:00Z' }),
+    msg({ ...base, id: 'later-1', direction: 'inbound', message_text: 'You too!', sent_at: '2026-11-05T12:30:00Z', created_at: '2026-11-05T12:30:00Z' }),
+  ])[0]
+  const stored = { status: 'verified', input_message_id: HANDOFF, name: 'Tomas Weller', company: 'Northwind Games', role: 'Influencer Manager', summary: 'Influencer Manager at Northwind Games.',
+    linkedin_url: 'https://www.linkedin.com/in/tomas-weller-test', draft: 'Hey Tomas\n\nPriya said you run creator campaigns at Northwind.\n\nWhat do you measure them on?', reason: null, sources: [],
+    revision: 13, story_key: 'story-v1', later: { through_message_id: 'later-1', message_ids: ['later-1'], verdict: 'go', quote: null, checked_at: '2026-11-05T12:31:00Z' } }
+  it('a "You too!" after the handoff keeps the card, and Create stages the edited note', async () => {
+    readLead.mockResolvedValue({ data: { referral: stored }, error: null })
+    fetch.mockResolvedValueOnce({ ok: true, json: async () => ({ referral: stored }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ lead: { status: 'created', lead_prospect_id: '00000000-0000-4000-8000-0000000000aa' } }) })
+    const staged = vi.fn()
+    render(<ReferralCard t={rows()} onStaged={staged} />)
+    const box = await screen.findByRole('textbox', { name: 'DM draft for Tomas Weller' })
+    expect(screen.getByText(/already messaged Tomas by hand/)).toBeInTheDocument()
+    fireEvent.change(box, { target: { value: 'Hey Tomas, Priya pointed me your way.' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Create referred lead' }))
+    expect(await screen.findByRole('link', { name: 'Open referred lead' })).toHaveAttribute('href', '#exp/d/dms?thread=00000000-0000-4000-8000-0000000000aa')
+    expect(JSON.parse(fetch.mock.calls[1][1].body)).toEqual({ prospect_id: 'priya', mode: 'referral_lead', input_message_id: HANDOFF, draft: 'Hey Tomas, Priya pointed me your way.', linkedin_url: 'https://www.linkedin.com/in/tomas-weller-test', story_key: 'story-v1' })
+    expect(staged).toHaveBeenCalled()
+    expect(screen.queryByRole('button', { name: /^send|^approve/i })).not.toBeInTheDocument()
+  })
+  it('a "hold off" shows the card paused with the quote and no Create', async () => {
+    const paused = { ...stored, later: { ...stored.later, verdict: 'hold', quote: 'please hold off until January' } }
+    readLead.mockResolvedValue({ data: { referral: paused }, error: null })
+    fetch.mockResolvedValue({ ok: true, json: async () => ({ referral: paused }) })
+    render(<ReferralCard t={rows()} />)
+    expect(await screen.findByText(/please hold off until January/)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Create referred lead' })).not.toBeInTheDocument()
+    // Nothing that reaches the person is offered while paused.
+    expect(screen.queryByRole('button', { name: 'Copy DM' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Not contacting Tomas' })).toBeInTheDocument()
+  })
+  it('other lanes keep Copy DM only', async () => {
+    const t = rows(); t.client_id = 'risedtc'
+    readLead.mockResolvedValue({ data: { referral: stored }, error: null })
+    fetch.mockResolvedValue({ ok: true, json: async () => ({ referral: stored }) })
+    render(<ReferralCard t={t} />)
+    await screen.findByRole('button', { name: 'Copy DM' })
+    expect(screen.queryByRole('button', { name: 'Create referred lead' })).not.toBeInTheDocument()
+  })
+  it('a dismissed or linked referral does not come back after a later reply', async () => {
+    readLead.mockResolvedValue({ data: { referral: { ...stored, dismissed_at: '2026-11-06T09:00:00Z' } }, error: null })
+    render(<ReferralCard t={rows()} />)
+    await waitFor(() => expect(readLead).toHaveBeenCalled())
+    await waitFor(() => expect(fetch).not.toHaveBeenCalled())
+  })
+  it('the referred person’s own thread shows who referred them and the by-hand check', () => {
+    const t = threads([msg({ prospect_id: 'tomas', prospect_name: 'Tomas Weller', client_id: 'arch', direction: 'outbound', message_type: 'connection_note', ai_model: 'inbox_referral_lead_v1', message_text: 'Hey Tomas', sent_at: null,
+      draft_evidence: { referrer_prospect_id: 'priya', referrer_name: 'Priya Example', review_note: 'Check whether Davorin already messaged Tomas by hand on LinkedIn.' } as never })])[0]
+    expect(isConversation(t)).toBe(true)
+    render(<ReferralCard t={t} />)
+    expect(screen.getByRole('link', { name: 'Priya Example' })).toHaveAttribute('href', '#exp/d/dms?thread=priya')
+    expect(screen.getByRole('note')).toHaveTextContent('already messaged Tomas by hand')
   })
 })

@@ -21,8 +21,110 @@ export type ReferralDraft = {
   email?: ReferralEmail | null
   /** Why no email draft exists although the handoff gave an address. */
   email_reason?: string | null
+  /** The operator chose not to contact this person. The card stays closed and nothing is redrafted. */
+  dismissed_at?: string | null
+  /** What the referrer wrote after the handoff, read by the model (never a keyword list). */
+  later?: ReferralLater | null
+  /** Newer handoff-like replies already researched without finding anyone new; the open referral stood. */
+  passed_over?: string[]
+  /** The conversation the DM was drafted from (later replies and discarded drafts); a change redrafts it. */
+  story_key?: string
+  lead_message_id?: string
 }
 export type ReferralEmail = { to: string; cc: string[]; subject: string; body: string }
+/** go = thanks, "you too", an emoji or anything that leaves the handoff standing. hold = wait, hold off, do not
+ * contact them, they left. redirect = talk to someone else instead. */
+export type ReferralLater = { through_message_id: string; verdict: 'go' | 'hold' | 'redirect'; quote: string | null; checked_at: string
+  /** Every inbound id after the handoff that the check read (a reply imported late with an earlier time changes it). */
+  message_ids?: string[]
+  /** The email recipients the check covered (To|Cc), when the referral has an email. */
+  envelope?: string | null }
+
+/** One spelling of an email envelope for comparison (same as inbox_referral_envelope() in SQL). */
+export const emailEnvelope = (to: string, cc: readonly string[] = []) =>
+  `${to.trim().toLowerCase()}|${cc.map(c => c.trim().toLowerCase()).filter(Boolean).sort().join(',')}`
+
+/** LinkedIn's limit for an invitation note. The first touch to a referred person goes out as an invite. */
+export const INVITE_NOTE_LIMIT = 300
+
+/** A verified referral the operator has not acted on: no referred lead yet and not dismissed. Later replies
+ * (a "You too!", a reaction) never close it (Ivan 2026-11-20: 4 of 6 verified handoffs were hidden that way). */
+export function openReferral(cached: unknown): cached is ReferralDraft {
+  const r = cached && typeof cached === 'object' ? cached as Partial<ReferralDraft> : null
+  return Boolean(r && r.status === 'verified' && typeof r.input_message_id === 'string' && typeof r.linkedin_url === 'string'
+    && !r.lead_prospect_id && !r.dismissed_at)
+}
+
+export type ReferralMessage = { id: string; direction: string; message_text?: string | null; sent_at?: string | null; created_at: string }
+const when = (m: ReferralMessage) => m.sent_at || m.created_at
+/** Message time, then import order: the same latest-message rule the app, the handler and the cron use. */
+export function byTime<T extends ReferralMessage>(rows: readonly T[]): T[] {
+  return rows.map((m, i) => ({ m, i })).sort((a, b) => when(a.m).localeCompare(when(b.m)) || a.m.created_at.localeCompare(b.m.created_at) || a.i - b.i).map(x => x.m)
+}
+
+/** Which inbound the referral card is about.
+ * 1. The newest inbound when it reads like a handoff (as before).
+ * 2. Else the cached verified referral that is still open, whatever came after it.
+ * 3. Else the newest handoff-like inbound in the unanswered turn ("Talk to X" followed by "thanks!"). */
+export function referralTarget<T extends ReferralMessage>(messages: readonly T[], cached: unknown, dismissedIds: readonly string[] = []): { inbound: T; anchored: boolean } | null {
+  const ordered = byTime(messages)
+  const inbound = ordered.filter(m => m.direction === 'inbound' && m.message_text?.trim())
+  const latest = inbound.at(-1)
+  if (!latest) return null
+  // An email-only referral (no LinkedIn profile, an address to write to) stays open the same way.
+  const c = cached && typeof cached === 'object' ? cached as ReferralDraft : null
+  const emailOnly = Boolean(c && c.email && typeof c.email === 'object' && !c.lead_prospect_id && !c.dismissed_at)
+  const anchor = (openReferral(cached) || emailOnly) ? inbound.find(m => m.id === c!.input_message_id) : undefined
+  const passed = anchor && Array.isArray((cached as ReferralDraft).passed_over) && (cached as ReferralDraft).passed_over!.includes(latest.id)
+  // A handoff the operator dismissed stays closed, even while it is still the newest message.
+  const dismissed = (m: T) => dismissedIds.includes(m.id) || Boolean(cached && typeof cached === 'object' && (cached as ReferralDraft).dismissed_at && (cached as ReferralDraft).input_message_id === m.id)
+  if (referralCandidate(latest.message_text!) && !passed && !dismissed(latest)) return { inbound: latest, anchored: latest.id === anchor?.id }
+  if (anchor) return { inbound: anchor, anchored: true }
+  const lastSent = ordered.filter(m => m.direction === 'outbound' && m.sent_at).at(-1)
+  const turn = inbound.filter(m => !lastSent || when(m) > when(lastSent))
+  const hit = [...turn].reverse().find(m => referralCandidate(m.message_text!) && !dismissed(m))
+  return hit ? { inbound: hit, anchored: false } : null
+}
+
+/** Inbound messages written after the handoff, oldest first. */
+export function laterInbound<T extends ReferralMessage>(messages: readonly T[], referralId: string): T[] {
+  const ordered = byTime(messages)
+  const i = ordered.findIndex(m => m.id === referralId)
+  return i < 0 ? [] : ordered.slice(i + 1).filter(m => m.direction === 'inbound' && m.message_text?.trim())
+}
+
+/** The stored check read exactly these replies. The handoff itself is read too ("hold off until January, then talk
+ * to Tomas"), so a check is needed even when nothing came after it. */
+export function laterChecked(r: Pick<ReferralDraft, 'later'>, later: readonly ReferralMessage[], envelope?: string | null): boolean {
+  const ids = r.later?.message_ids
+  return Array.isArray(ids) && ids.length === later.length && later.every(m => ids.includes(m.id))
+    && (envelope === undefined || (r.later?.envelope ?? null) === envelope)
+}
+
+/** What the drafter read after the handoff: every reply, every message we sent, and the operator's discarded drafts. */
+export function storyKey(after: readonly ReferralMessage[], discarded: readonly { id: string }[]): string {
+  return [...after.map(m => `${m.direction === 'inbound' ? 'i' : 'o'}${m.id}:${(m.message_text ?? '').length}`), ...discarded.map(m => `x${m.id}`)].sort().join(',')
+}
+
+/** Inbound replies and sent messages after the handoff (the conversation the draft must still fit). */
+export function storyAfter<T extends ReferralMessage>(messages: readonly T[], referralId: string): T[] {
+  const ordered = byTime(messages)
+  const i = ordered.findIndex(m => m.id === referralId)
+  return i < 0 ? [] : ordered.slice(i + 1).filter(m => m.message_text?.trim() && (m.direction === 'inbound' || m.sent_at))
+}
+
+/** Read the model's answer about the later messages. A hold or redirect must quote words the referrer wrote;
+ * an unreadable answer fails toward pausing, never toward contact. */
+export function readLaterVerdict(raw: unknown, later: readonly ReferralMessage[], handoff = ''): Pick<ReferralLater, 'verdict' | 'quote'> {
+  const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
+  const flatten = (s: string) => s.replace(/\s+/g, ' ').trim().toLowerCase()
+  const said = [handoff, ...later.map(m => m.message_text ?? '')].map(flatten).join('\n')
+  const quote = typeof r.quote === 'string' && r.quote.trim() && said.includes(flatten(r.quote)) ? r.quote.trim().slice(0, 300) : null
+  if (r.verdict === 'go') return { verdict: 'go', quote: null }
+  const newest = (later.at(-1)?.message_text ?? handoff).trim().slice(0, 300)
+  if (r.verdict === 'hold' || r.verdict === 'redirect') return { verdict: r.verdict, quote: quote ?? newest }
+  return { verdict: 'hold', quote: newest }
+}
 
 /** A cheap trigger only. The researcher must confirm a named human handoff. */
 export function referralCandidate(text: string): boolean {

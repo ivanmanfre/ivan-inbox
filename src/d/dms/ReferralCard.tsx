@@ -1,22 +1,42 @@
 import { useEffect, useState } from 'react'
 import type { Thread } from '../../lib/inbox'
-import { drafterEmailRow, referralEmailRow, referralInbound, requestDmReferral, stageReferralEmail } from '../../lib/dmReferral'
-import type { ReferralDraft, ReferralEmail } from '../../../supabase/functions/inbox-dm-draft/referral'
+import { createReferredLead, dismissReferral, drafterEmailRow, readStoredReferral, REFERRAL_LEAD_MODEL, referralEmailRow, referralInbound, requestDmReferral, stageReferralEmail, type ReferredLeadResult } from '../../lib/dmReferral'
+import { INVITE_NOTE_LIMIT, laterChecked, laterInbound, type ReferralDraft, type ReferralEmail } from '../../../supabase/functions/inbox-dm-draft/referral'
 import { ReferredLeadCard } from './ReferredLeadCard'
 import { threadEmailSender } from '../../lib/inbox'
 
+// Any reply, sent message or discard changes what the draft must fit, so the card asks again.
+const inboundStamp = (t: Thread) => t.messages.filter(m => m.direction === 'inbound' || m.sent_at || /^discarded/.test(m.send_blocked_reason ?? '')
+  || m.ai_model === 'inbox_referral_email_v1').map(m => `${m.id}:${m.recipient_email ?? ''}:${(m.email_cc ?? m.draft_evidence?.email_cc ?? []).join(',')}`).join(',')
+
 export function ReferralCard({ t, onUseAcknowledgement, onStaged }: { t: Thread; onUseAcknowledgement?: (text: string) => void; onStaged?: () => void }) {
-  const inbound = referralInbound(t)
-  const stamp = inbound ? `${t.prospect_id}:${inbound.id}` : ''
+  // The stored referral decides whether a verified handoff stays open after later replies, so read it first.
+  const [stored, setStored] = useState<{ key: string; value: unknown; dismissed: string[] } | null>(null)
+  const storedKey = `${t.prospect_id}:${inboundStamp(t)}`
+  const isLead = t.messages.some(m => m.ai_model === REFERRAL_LEAD_MODEL)
+  const eligible = ['ivan', 'arch', 'risedtc'].includes(t.client_id) && !t.spam && !t.blacklisted
+  useEffect(() => {
+    if (isLead || !eligible) return
+    let current = true
+    void readStoredReferral(t.prospect_id).then(({ referral, dismissed }) => { if (current) setStored({ key: storedKey, value: referral, dismissed }) })
+      .catch(() => { if (current) setStored({ key: storedKey, value: null, dismissed: [] }) })
+    return () => { current = false }
+  }, [storedKey, isLead, eligible]) // eslint-disable-line react-hooks/exhaustive-deps
+  const cached = stored?.key === storedKey ? stored.value : undefined
+  const dismissedIds = stored?.key === storedKey ? stored.dismissed : []
+  const inbound = cached === undefined ? null : referralInbound(t, cached, dismissedIds)
+  const stamp = inbound ? `${storedKey}:${inbound.id}` : ''
   const [retry, setRetry] = useState(0)
   const [state, setState] = useState<{ stamp: string; data: ReferralDraft | null; error: string | null } | null>(null)
   const [copied, setCopied] = useState<'dm' | 'ack' | null>(null)
   const [copyError, setCopyError] = useState(false)
+  const [note, setNote] = useState<{ stamp: string; text: string } | null>(null)
+  const [acting, setActing] = useState<{ busy: boolean; error: string | null; lead: ReferredLeadResult | null; dismissed: boolean }>({ busy: false, error: null, lead: null, dismissed: false })
   useEffect(() => {
     if (!stamp) return
     let current = true
-    setState(null); setCopied(null); setCopyError(false)
-    void requestDmReferral(t, retry > 0).then(data => {
+    setState(null); setCopied(null); setCopyError(false); setNote(null); setActing({ busy: false, error: null, lead: null, dismissed: false })
+    void requestDmReferral(t, retry > 0, cached, dismissedIds).then(data => {
       if (current) setState({ stamp, data, error: null })
     }).catch(e => {
       if (current) setState({ stamp, data: null, error: e instanceof Error ? e.message : 'Research could not finish.' })
@@ -24,37 +44,70 @@ export function ReferralCard({ t, onUseAcknowledgement, onStaged }: { t: Thread;
     return () => { current = false }
   }, [stamp, retry]) // eslint-disable-line react-hooks/exhaustive-deps
   if (t.messages.some(m => m.ai_model === 'arch_referral_package_v1')) return <ReferredLeadCard key={t.prospect_id} t={t} />
-  if (!stamp) return null
+  if (isLead) return <ReferredFrom t={t} />
+  if (!stamp || acting.dismissed) return null
   const result = state?.stamp === stamp ? state : null
   const r = result?.data
-  const contact = r?.lead_prospect_id ? null : r?.status === 'verified' ? r : r?.candidate
-  const answered = inbound && t.messages.some(m => m.direction === 'outbound' && m.sent_at && m.sent_at > (inbound.sent_at || inbound.created_at))
+  const leadId = acting.lead?.lead_prospect_id ?? r?.lead_prospect_id
+  const contact = leadId ? null : r?.status === 'verified' ? r : r?.candidate
+  const handoff = r ? t.messages.find(m => m.id === r.input_message_id) ?? inbound : inbound
+  const answered = handoff && t.messages.some(m => m.direction === 'outbound' && m.sent_at && m.sent_at > (handoff.sent_at || handoff.created_at))
   if (r?.status === 'none') return null
+  const referrer = t.prospect_name.split(' ')[0]
+  const person = (r?.name ?? '').split(' ')[0] || 'them'
+  // What the referrer wrote after the handoff, as read by the model: thanks or an emoji leave it open.
+  const later = r ? laterInbound(t.messages, r.input_message_id) : []
+  const open = Boolean(r && (r.status === 'verified' || r.email) && !leadId && !r.dismissed_at)
+  const unchecked = open && !laterChecked(r!, later)
+  const paused = open && !unchecked && r!.later?.verdict !== 'go' ? r!.later : null
+  // While paused or unread, nothing that reaches the person is offered (no copy, no email, no lead).
+  const blocked = Boolean(paused || unchecked)
+  const canCreate = t.client_id === 'arch' && r?.status === 'verified' && !leadId && !r.dismissed_at && !!r.draft && !paused && !unchecked
+  const noteText = note?.stamp === stamp ? note.text : contact?.draft ?? ''
   const copy = async (kind: 'dm' | 'ack') => {
     try { await navigator.clipboard.writeText(kind === 'ack' ? r!.acknowledgement! : contact!.draft!); setCopied(kind); setCopyError(false) }
     catch { setCopyError(true) }
+  }
+  const create = async () => {
+    setActing(a => ({ ...a, busy: true, error: null }))
+    try { const lead = await createReferredLead(t, r!.input_message_id, noteText, r!.linkedin_url!, r!.story_key ?? ''); setActing(a => ({ ...a, busy: false, lead })); onStaged?.() }
+    catch (e) { setActing(a => ({ ...a, busy: false, error: e instanceof Error ? e.message : 'The lead could not be created. Try again.' })) }
+  }
+  const dismiss = async () => {
+    setActing(a => ({ ...a, busy: true, error: null }))
+    try { await dismissReferral(t, r!.input_message_id); setActing(a => ({ ...a, busy: false, dismissed: true })) }
+    catch (e) { setActing(a => ({ ...a, busy: false, error: e instanceof Error ? e.message : 'Could not dismiss. Try again.' })) }
   }
   return <section className="dm-referral dm-src" aria-label="Referred contact">
     <h3>{r?.status === 'verified' ? `Draft for ${r.name}` : 'Referred contact'}</h3>
     {!result && <p role="status">Researching the referred person and preparing a DM for review…</p>}
     {result?.error && <p role="alert">{result.error}</p>}
     {r?.status === 'unresolved' && !r.lead_prospect_id && <p>{r.reason || 'The referred person needs clarification.'}</p>}
-    {r?.lead_prospect_id && <a className="d-link" href={`#exp/d/dms?thread=${encodeURIComponent(r.lead_prospect_id)}`}>Open referred lead</a>}
-    {contact && <>
+    {acting.lead?.status === 'created' && <p role="status">{r?.name} is now an ARCH lead. The invite note is held in their conversation until Send.</p>}
+    {acting.lead?.status === 'linked_existing' && <p role="status">{r?.name} was already an ARCH lead, so nothing new was staged. Linked.</p>}
+    {leadId && <a className="d-link" href={`#exp/d/dms?thread=${encodeURIComponent(leadId)}`}>Open referred lead</a>}
+    {paused && <p role="status"><b>Paused.</b> {referrer} wrote later: “{paused.quote}”{paused.verdict === 'redirect' ? ' They point to someone else now.' : ''}</p>}
+    {unchecked && <p role="status">{later.length ? `${referrer} wrote again after the handoff` : 'The handoff'} has not been read for a hold yet. Retry research to read it.</p>}
+    {r?.status === 'verified' && !r.draft && !leadId && r.reason && <p>{r.reason}</p>}
+    {contact && contact.draft && !blocked && <>
       {r?.candidate && <h4>Possible match: {contact.name}</h4>}
       <p>{contact.summary}</p>
-      <p className="dm-meta">Draft from {t.client_id === 'swishdm' ? 'Jonathan' : t.client_id === 'risedtc' ? 'Mattan' : t.client_id === 'arch' ? 'Davorin' : 'Ivan'}. Review it on LinkedIn. Connection status has not been checked.</p>
-      <textarea aria-label={`DM draft for ${contact.name}`} readOnly value={contact.draft ?? ''} rows={5} />
+      <p className="dm-meta">Draft from {t.client_id === 'swishdm' ? 'Jonathan' : t.client_id === 'risedtc' ? 'Mattan' : t.client_id === 'arch' ? 'Davorin' : 'Ivan'}. {canCreate ? `It goes out as a LinkedIn invite note (${noteText.length}/${INVITE_NOTE_LIMIT}). Check whether Davorin already messaged ${person} by hand first.` : 'Review it on LinkedIn. Connection status has not been checked.'}</p>
+      <textarea aria-label={`DM draft for ${contact.name}`} readOnly={!canCreate} value={canCreate ? noteText : contact.draft ?? ''} onChange={e => setNote({ stamp, text: e.target.value })} rows={5} disabled={acting.busy} />
       <div className="dm-referral-actions">
+        {canCreate && <button type="button" className="dm-k" disabled={acting.busy || !noteText.trim() || noteText.trim().length > INVITE_NOTE_LIMIT} onClick={() => void create()}>{acting.busy ? 'Creating…' : 'Create referred lead'}</button>}
         <button type="button" className="dm-k" onClick={() => void copy('dm')}>{copied === 'dm' ? 'Copied' : 'Copy DM'}</button>
         <a className="d-link" href={contact.linkedin_url!} target="_blank" rel="noreferrer">Open LinkedIn profile</a>
+        {r?.status === 'verified' && !leadId && <button type="button" className="dm-k" disabled={acting.busy} onClick={() => void dismiss()}>Not contacting {person}</button>}
       </div>
+      {canCreate && <p className="dm-meta">Creating the lead sends nothing. The note waits in {person}'s conversation for Send.</p>}
       <details><summary>Research sources</summary>{contact.sources.map(s => <a className="d-link" key={s.url} href={s.url} target="_blank" rel="noreferrer">{s.title}</a>)}</details>
     </>}
-    {r?.email && inbound && <ReferralEmailDraft key={stamp} t={t} inbound={inbound} email={r.email} referredName={r.name} referredCompany={r.company} onStaged={onStaged} />}
+    {acting.error && <p role="alert">{acting.error}</p>}
+    {r?.email && handoff && !blocked && !leadId && !r.dismissed_at && <ReferralEmailDraft key={stamp} t={t} inbound={handoff} email={r.email} referredName={r.name} referredCompany={r.company} onStaged={onStaged} />}
     {r?.email_reason && <p>{r.email_reason}</p>}
     {r?.acknowledgement && !answered && !t.draft && <>
-      <h4>Acknowledgement to {t.prospect_name.split(' ')[0]}</h4>
+      <h4>Acknowledgement to {referrer}</h4>
       <textarea aria-label={`Acknowledgement draft for ${t.prospect_name}`} readOnly value={r.acknowledgement} rows={2} />
       <div className="dm-referral-actions">
         {onUseAcknowledgement && <button type="button" className="dm-k" onClick={() => onUseAcknowledgement(r.acknowledgement!)}>Use acknowledgement</button>}
@@ -63,7 +116,18 @@ export function ReferralCard({ t, onUseAcknowledgement, onStaged }: { t: Thread;
       <p className="dm-meta">Review before sending.</p>
     </>}
     {copyError && <p role="alert">Could not copy. Select the draft above and copy it.</p>}
-    {(result?.error || r?.email_reason || r?.status === 'unresolved' && !r.lead_prospect_id) && <button type="button" className="dm-k" onClick={() => setRetry(n => n + 1)}>Retry research</button>}
+    {open && blocked && <div className="dm-referral-actions"><button type="button" className="dm-k" disabled={acting.busy} onClick={() => void dismiss()}>Not contacting {person}</button></div>}
+    {(result?.error || unchecked || r?.email_reason || r?.status === 'unresolved' && !r.lead_prospect_id || r?.status === 'verified' && !r.draft && !leadId) && <button type="button" className="dm-k" onClick={() => setRetry(n => n + 1)}>Retry research</button>}
+  </section>
+}
+
+/** The referred person's own thread: who pointed us here, and the check before the held invite goes out. */
+function ReferredFrom({ t }: { t: Thread }) {
+  const row = t.messages.find(m => m.ai_model === REFERRAL_LEAD_MODEL)
+  const ev = (row?.draft_evidence ?? {}) as { referrer_prospect_id?: string; referrer_name?: string; review_note?: string }
+  return <section className="dm-referral dm-src" aria-label="Referral">
+    <h3>Referred by {ev.referrer_prospect_id ? <a className="d-link" href={`#exp/d/dms?thread=${encodeURIComponent(ev.referrer_prospect_id)}`}>{ev.referrer_name || 'a previous lead'}</a> : ev.referrer_name || 'a previous lead'}</h3>
+    {row && !row.sent_at && ev.review_note && <p role="note">{ev.review_note}</p>}
   </section>
 }
 

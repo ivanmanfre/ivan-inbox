@@ -131,7 +131,8 @@ describe('server referral warm-up', () => {
     expect(result.referral).toMatchObject({ status: 'verified', draft: dm, offer_verified_at: null })
   })
   it('a cached current-revision result is served without research', async () => {
-    const cached = { status: 'verified', input_message_id: 'handoff', revision: REFERRAL_REVISION, name: 'Larissa Vieira' }
+    const cached = { status: 'verified', input_message_id: 'handoff', revision: REFERRAL_REVISION, name: 'Larissa Vieira', story_key: '',
+      later: { through_message_id: 'handoff', message_ids: [], verdict: 'go', quote: null, checked_at: '2026-10-08T15:30:00Z' } }
     const { result, upstream, saved } = await draft([sentInvite, handoff], null, { ...server, body: { mode: 'referral' }, enrichment: { inbox_referral: cached } })
     expect(result.referral).toEqual(cached)
     expect(upstream).toHaveLength(0)
