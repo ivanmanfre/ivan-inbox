@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // Ivan 11-20: an owed yes on the Ivan and SwishDM lanes said "no draft, write it yourself" while the
 // audit/report was being built. The banner now reads the build stamp and says so.
-import { afterEach, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 import { NoDraftBanner } from './Banners'
 import { NOW, owedNoDraft, threads } from './fixtures'
@@ -9,7 +9,9 @@ import { fetchBuildRaw } from '../../lib/buildStatus'
 
 vi.mock('../../lib/buildStatus', async orig => ({ ...(await orig<typeof import('../../lib/buildStatus')>()), fetchBuildRaw: vi.fn() }))
 vi.mock('../../lib/checkWait', async orig => ({ ...(await orig<typeof import('../../lib/checkWait')>()), fetchCheckState: vi.fn(async () => null) }))
-afterEach(() => { cleanup(); vi.clearAllMocks() })
+// the banner reads the wall clock too (Math.max(now, Date.now())): pin it to the fixtures' NOW
+beforeEach(() => { vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(NOW) })
+afterEach(() => { cleanup(); vi.clearAllMocks(); vi.useRealTimers() })
 
 const H = 3_600_000
 const at = (hoursAgo: number) => new Date(NOW - hoursAgo * H).toISOString()
@@ -35,4 +37,11 @@ it('a stale stamp from an older yes keeps the plain no-draft banner', async () =
   render(<NoDraftBanner t={t} now={NOW} />)
   expect(await screen.findByText(/Kim is owed a reply: today, no draft\./)).toBeTruthy()
   expect(fetchBuildRaw).toHaveBeenCalledWith('p3')
+})
+
+it('a SwishDM reply the detector has not read yet says so, with the right name', async () => {
+  vi.mocked(fetchBuildRaw).mockResolvedValue({ sw: null, sb: null, readAt: null })
+  const [t] = threads(owedNoDraft('p4', { prospect_name: 'C. Jane Example', client_id: 'swishdm' }, 0.05))
+  render(<NoDraftBanner t={t} now={NOW} />)
+  expect(await screen.findByText(/Jane replied 3 min ago\. The drafter has not read it yet\./)).toBeTruthy()
 })

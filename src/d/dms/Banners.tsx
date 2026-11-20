@@ -5,7 +5,7 @@ import { clientOwner, eventTime, isReplyRetryExhausted, isReplyRetryPending, typ
 import { fetchFollowUp, followUpSuggestion, type FollowUp } from '../../lib/followUp'
 import { fetchCheckState, readCheckWait, type CheckState } from '../../lib/checkWait'
 import { fetchScanHold, type ScanHold } from '../../lib/scanHold'
-import { fetchBuildRaw, readIvanBuild, readSwishBuild, type BuildRaw } from '../../lib/buildStatus'
+import { fetchBuildRaw, firstName, readFreshReply, readIvanBuild, readSwishBuild, type BuildRaw } from '../../lib/buildStatus'
 import { formatReturn, returnsIn } from '../../lib/pushLater'
 import { seatOf } from '../seats'
 import { Btn } from '../ui/Key'
@@ -15,7 +15,7 @@ import { warsawDm, warsawDow, warsawHm } from '../ui/time'
 import { owedSince } from './model'
 import type { DmVerbs } from './verbs'
 
-const firstOf = (t: Thread) => t.prospect_name.split(' ')[0] || t.prospect_name
+const firstOf = (t: Thread) => firstName(t.prospect_name) || t.prospect_name
 
 export function OwnerHoldBanner({ t, verbs, onNote, onRetry }: { t: Thread; verbs: DmVerbs; onNote: () => void; onRetry: () => void }) {
   const hold = t.ownerConfirmation
@@ -129,8 +129,10 @@ export function NoDraftBanner({ t, now }: { t: Thread; now: number }) {
   const wait = swish ? readCheckWait(check, t.messages, now) : null
   const since = owedSince(t)
   if (!since) return null
-  const ctx = { first: firstOf(t), since, now, hm: warsawHm }
-  const built = build ? (swish ? readSwishBuild(build.sw, ctx) : ivan ? readIvanBuild(build.sb, ctx) : null) : null
+  // the minute re-read re-renders, so Date.now() keeps 'N min ago' and the fresh-reply window current even if `now` is the load time
+  const ctx = { first: firstOf(t), since, now: Math.max(now, Date.now()), hm: warsawHm }
+  const built = (build ? (swish ? readSwishBuild(build.sw, ctx) : ivan ? readIvanBuild(build.sb, ctx) : null) : null)
+    ?? (swish ? readFreshReply(ctx, 15, build?.readAt) : ivan ? readFreshReply(ctx, 5) : null)
   const days = Math.max(0, Math.round((now - Date.parse(since)) / 86_400_000))
   if (t.client_id === 'anna') return <div className="dm-ban dm-ban-hl"><b>{firstOf(t)} is waiting for a reply.</b><p>Write your reply below, or use Draft it to prepare a reply for review.</p></div>
   if (wait) return (
