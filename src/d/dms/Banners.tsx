@@ -5,6 +5,7 @@ import { clientOwner, eventTime, isReplyRetryExhausted, isReplyRetryPending, typ
 import { fetchFollowUp, followUpSuggestion, type FollowUp } from '../../lib/followUp'
 import { fetchCheckState, readCheckWait, type CheckState } from '../../lib/checkWait'
 import { fetchScanHold, type ScanHold } from '../../lib/scanHold'
+import { fetchBuildRaw, readIvanBuild, readSwishBuild, type BuildRaw } from '../../lib/buildStatus'
 import { formatReturn, returnsIn } from '../../lib/pushLater'
 import { seatOf } from '../seats'
 import { Btn } from '../ui/Key'
@@ -112,15 +113,37 @@ export function NoDraftBanner({ t, now }: { t: Thread; now: number }) {
     const iv = setInterval(read, 60_000)
     return () => { live = false; clearInterval(iv) }
   }, [t.prospect_id, swish, lastId])
+  // Ivan + SwishDM: the scan/report/audit build after a yes. Re-read every minute like the check above:
+  // the build moving on changes the prospect row, never the thread.
+  const ivan = seatOf(t.client_id) === 'ivan'
+  const [build, setBuild] = useState<BuildRaw | null>(null)
+  useEffect(() => { setBuild(null) }, [t.prospect_id])
+  useEffect(() => {
+    if (!swish && !ivan) return
+    let live = true
+    const read = () => { fetchBuildRaw(t.prospect_id).then(b => { if (live) setBuild(b) }).catch(() => {}) }
+    read()
+    const iv = setInterval(read, 60_000)
+    return () => { live = false; clearInterval(iv) }
+  }, [t.prospect_id, swish, ivan, lastId])
   const wait = swish ? readCheckWait(check, t.messages, now) : null
   const since = owedSince(t)
   if (!since) return null
+  const ctx = { first: firstOf(t), since, now, hm: warsawHm }
+  const built = build ? (swish ? readSwishBuild(build.sw, ctx) : ivan ? readIvanBuild(build.sb, ctx) : null) : null
   const days = Math.max(0, Math.round((now - Date.parse(since)) / 86_400_000))
   if (t.client_id === 'anna') return <div className="dm-ban dm-ban-hl"><b>{firstOf(t)} is waiting for a reply.</b><p>Write your reply below, or use Draft it to prepare a reply for review.</p></div>
   if (wait) return (
     <div className="dm-ban" data-ban="check-wait">
       <b><DIcon name="time" />{firstOf(t)} replied before the first message. The ChatGPT and Gemini check on {t.prospect_company || 'their brand'} is still running{wait.startedAt ? ` (started ${warsawHm(wait.startedAt)})` : ''}.</b>
       <p>The reply drafts itself here once the check finishes, usually within the hour. You can also write it yourself below.</p>
+    </div>
+  )
+  if (built) return (
+    <div className={built.tone === 'alert' ? 'dm-ban dm-ban-hl' : 'dm-ban'} data-ban="build-status">
+      <b><DIcon name={built.tone === 'alert' ? 'alert' : 'time'} />{built.head}</b>
+      <p>{built.body}</p>
+      {built.url && <div className="dm-ban-row"><a className="d-link" href={built.url} target="_blank" rel="noreferrer" data-verb="build-page">Open the page</a></div>}
     </div>
   )
   if (hold?.owed) return (
