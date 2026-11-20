@@ -106,7 +106,7 @@ grant execute on function public.inbox_referral_dismiss(uuid, uuid) to service_r
 -- profile (li_slug / member id) across every tenant first, because linkedin_url UNIQUE compares raw strings.
 -- An existing ARCH row is linked instead of copied. Another tenant's row, an earlier email to the person, a
 -- probable namesake row or a reply newer than the one the caller checked stops it. Never approves or sends.
-create or replace function public.inbox_referral_create_lead(p_referrer uuid, p_input_message uuid, p_revision integer, p_expected_url text, p_later_ids text[], p_lead jsonb, p_text text, p_evidence jsonb)
+create or replace function public.inbox_referral_create_lead(p_referrer uuid, p_input_message uuid, p_revision integer, p_expected_url text, p_later_ids text[], p_read_at timestamptz, p_lead jsonb, p_text text, p_evidence jsonb)
 returns jsonb
 language plpgsql
 set search_path to 'public'
@@ -141,6 +141,11 @@ begin
   if not inbox_referral_later_ok(p_referrer, ref)
      or (select coalesce(array_agg(x order by x), '{}') from unnest(p_later_ids) x) is distinct from inbox_referral_later_ids(p_referrer, p_input_message) then
     return jsonb_build_object('status', 'error', 'reason', 'A reply after the handoff is not read yet, or it pauses the referral. Refresh the conversation.');
+  end if;
+  -- Nothing was written, sent or discarded on the referrer's thread since the caller's last read of it.
+  if p_read_at is null or exists (select 1 from outreach_messages m where m.prospect_id = p_referrer
+       and (m.created_at > p_read_at or m.sent_at > p_read_at or m.send_blocked_at > p_read_at)) then
+    return jsonb_build_object('status', 'error', 'reason', 'The conversation changed. Refresh to see the current draft.');
   end if;
   if slug is null or li_slug(ref ->> 'linkedin_url') is distinct from slug then
     return jsonb_build_object('status', 'error', 'reason', 'The LinkedIn profile does not match the referral.');
@@ -231,8 +236,8 @@ begin
    where id = p_referrer;
   return jsonb_build_object('status', 'created', 'lead_prospect_id', lead, 'message_id', msg);
 end $function$;
-revoke all on function public.inbox_referral_create_lead(uuid, uuid, integer, text, text[], jsonb, text, jsonb) from public, anon, authenticated;
-grant execute on function public.inbox_referral_create_lead(uuid, uuid, integer, text, text[], jsonb, text, jsonb) to service_role;
+revoke all on function public.inbox_referral_create_lead(uuid, uuid, integer, text, text[], timestamptz, jsonb, text, jsonb) from public, anon, authenticated;
+grant execute on function public.inbox_referral_create_lead(uuid, uuid, integer, text, text[], timestamptz, jsonb, text, jsonb) to service_role;
 
 -- The referrer wrote again while the staged invite waits for Send: store the model's read, and on a hold or
 -- redirect take the invite back to review (never once it is sent).
@@ -267,6 +272,15 @@ begin
 end $function$;
 revoke all on function public.inbox_referral_lead_later(uuid, uuid, jsonb) from public, anon, authenticated;
 grant execute on function public.inbox_referral_lead_later(uuid, uuid, jsonb) to service_role;
+
+-- One spelling of an email envelope (same as emailEnvelope() in referral.ts): to|cc,cc (lowercase, cc sorted).
+create or replace function public.inbox_referral_envelope(p_to text, p_cc jsonb)
+returns text
+language sql immutable
+as $function$
+  select lower(btrim(coalesce(p_to, ''))) || '|' || coalesce((select string_agg(lower(btrim(x)), ',' order by lower(btrim(x)) collate "C")
+    from jsonb_array_elements_text(case when jsonb_typeof(p_cc) = 'array' then p_cc else '[]'::jsonb end) x where btrim(x) <> ''), '')
+$function$;
 
 -- Guard for anything that reaches a referred person (the staged invite, the referral email): approval AND the
 -- sender's claim (sent_at stamped) are refused while a reply from the referrer after the handoff is unread, the read
@@ -304,6 +318,11 @@ begin
   end if;
   if ref ->> 'dismissed_at' is not null then
     raise exception 'This referral was dismissed.';
+  end if;
+  -- A referral email goes only to the recipients the hold read covered (an added Cc is read again first).
+  if new.ai_model = 'inbox_referral_email_v1'
+     and ref -> 'later' ->> 'envelope' is distinct from inbox_referral_envelope(new.recipient_email, new.draft_evidence -> 'email_cc') then
+    raise exception 'The email recipients changed since the referrer''s replies were read. Open their conversation, then try again.';
   end if;
   if not inbox_referral_later_ok(referrer, ref) then
     raise exception 'The referrer wrote again after this referral and it is not read yet, or it pauses the referral. Open their conversation, then try again.';
@@ -382,7 +401,8 @@ begin
         limit 1
       ) l on true
       where p.enrichment_data ? 'inbox_referral'
-        and (p.enrichment_data -> 'inbox_referral' ->> 'status') = 'verified'
+        and ((p.enrichment_data -> 'inbox_referral' ->> 'status') = 'verified'
+             or jsonb_typeof(p.enrichment_data -> 'inbox_referral' -> 'email') = 'object')
         and (nullif(p.enrichment_data -> 'inbox_referral' ->> 'lead_prospect_id', '') is null
              or exists (select 1 from outreach_messages lm where lm.id::text = p.enrichment_data -> 'inbox_referral' ->> 'lead_message_id'
                           and lm.sent_at is null and (lm.send_blocked_at is null or lm.send_blocked_reason like 'referral_paused:%')))

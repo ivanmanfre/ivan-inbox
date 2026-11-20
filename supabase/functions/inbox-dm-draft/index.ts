@@ -1,5 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
-import { draftBreaksRules, INVITE_NOTE_LIMIT, laterChecked, laterInbound, openReferral, referralTarget, storyAfter, storyKey, type ReferralDraft } from './referral.ts'
+import { draftBreaksRules, emailEnvelope, INVITE_NOTE_LIMIT, laterChecked, laterInbound, openReferral, referralTarget, storyAfter, storyKey, type ReferralDraft } from './referral.ts'
 import { judgeLater, redraftReferral, researchReferral, REFERRAL_REVISION } from './research.ts'
 import { apifyProfileDetails } from './apify.ts'
 import { readMentions } from './mention.ts'
@@ -140,6 +140,7 @@ Deno.serve(async req => {
         catch { return respond({ error: 'The LinkedIn profile lookup is unavailable. Try again.' }, 503) }
         if (!profile) return respond({ error: 'The LinkedIn profile could not be read. Try again.' }, 409)
         // The lookup takes seconds: a message sent, a reply or a discard meanwhile means the note is no longer the one reviewed.
+        const readAt = new Date().toISOString()
         const { data: nowRows, error: nowError } = await sb.from('inbox_messages_v').select('id,direction,message_text,sent_at,created_at,send_blocked_reason').eq('prospect_id', id).order('created_at').order('id')
         if (nowError) throw nowError
         type Row = { id: string; direction: string; message_text?: string; sent_at?: string | null; created_at: string; send_blocked_reason?: string | null }
@@ -150,7 +151,7 @@ Deno.serve(async req => {
         if (nowKey !== leadStory) return respond({ error: 'The conversation changed. Refresh to see the current draft.' }, 409)
         const first = (cached.name ?? profile.name).split(/\s+/)[0]
         const { data: made, error: makeError } = await sb.rpc('inbox_referral_create_lead', {
-          p_referrer: id, p_input_message: actionMessage, p_revision: REFERRAL_REVISION, p_expected_url: leadUrl, p_later_ids: later.map(m => m.id),
+          p_referrer: id, p_input_message: actionMessage, p_revision: REFERRAL_REVISION, p_expected_url: leadUrl, p_later_ids: later.map(m => m.id), p_read_at: readAt,
           p_lead: { linkedin_url: `https://www.linkedin.com/in/${profile.public_identifier}`, provider_id: profile.provider_id,
             name: cached.name ?? profile.name, headline: profile.headline, company: cached.company, title: cached.role,
             location: profile.location, country: profile.country, city: profile.city, state: profile.state,
@@ -178,6 +179,15 @@ Deno.serve(async req => {
         }
       }
       const pick = referralTarget(conversation, cached, dismissedIds)
+      // The email recipients the hold read must cover: a staged referral email as the operator left it, else the drafted one.
+      const { data: emailRows, error: emailError } = await sb.from('outreach_messages').select('recipient_email,draft_evidence,sent_at,send_blocked_at')
+        .eq('prospect_id', id).eq('ai_model', 'inbox_referral_email_v1')
+      if (emailError) throw emailError
+      const envelopeFor = (r: ReferralDraft) => {
+        type E = { recipient_email?: string | null; draft_evidence?: { referral_input_message_id?: string; email_cc?: string[] } | null; sent_at?: string | null; send_blocked_at?: string | null }
+        const staged = ((emailRows ?? []) as E[]).find(m => !m.sent_at && !m.send_blocked_at && m.recipient_email && m.draft_evidence?.referral_input_message_id === r.input_message_id)
+        return staged ? emailEnvelope(staged.recipient_email!, staged.draft_evidence?.email_cc ?? []) : r.email?.to ? emailEnvelope(r.email.to, r.email.cc ?? []) : null
+      }
       if (!pick) return respond({ referral: null })
       let target = pick.inbound
       let referral: ReferralDraft
@@ -203,10 +213,11 @@ Deno.serve(async req => {
       // What the referrer wrote after the handoff: thanks or an emoji leave it standing; "hold off" pauses it.
       const later = laterInbound(conversation, target.id)
       // Read for a hold whenever something can reach the person: a verified profile, or an email address to write to.
-      if ((referral.status === 'verified' || referral.email) && !referral.lead_prospect_id && !referral.dismissed_at && !laterChecked(referral, later)) {
+      const envelope = envelopeFor(referral)
+      if ((referral.status === 'verified' || referral.email) && !referral.lead_prospect_id && !referral.dismissed_at && !laterChecked(referral, later, envelope)) {
         try {
           const after = conversation.slice(conversation.findIndex(m => m.id === target.id) + 1).map(m => ({ speaker: speakerOf(m), text: m.message_text }))
-          referral = { ...referral, later: await judgeLater({ referrer: rows[0].prospect_name, author: canon.author, person: `${referral.name ?? 'the referred person'}${referral.email?.cc?.length ? ` (and the people copied on the email: ${referral.email.cc.join(', ')})` : ''}`, handoffId: target.id, handoff: target.message_text, after, later }) }
+          referral = { ...referral, later: { ...await judgeLater({ referrer: rows[0].prospect_name, author: canon.author, person: `${referral.name ?? 'the referred person'}${envelope ? ` (the email goes to ${envelope.split('|')[0]}${envelope.split('|')[1] ? `, copying ${envelope.split('|')[1]}` : ''}; a hold on anyone on it counts)` : ''}`, handoffId: target.id, handoff: target.message_text, after, later }), envelope } }
           changed = true
         } catch { /* stays unchecked: the card shows it and Create waits */ }
       }

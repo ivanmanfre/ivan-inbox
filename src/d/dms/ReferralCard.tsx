@@ -6,7 +6,8 @@ import { ReferredLeadCard } from './ReferredLeadCard'
 import { threadEmailSender } from '../../lib/inbox'
 
 // Any reply, sent message or discard changes what the draft must fit, so the card asks again.
-const inboundStamp = (t: Thread) => t.messages.filter(m => m.direction === 'inbound' || m.sent_at || /^discarded/.test(m.send_blocked_reason ?? '')).map(m => m.id).join(',')
+const inboundStamp = (t: Thread) => t.messages.filter(m => m.direction === 'inbound' || m.sent_at || /^discarded/.test(m.send_blocked_reason ?? '')
+  || m.ai_model === 'inbox_referral_email_v1').map(m => `${m.id}:${m.recipient_email ?? ''}:${(m.email_cc ?? m.draft_evidence?.email_cc ?? []).join(',')}`).join(',')
 
 export function ReferralCard({ t, onUseAcknowledgement, onStaged }: { t: Thread; onUseAcknowledgement?: (text: string) => void; onStaged?: () => void }) {
   // The stored referral decides whether a verified handoff stays open after later replies, so read it first.

@@ -36,7 +36,13 @@ export type ReferralEmail = { to: string; cc: string[]; subject: string; body: s
  * contact them, they left. redirect = talk to someone else instead. */
 export type ReferralLater = { through_message_id: string; verdict: 'go' | 'hold' | 'redirect'; quote: string | null; checked_at: string
   /** Every inbound id after the handoff that the check read (a reply imported late with an earlier time changes it). */
-  message_ids?: string[] }
+  message_ids?: string[]
+  /** The email recipients the check covered (To|Cc), when the referral has an email. */
+  envelope?: string | null }
+
+/** One spelling of an email envelope for comparison (same as inbox_referral_envelope() in SQL). */
+export const emailEnvelope = (to: string, cc: readonly string[] = []) =>
+  `${to.trim().toLowerCase()}|${cc.map(c => c.trim().toLowerCase()).filter(Boolean).sort().join(',')}`
 
 /** LinkedIn's limit for an invitation note. The first touch to a referred person goes out as an invite. */
 export const INVITE_NOTE_LIMIT = 300
@@ -86,9 +92,10 @@ export function laterInbound<T extends ReferralMessage>(messages: readonly T[], 
 
 /** The stored check read exactly these replies. The handoff itself is read too ("hold off until January, then talk
  * to Tomas"), so a check is needed even when nothing came after it. */
-export function laterChecked(r: Pick<ReferralDraft, 'later'>, later: readonly ReferralMessage[]): boolean {
+export function laterChecked(r: Pick<ReferralDraft, 'later'>, later: readonly ReferralMessage[], envelope?: string | null): boolean {
   const ids = r.later?.message_ids
   return Array.isArray(ids) && ids.length === later.length && later.every(m => ids.includes(m.id))
+    && (envelope === undefined || (r.later?.envelope ?? null) === envelope)
 }
 
 /** What the drafter read after the handoff: every reply, every message we sent, and the operator's discarded drafts. */

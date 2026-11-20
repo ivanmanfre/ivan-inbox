@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { laterChecked, laterInbound, openReferral, readLaterVerdict, referralTarget } from '../../supabase/functions/inbox-dm-draft/referral'
+import { emailEnvelope, laterChecked, laterInbound, openReferral, readLaterVerdict, referralTarget } from '../../supabase/functions/inbox-dm-draft/referral'
 
 // Invented thread: Priya (the prospect) points the author to Tomas Weller at a made-up studio.
 const at = (min: number) => new Date(Date.UTC(2026, 10, 5, 12, min)).toISOString()
@@ -69,5 +69,15 @@ describe('later messages after the handoff', () => {
   it('an unreadable verdict pauses instead of contacting', () => {
     expect(readLaterVerdict({ verdict: 'maybe' }, later).verdict).toBe('hold')
     expect(readLaterVerdict({ verdict: 'go', quote: 'You too!' }, later)).toEqual({ verdict: 'go', quote: null })
+  })
+})
+
+describe('referral email recipients', () => {
+  it('a hold read covers one exact To/Cc; an added Cc needs a new read', () => {
+    const env = emailEnvelope(' Tomas@Example.test ', ['mina@example.test', 'Ana@example.test'])
+    expect(env).toBe('tomas@example.test|ana@example.test,mina@example.test')
+    const read = { later: { through_message_id: 'handoff', message_ids: [], verdict: 'go' as const, quote: null, checked_at: at(20), envelope: emailEnvelope('tomas@example.test') } }
+    expect(laterChecked(read, [], emailEnvelope('tomas@example.test'))).toBe(true)
+    expect(laterChecked(read, [], env)).toBe(false)
   })
 })
