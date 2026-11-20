@@ -171,7 +171,15 @@ export function plainEmailDocument(text: string): EmailRichNode {
 const SIGNERS = {
   'davorin@madebyarch.com': { name: 'Davorin Šmit', first: 'Davorin', company: 'ARCH', url: 'https://arch.agency', domain: 'arch.agency' },
   'itsmattan@risedtc.com': { name: 'Mattan Danino', first: 'Mattan', company: 'RISE', url: 'https://risedtc.com', domain: 'risedtc.com' },
+  // Ivan 11-20: SwishDM emails went out with no signature block, unlike Rise and Arch
+  'john@madebyswishdm.com': { name: 'Jonathan Kiekbusch', first: 'Jonathan', company: 'SwishDM', url: 'https://swishdm.com', domain: 'swishdm.com' },
 } as const
+
+// The typed sign-off a legacy draft ends with, per signer: company line and name line.
+const LEGACY_COMPANY: Record<string, RegExp> = { RISE: /^RISE(?: DTC)?$/i, ARCH: /^ARCH$/i, SwishDM: /^SwishDM$/i }
+const LEGACY_NAME: Record<string, RegExp> = { Davorin: /^(?:Davorin|Davorin (?:Šmit|Smit))$/i, Mattan: /^(?:Mattan|Mattan Danino)$/i, Jonathan: /^(?:Jonathan|Jonathan Kiekbusch|John)$/i }
+// SwishDM drafts keep their "Cheers," above the block, as Rise's drafted emails read; Rise/Arch legacy imports drop it as before.
+const KEEPS_CLOSER = new Set(['Jonathan'])
 
 function signer(from: string) {
   const address = (from.match(/<([^<>]+)>/)?.[1] ?? from).trim().toLowerCase()
@@ -209,13 +217,13 @@ export function stripLegacyEmailSignature(body: string, from: string): string {
   const site = new RegExp('^(?:https?:\\/\\/)?(?:www\\.)?' + domain + '\\/?$', 'i')
   let hasSite = false
   if (site.test(last())) { lines.pop(); popBlank(); hasSite = true }
-  const company = cfg.company === 'RISE' ? /^RISE(?: DTC)?$/i : /^ARCH$/i
+  const company = LEGACY_COMPANY[cfg.company]
   let hasCompany = false
   if (company.test(last())) { lines.pop(); popBlank(); hasCompany = true }
-  const names = cfg.first === 'Davorin' ? /^(?:Davorin|Davorin (?:Šmit|Smit))$/i : /^(?:Mattan|Mattan Danino)$/i
+  const names = LEGACY_NAME[cfg.first]
   if ((!hasCompany && !hasSite) || !names.test(last())) return body
   lines.pop()
   popBlank()
-  if (/^(?:Cheers|Best|Best regards|Regards|Thanks)[,!]?$/i.test(last())) { lines.pop(); popBlank() }
+  if (!KEEPS_CLOSER.has(cfg.first) && /^(?:Cheers|Best|Best regards|Regards|Thanks)[,!]?$/i.test(last())) { lines.pop(); popBlank() }
   return lines.join('\n').trimEnd()
 }
