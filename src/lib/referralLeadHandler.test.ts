@@ -21,7 +21,8 @@ const verified = { status: 'verified', input_message_id: HANDOFF, name: 'Tomas W
   linkedin_url: 'https://www.linkedin.com/in/tomas-weller-test', summary: 'Tomas Weller is Influencer Manager at Northwind Games.', reason: null,
   draft: 'Hey Tomas\n\nPriya said you are the person for creator campaigns at Northwind.\n\nAre you running them in-house or with an agency?',
   sources: [{ url: 'https://www.linkedin.com/in/tomas-weller-test', title: 'Tomas Weller | LinkedIn profile search' }], acknowledgement: "Thanks Priya, I'll reach out to Tomas." }
-const keyAfter = (...later: { id: string; message_text: string; direction: string; created_at: string }[]) => storyKey(later, [])
+// The story after the handoff: our sent acknowledgement plus the replies.
+const keyAfter = (...later: { id: string; message_text: string; direction: string; created_at: string }[]) => storyKey([ack, ...later], [])
 const checked = (...ids: string[]) => ({ through_message_id: ids.at(-1) ?? HANDOFF, message_ids: ids, verdict: 'go', quote: null, checked_at: at(31) })
 const redrafted = 'Hey Tomas\n\nPriya said you are the person for creator campaigns at Northwind.\n\nWhat do you measure that work on these days?'
 
@@ -141,7 +142,7 @@ describe('create referred lead', () => {
   const ready = { ...verified, revision: REFERRAL_REVISION, story_key: keyAfter(youToo), later: checked('later-1') }
   const profile = [{ id: 'ACoAA-test-tomas', publicIdentifier: 'tomas-weller-test', firstName: 'Tomas', lastName: 'Weller', headline: 'Influencer Manager',
     location: { linkedinText: 'Lisbon, Portugal', parsed: { country: 'Portugal', city: 'Lisbon', state: null } } }]
-  const body = (draft = verified.draft, linkedin_url = verified.linkedin_url) => ({ mode: 'referral_lead', input_message_id: HANDOFF, draft, linkedin_url })
+  const body = (draft = verified.draft, linkedin_url = verified.linkedin_url) => ({ mode: 'referral_lead', input_message_id: HANDOFF, draft, linkedin_url, story_key: keyAfter(youToo) })
   it('stages one held invite note through the database function, flagged for a by-hand check', async () => {
     const { status, result, calls, apifyBodies } = await run([pitch, handoff, ack, youToo], { body: body(), enrichment: { inbox_referral: ready }, apify: profile,
       rpc: fn => fn === 'inbox_referral_create_lead' ? { status: 'created', lead_prospect_id: '00000000-0000-4000-8000-0000000000aa', message_id: 'm' } : true })
@@ -164,6 +165,8 @@ describe('create referred lead', () => {
     const long = await run([pitch, handoff, ack, youToo], { body: body('x'.repeat(301)), enrichment: { inbox_referral: ready } })
     expect(long.status).toBe(400)
     expect(long.result.error).toContain('300')
+    // The card showed a draft written before the latest message we sent.
+    expect((await run([pitch, handoff, ack, youToo], { body: { ...body(), story_key: 'older-story' }, enrichment: { inbox_referral: ready } })).status).toBe(409)
     // The card reviewed another person than the one stored now.
     expect((await run([pitch, handoff, ack, youToo], { body: body(verified.draft, 'https://www.linkedin.com/in/someone-else-test'), enrichment: { inbox_referral: ready } })).status).toBe(409)
     const rise = [pitch, handoff, ack, youToo].map(r => ({ ...r, client_id: 'risedtc' }))

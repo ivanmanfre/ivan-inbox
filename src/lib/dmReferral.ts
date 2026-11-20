@@ -6,17 +6,18 @@ import { referralTarget, type ReferralDraft } from '../../supabase/functions/inb
 const REFERRAL_CLIENTS = ['ivan', 'arch', 'risedtc']
 /** The inbound the referral card is about: a fresh handoff, or an open verified referral that later replies
  * ("You too!", an emoji) must not hide. `cached` is the referrer's stored inbox_referral. */
-export function referralInbound(t: Thread, cached?: unknown) {
+export function referralInbound(t: Thread, cached?: unknown, dismissed: readonly string[] = []) {
   if (t.spam || t.blacklisted || t.channel === 'email' || !REFERRAL_CLIENTS.includes(t.client_id)
     || ['archived', 'skipped', 'disqualified', 'unsubscribed', 'blacklisted'].includes(t.stage)) return null
-  return referralTarget(t.messages, cached)?.inbound ?? null
+  return referralTarget(t.messages, cached, dismissed)?.inbound ?? null
 }
 
-/** The referrer's stored referral, read before deciding whether the card shows. */
-export async function readStoredReferral(prospectId: string): Promise<unknown> {
-  const { data, error } = await supabase.from('outreach_prospects').select('referral:enrichment_data->inbox_referral').eq('id', prospectId).single()
+/** The referrer's stored referral and every handoff the operator dismissed, read before deciding whether the card shows. */
+export async function readStoredReferral(prospectId: string): Promise<{ referral: unknown; dismissed: string[] }> {
+  const { data, error } = await supabase.from('outreach_prospects').select('referral:enrichment_data->inbox_referral,dismissed:enrichment_data->inbox_referral_dismissed').eq('id', prospectId).single()
   if (error) throw error
-  return (data as { referral?: unknown } | null)?.referral ?? null
+  const row = data as { referral?: unknown; dismissed?: unknown } | null
+  return { referral: row?.referral ?? null, dismissed: Array.isArray(row?.dismissed) ? row!.dismissed.filter((x): x is string => typeof x === 'string') : [] }
 }
 
 async function callDraft(body: Record<string, unknown>, timeout: number): Promise<Record<string, unknown>> {
@@ -32,8 +33,8 @@ async function callDraft(body: Record<string, unknown>, timeout: number): Promis
 }
 
 const pending = new Map<string, Promise<ReferralDraft | null>>()
-export async function requestDmReferral(t: Thread, retry = false, cached?: unknown): Promise<ReferralDraft | null> {
-  const inbound = referralInbound(t, cached)
+export async function requestDmReferral(t: Thread, retry = false, cached?: unknown, dismissed: readonly string[] = []): Promise<ReferralDraft | null> {
+  const inbound = referralInbound(t, cached, dismissed)
   if (!inbound) return null
   const stamp = `${t.prospect_id}:${inbound.id}:${retry}`
   const running = pending.get(stamp)
@@ -53,8 +54,8 @@ export async function requestDmReferral(t: Thread, retry = false, cached?: unkno
    thread (approved_at and sent_at null). Davorin approves it through the normal Send; this never approves or sends. */
 export const REFERRAL_LEAD_MODEL = 'inbox_referral_lead_v1'
 export type ReferredLeadResult = { status: 'created' | 'linked_existing' | 'exists'; lead_prospect_id: string; stage?: string; sent?: number; drafts?: number }
-export async function createReferredLead(t: Thread, inputMessageId: string, draft: string, linkedinUrl: string): Promise<ReferredLeadResult> {
-  const result = await callDraft({ prospect_id: t.prospect_id, mode: 'referral_lead', input_message_id: inputMessageId, draft, linkedin_url: linkedinUrl }, 140_000)
+export async function createReferredLead(t: Thread, inputMessageId: string, draft: string, linkedinUrl: string, storyKey: string): Promise<ReferredLeadResult> {
+  const result = await callDraft({ prospect_id: t.prospect_id, mode: 'referral_lead', input_message_id: inputMessageId, draft, linkedin_url: linkedinUrl, story_key: storyKey }, 140_000)
   return result.lead as ReferredLeadResult
 }
 export async function dismissReferral(t: Thread, inputMessageId: string): Promise<void> {

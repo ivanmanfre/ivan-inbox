@@ -15,7 +15,9 @@ const text = "Yes, it's handled by the Gambit team. You can contact Guillaume or
 const handoff = msg({ id: 'handoff', prospect_id: 'elea', prospect_name: 'Éléa G.', prospect_company: 'Panache Jeux Numériques', client_id: 'arch', direction: 'inbound', message_text: text, sent_at: '2026-11-05T17:13:25Z', created_at: '2026-11-05T17:15:29Z' })
 const email = { to: 'guillaume@gambitdigital.ca', cc: ['laurene@gambitdigital.ca'], subject: 'Éléa from Panache pointed me your way', body: 'Hi Guillaume\n\nÉléa said you handle creator work for Panache.\n\nDavorin' }
 const referral = { status: 'unresolved', input_message_id: 'handoff', name: 'Guillaume', company: 'Gambit Digital', role: null, linkedin_url: null, summary: null, draft: null, sources: [], revision: 8,
-  reason: 'No single LinkedIn profile named Guillaume with a current Gambit Digital role was found.', acknowledgement: "Thanks Éléa, I'll reach out to Guillaume.", email, email_reason: null }
+  reason: 'No single LinkedIn profile named Guillaume with a current Gambit Digital role was found.', acknowledgement: "Thanks Éléa, I'll reach out to Guillaume.", email, email_reason: null,
+  // The handoff was read for a hold (go): the email is offered.
+  later: { through_message_id: 'handoff', message_ids: [], verdict: 'go', quote: null, checked_at: '2026-11-05T19:00:00Z' } }
 
 beforeEach(() => { cleanup(); vi.clearAllMocks(); window.fetch = fetch; fetch.mockResolvedValue({ ok: true, json: async () => ({ referral }) }) })
 describe('referral email on the card (Éléa G. -> Gambit)', () => {

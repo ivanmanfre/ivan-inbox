@@ -5,24 +5,26 @@ import { INVITE_NOTE_LIMIT, laterChecked, laterInbound, type ReferralDraft, type
 import { ReferredLeadCard } from './ReferredLeadCard'
 import { threadEmailSender } from '../../lib/inbox'
 
-const inboundStamp = (t: Thread) => t.messages.filter(m => m.direction === 'inbound').map(m => m.id).join(',')
+// Any reply, sent message or discard changes what the draft must fit, so the card asks again.
+const inboundStamp = (t: Thread) => t.messages.filter(m => m.direction === 'inbound' || m.sent_at || /^discarded/.test(m.send_blocked_reason ?? '')).map(m => m.id).join(',')
 
 export function ReferralCard({ t, onUseAcknowledgement, onStaged }: { t: Thread; onUseAcknowledgement?: (text: string) => void; onStaged?: () => void }) {
   // The stored referral decides whether a verified handoff stays open after later replies, so read it first.
-  const [stored, setStored] = useState<{ key: string; value: unknown } | null>(null)
+  const [stored, setStored] = useState<{ key: string; value: unknown; dismissed: string[] } | null>(null)
   const storedKey = `${t.prospect_id}:${inboundStamp(t)}`
   const isLead = t.messages.some(m => m.ai_model === REFERRAL_LEAD_MODEL)
   const eligible = ['ivan', 'arch', 'risedtc'].includes(t.client_id) && !t.spam && !t.blacklisted
   useEffect(() => {
     if (isLead || !eligible) return
     let current = true
-    void readStoredReferral(t.prospect_id).then(value => { if (current) setStored({ key: storedKey, value }) })
-      .catch(() => { if (current) setStored({ key: storedKey, value: null }) })
+    void readStoredReferral(t.prospect_id).then(({ referral, dismissed }) => { if (current) setStored({ key: storedKey, value: referral, dismissed }) })
+      .catch(() => { if (current) setStored({ key: storedKey, value: null, dismissed: [] }) })
     return () => { current = false }
   }, [storedKey, isLead, eligible]) // eslint-disable-line react-hooks/exhaustive-deps
   const cached = stored?.key === storedKey ? stored.value : undefined
-  const inbound = cached === undefined ? null : referralInbound(t, cached)
-  const stamp = inbound ? `${t.prospect_id}:${inbound.id}` : ''
+  const dismissedIds = stored?.key === storedKey ? stored.dismissed : []
+  const inbound = cached === undefined ? null : referralInbound(t, cached, dismissedIds)
+  const stamp = inbound ? `${storedKey}:${inbound.id}` : ''
   const [retry, setRetry] = useState(0)
   const [state, setState] = useState<{ stamp: string; data: ReferralDraft | null; error: string | null } | null>(null)
   const [copied, setCopied] = useState<'dm' | 'ack' | null>(null)
@@ -33,7 +35,7 @@ export function ReferralCard({ t, onUseAcknowledgement, onStaged }: { t: Thread;
     if (!stamp) return
     let current = true
     setState(null); setCopied(null); setCopyError(false); setNote(null); setActing({ busy: false, error: null, lead: null, dismissed: false })
-    void requestDmReferral(t, retry > 0, cached).then(data => {
+    void requestDmReferral(t, retry > 0, cached, dismissedIds).then(data => {
       if (current) setState({ stamp, data, error: null })
     }).catch(e => {
       if (current) setState({ stamp, data: null, error: e instanceof Error ? e.message : 'Research could not finish.' })
@@ -53,8 +55,8 @@ export function ReferralCard({ t, onUseAcknowledgement, onStaged }: { t: Thread;
   const referrer = t.prospect_name.split(' ')[0]
   const person = (r?.name ?? '').split(' ')[0] || 'them'
   // What the referrer wrote after the handoff, as read by the model: thanks or an emoji leave it open.
-  const later = r?.status === 'verified' ? laterInbound(t.messages, r.input_message_id) : []
-  const open = r?.status === 'verified' && !leadId && !r.dismissed_at
+  const later = r ? laterInbound(t.messages, r.input_message_id) : []
+  const open = Boolean(r && (r.status === 'verified' || r.email) && !leadId && !r.dismissed_at)
   const unchecked = open && !laterChecked(r!, later)
   const paused = open && !unchecked && r!.later?.verdict !== 'go' ? r!.later : null
   // While paused or unread, nothing that reaches the person is offered (no copy, no email, no lead).
@@ -67,7 +69,7 @@ export function ReferralCard({ t, onUseAcknowledgement, onStaged }: { t: Thread;
   }
   const create = async () => {
     setActing(a => ({ ...a, busy: true, error: null }))
-    try { const lead = await createReferredLead(t, r!.input_message_id, noteText, r!.linkedin_url!); setActing(a => ({ ...a, busy: false, lead })); onStaged?.() }
+    try { const lead = await createReferredLead(t, r!.input_message_id, noteText, r!.linkedin_url!, r!.story_key ?? ''); setActing(a => ({ ...a, busy: false, lead })); onStaged?.() }
     catch (e) { setActing(a => ({ ...a, busy: false, error: e instanceof Error ? e.message : 'The lead could not be created. Try again.' })) }
   }
   const dismiss = async () => {
@@ -113,7 +115,7 @@ export function ReferralCard({ t, onUseAcknowledgement, onStaged }: { t: Thread;
       <p className="dm-meta">Review before sending.</p>
     </>}
     {copyError && <p role="alert">Could not copy. Select the draft above and copy it.</p>}
-    {r?.status === 'verified' && blocked && <div className="dm-referral-actions"><button type="button" className="dm-k" disabled={acting.busy} onClick={() => void dismiss()}>Not contacting {person}</button></div>}
+    {open && blocked && <div className="dm-referral-actions"><button type="button" className="dm-k" disabled={acting.busy} onClick={() => void dismiss()}>Not contacting {person}</button></div>}
     {(result?.error || unchecked || r?.email_reason || r?.status === 'unresolved' && !r.lead_prospect_id || r?.status === 'verified' && !r.draft && !leadId) && <button type="button" className="dm-k" onClick={() => setRetry(n => n + 1)}>Retry research</button>}
   </section>
 }

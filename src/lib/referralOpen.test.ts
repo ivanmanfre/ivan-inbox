@@ -57,8 +57,10 @@ describe('later messages after the handoff', () => {
     expect(laterChecked({}, [])).toBe(false)
     expect(laterChecked(check([]), [])).toBe(true)
   })
-  it('a dismissed handoff stays closed even while it is the newest message', () => {
+  it('a dismissed handoff stays closed even while it is the newest message, and after another handoff was saved', () => {
     expect(referralTarget([pitch, handoff], { ...verified, dismissed_at: at(20) })).toBeNull()
+    const other = { ...verified, input_message_id: 'older', dismissed_at: null }
+    expect(referralTarget([pitch, handoff], other, ['handoff'])).toBeNull()
   })
   it('a hold must quote the referrer; an invented quote falls back to their newest words', () => {
     expect(readLaterVerdict({ verdict: 'hold', quote: 'please hold off until January' }, later)).toEqual({ verdict: 'hold', quote: 'please hold off until January' })

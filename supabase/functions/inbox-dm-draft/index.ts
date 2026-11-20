@@ -1,5 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
-import { draftBreaksRules, INVITE_NOTE_LIMIT, laterChecked, laterInbound, openReferral, referralTarget, storyKey, type ReferralDraft } from './referral.ts'
+import { draftBreaksRules, INVITE_NOTE_LIMIT, laterChecked, laterInbound, openReferral, referralTarget, storyAfter, storyKey, type ReferralDraft } from './referral.ts'
 import { judgeLater, redraftReferral, researchReferral, REFERRAL_REVISION } from './research.ts'
 import { apifyProfileDetails } from './apify.ts'
 import { readMentions } from './mention.ts'
@@ -47,7 +47,7 @@ Deno.serve(async req => {
   let id: string
   let referralMode = false, retryReferral = false, annaMode: 'anna_auto' | 'anna_followup' | null = null
   // Operator actions on a verified referral card. Signed-in owner only; the cron never takes them.
-  let referralAction: 'referral_lead' | 'referral_dismiss' | null = null, actionMessage = '', leadNote = '', leadUrl = ''
+  let referralAction: 'referral_lead' | 'referral_dismiss' | null = null, actionMessage = '', leadNote = '', leadUrl = '', leadStory = ''
   const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
   try {
     const body = await req.json()
@@ -65,6 +65,7 @@ Deno.serve(async req => {
         leadNote = body.draft.replace(/\r\n/g, '\n').trim()
         // The profile the operator reviewed: a research save in between (another person) never receives this note.
         leadUrl = body.linkedin_url
+        leadStory = typeof body.story_key === 'string' ? body.story_key : ''
       }
     }
   } catch { return respond({ error: 'A conversation is required.' }, 400) }
@@ -110,7 +111,8 @@ Deno.serve(async req => {
           operator_decisions: discardedAfter(handoff).map(m => ({ decision: 'discarded by the operator, never offer it again', text: m.message_text, at: m.created_at })),
         }
       }
-      const keyFor = (handoffId: string) => storyKey(laterInbound(conversation, handoffId), discardedAfter(conversation.find(m => m.id === handoffId)))
+      const keyFor = (handoffId: string) => storyKey(storyAfter(conversation, handoffId), discardedAfter(conversation.find(m => m.id === handoffId)))
+      const dismissedIds: string[] = Array.isArray(prospect.enrichment_data?.inbox_referral_dismissed) ? prospect.enrichment_data.inbox_referral_dismissed : []
       if (referralAction) {
         if (!openReferral(cached) || cached.input_message_id !== actionMessage) return respond({ error: 'The referral changed. Refresh the conversation.' }, 409)
         if (referralAction === 'referral_dismiss') {
@@ -122,6 +124,8 @@ Deno.serve(async req => {
         // through the normal Send; nothing here approves or sends.
         if (client !== 'arch') return respond({ error: 'Referred leads can be created for ARCH conversations only.' }, 409)
         if (leadUrl !== cached.linkedin_url) return respond({ error: 'The referral changed. Refresh the conversation.' }, 409)
+        // The note the operator reviewed was drafted from the conversation as it stands now.
+        if (cached.story_key !== keyFor(cached.input_message_id) || leadStory !== cached.story_key) return respond({ error: 'The conversation changed. Refresh to see the current draft.' }, 409)
         if (cached.revision !== REFERRAL_REVISION || !cached.draft) return respond({ error: 'The draft is being rewritten. Refresh in a minute.' }, 409)
         const later = laterInbound(conversation, cached.input_message_id)
         if (!laterChecked(cached, later)) return respond({ error: 'Their later messages are not checked yet. Refresh in a minute.' }, 409)
@@ -162,7 +166,7 @@ Deno.serve(async req => {
           } catch { /* stays unread: the approval trigger keeps the invite from being approved */ }
         }
       }
-      const pick = referralTarget(conversation, cached)
+      const pick = referralTarget(conversation, cached, dismissedIds)
       if (!pick) return respond({ referral: null })
       let target = pick.inbound
       let referral: ReferralDraft
@@ -187,7 +191,8 @@ Deno.serve(async req => {
       }
       // What the referrer wrote after the handoff: thanks or an emoji leave it standing; "hold off" pauses it.
       const later = laterInbound(conversation, target.id)
-      if (referral.status === 'verified' && !referral.lead_prospect_id && !referral.dismissed_at && !laterChecked(referral, later)) {
+      // Read for a hold whenever something can reach the person: a verified profile, or an email address to write to.
+      if ((referral.status === 'verified' || referral.email) && !referral.lead_prospect_id && !referral.dismissed_at && !laterChecked(referral, later)) {
         try {
           const after = conversation.slice(conversation.findIndex(m => m.id === target.id) + 1).map(m => ({ speaker: speakerOf(m), text: m.message_text }))
           referral = { ...referral, later: await judgeLater({ referrer: rows[0].prospect_name, author: canon.author, person: referral.name ?? 'the referred person', handoffId: target.id, handoff: target.message_text, after, later }) }

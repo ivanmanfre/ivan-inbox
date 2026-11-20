@@ -60,7 +60,7 @@ export function byTime<T extends ReferralMessage>(rows: readonly T[]): T[] {
  * 1. The newest inbound when it reads like a handoff (as before).
  * 2. Else the cached verified referral that is still open, whatever came after it.
  * 3. Else the newest handoff-like inbound in the unanswered turn ("Talk to X" followed by "thanks!"). */
-export function referralTarget<T extends ReferralMessage>(messages: readonly T[], cached: unknown): { inbound: T; anchored: boolean } | null {
+export function referralTarget<T extends ReferralMessage>(messages: readonly T[], cached: unknown, dismissedIds: readonly string[] = []): { inbound: T; anchored: boolean } | null {
   const ordered = byTime(messages)
   const inbound = ordered.filter(m => m.direction === 'inbound' && m.message_text?.trim())
   const latest = inbound.at(-1)
@@ -68,7 +68,7 @@ export function referralTarget<T extends ReferralMessage>(messages: readonly T[]
   const anchor = openReferral(cached) ? inbound.find(m => m.id === cached.input_message_id) : undefined
   const passed = anchor && Array.isArray((cached as ReferralDraft).passed_over) && (cached as ReferralDraft).passed_over!.includes(latest.id)
   // A handoff the operator dismissed stays closed, even while it is still the newest message.
-  const dismissed = (m: T) => Boolean(cached && typeof cached === 'object' && (cached as ReferralDraft).dismissed_at && (cached as ReferralDraft).input_message_id === m.id)
+  const dismissed = (m: T) => dismissedIds.includes(m.id) || Boolean(cached && typeof cached === 'object' && (cached as ReferralDraft).dismissed_at && (cached as ReferralDraft).input_message_id === m.id)
   if (referralCandidate(latest.message_text!) && !passed && !dismissed(latest)) return { inbound: latest, anchored: latest.id === anchor?.id }
   if (anchor) return { inbound: anchor, anchored: true }
   const lastSent = ordered.filter(m => m.direction === 'outbound' && m.sent_at).at(-1)
@@ -91,9 +91,16 @@ export function laterChecked(r: Pick<ReferralDraft, 'later'>, later: readonly Re
   return Array.isArray(ids) && ids.length === later.length && later.every(m => ids.includes(m.id))
 }
 
-/** What the drafter read: the replies after the handoff and the operator's discarded drafts. */
-export function storyKey(later: readonly ReferralMessage[], discarded: readonly { id: string }[]): string {
-  return [...later.map(m => `${m.id}:${(m.message_text ?? '').length}`), ...discarded.map(m => `x${m.id}`)].sort().join(',')
+/** What the drafter read after the handoff: every reply, every message we sent, and the operator's discarded drafts. */
+export function storyKey(after: readonly ReferralMessage[], discarded: readonly { id: string }[]): string {
+  return [...after.map(m => `${m.direction === 'inbound' ? 'i' : 'o'}${m.id}:${(m.message_text ?? '').length}`), ...discarded.map(m => `x${m.id}`)].sort().join(',')
+}
+
+/** Inbound replies and sent messages after the handoff (the conversation the draft must still fit). */
+export function storyAfter<T extends ReferralMessage>(messages: readonly T[], referralId: string): T[] {
+  const ordered = byTime(messages)
+  const i = ordered.findIndex(m => m.id === referralId)
+  return i < 0 ? [] : ordered.slice(i + 1).filter(m => m.message_text?.trim() && (m.direction === 'inbound' || m.sent_at))
 }
 
 /** Read the model's answer about the later messages. A hold or redirect must quote words the referrer wrote;

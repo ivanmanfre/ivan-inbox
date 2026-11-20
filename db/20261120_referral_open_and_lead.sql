@@ -38,6 +38,12 @@ begin
       'lead_prospect_id', cur -> 'lead_prospect_id', 'lead_message_id', cur -> 'lead_message_id',
       'lead_created_at', cur -> 'lead_created_at', 'lead_result', cur -> 'lead_result', 'dismissed_at', cur -> 'dismissed_at'))
     else '{}'::jsonb end;
+  -- A newer handoff replaces this one while its staged invite waits for Send: the invite goes back to review.
+  if cur ->> 'input_message_id' is distinct from p_referral ->> 'input_message_id' and nullif(cur ->> 'lead_message_id', '') is not null then
+    update outreach_messages set approved_at = null, send_blocked_at = now(), send_blocked_reason = 'referral_paused: a newer handoff replaced this referral'
+     where id = (cur ->> 'lead_message_id')::uuid and ai_model = 'inbox_referral_lead_v1' and sent_at is null
+       and (send_blocked_at is null or send_blocked_reason like 'referral_paused:%');
+  end if;
   update outreach_prospects
      set enrichment_data = coalesce(enrichment_data, '{}'::jsonb) || jsonb_build_object('inbox_referral', p_referral || acted)
    where id = p_prospect;
@@ -82,9 +88,11 @@ language plpgsql
 set search_path to 'public'
 as $function$
 begin
+  -- inbox_referral_dismissed keeps every dismissed handoff, so a later save of another handoff cannot revive it.
   update outreach_prospects
-     set enrichment_data = enrichment_data || jsonb_build_object('inbox_referral',
-           (enrichment_data -> 'inbox_referral') || jsonb_build_object('dismissed_at', now()))
+     set enrichment_data = enrichment_data || jsonb_build_object(
+           'inbox_referral', (enrichment_data -> 'inbox_referral') || jsonb_build_object('dismissed_at', now()),
+           'inbox_referral_dismissed', coalesce(enrichment_data -> 'inbox_referral_dismissed', '[]'::jsonb) || to_jsonb(p_input_message::text))
    where id = p_referrer
      and enrichment_data -> 'inbox_referral' ->> 'input_message_id' = p_input_message::text
      and nullif(enrichment_data -> 'inbox_referral' ->> 'lead_prospect_id', '') is null;
@@ -237,44 +245,66 @@ declare ref jsonb;
 begin
   select enrichment_data -> 'inbox_referral' into ref from outreach_prospects where id = p_referrer for update;
   if ref ->> 'input_message_id' is distinct from p_input_message::text or nullif(ref ->> 'lead_message_id', '') is null then return false; end if;
+  -- A read of an older set of replies is stale: the next run reads the current set.
+  if (select coalesce(array_agg(x order by x), '{}') from jsonb_array_elements_text(p_later -> 'message_ids') x)
+     is distinct from inbox_referral_later_ids(p_referrer, p_input_message) then return false; end if;
   update outreach_prospects set enrichment_data = enrichment_data || jsonb_build_object('inbox_referral', ref || jsonb_build_object('later', p_later))
    where id = p_referrer;
   if p_later ->> 'verdict' is distinct from 'go' then
     update outreach_messages
        set approved_at = null, send_blocked_at = now(),
            send_blocked_reason = left('referral_paused: ' || coalesce(p_later ->> 'quote', 'the referrer wrote again'), 300)
-     where id = (ref ->> 'lead_message_id')::uuid and ai_model = 'inbox_referral_lead_v1' and sent_at is null;
+     where id = (ref ->> 'lead_message_id')::uuid and ai_model = 'inbox_referral_lead_v1' and sent_at is null
+       -- Never over an operator's discard or another hold.
+       and (send_blocked_at is null or send_blocked_reason like 'referral_paused:%');
   end if;
   return true;
 end $function$;
 revoke all on function public.inbox_referral_lead_later(uuid, uuid, jsonb) from public, anon, authenticated;
 grant execute on function public.inbox_referral_lead_later(uuid, uuid, jsonb) to service_role;
 
--- Approval guard for the staged invite: Send is refused while a reply from the referrer after the handoff is
--- unread or pauses the referral. Only rows of this model; every other draft is untouched.
-create or replace function public.inbox_referral_lead_approval_guard()
+-- Guard for anything that reaches a referred person (the staged invite, the referral email): approval AND the
+-- sender's claim (sent_at stamped) are refused while a reply from the referrer after the handoff is unread, the read
+-- says hold or redirect, the referral was dismissed, or the stored referral is now a different handoff. A refused
+-- claim makes the sender skip the row (its claim catch continues); a hold read later takes approval back.
+create or replace function public.inbox_referral_send_guard()
 returns trigger
 language plpgsql
 security definer
 set search_path to 'public'
 as $function$
-declare ref jsonb;
+declare
+  ref jsonb;
+  referrer uuid;
+  handoff text;
 begin
-  if new.ai_model is distinct from 'inbox_referral_lead_v1' or new.approved_at is null or old.approved_at is not null or new.sent_at is not null then
+  if new.direction is distinct from 'outbound' then return new; end if;
+  if new.ai_model = 'inbox_referral_lead_v1' then
+    referrer := nullif(new.draft_evidence ->> 'referrer_prospect_id', '')::uuid;
+  elsif new.ai_model = 'inbox_referral_email_v1' then
+    referrer := new.prospect_id;
+  else
     return new;
   end if;
-  select enrichment_data -> 'inbox_referral' into ref from outreach_prospects
-   where id = nullif(new.draft_evidence ->> 'referrer_prospect_id', '')::uuid;
-  if ref is null or ref ->> 'lead_message_id' is distinct from new.id::text then return new; end if;
-  if not inbox_referral_later_ok((new.draft_evidence ->> 'referrer_prospect_id')::uuid, ref) then
+  handoff := new.draft_evidence ->> 'referral_input_message_id';
+  select enrichment_data -> 'inbox_referral' into ref from outreach_prospects where id = referrer;
+  if ref is null or handoff is null or ref ->> 'input_message_id' is distinct from handoff then
+    raise exception 'This referral changed since the draft was made. Open the referrer''s conversation first.';
+  end if;
+  if ref ->> 'dismissed_at' is not null then
+    raise exception 'This referral was dismissed.';
+  end if;
+  if not inbox_referral_later_ok(referrer, ref) then
     raise exception 'The referrer wrote again after this referral and it is not read yet, or it pauses the referral. Open their conversation, then try again.';
   end if;
   return new;
 end $function$;
-drop trigger if exists inbox_referral_lead_approval_guard on public.outreach_messages;
-create trigger inbox_referral_lead_approval_guard before update of approved_at on public.outreach_messages
-  for each row when (new.ai_model = 'inbox_referral_lead_v1' and new.approved_at is not null and old.approved_at is null)
-  execute function public.inbox_referral_lead_approval_guard();
+create trigger inbox_referral_send_guard_approve before update of approved_at on public.outreach_messages
+  for each row when (new.ai_model in ('inbox_referral_lead_v1', 'inbox_referral_email_v1') and new.approved_at is not null and old.approved_at is null and new.sent_at is null)
+  execute function public.inbox_referral_send_guard();
+create trigger inbox_referral_send_guard_claim before update of sent_at on public.outreach_messages
+  for each row when (new.ai_model in ('inbox_referral_lead_v1', 'inbox_referral_email_v1') and old.sent_at is null and new.sent_at is not null)
+  execute function public.inbox_referral_send_guard();
 
 -- Warm-up: new handoff-like replies (any inbound of the last 45 minutes, not only the newest), and open
 -- verified referrals that need a redraft (older revision) or a read of a reply that came after them.
@@ -350,7 +380,8 @@ begin
         and p.stage not in ('archived', 'skipped', 'disqualified', 'unsubscribed', 'blacklisted')
         and coalesce(a.sent_at, a.created_at) > now() - interval '60 days'
         and ((p.enrichment_data -> 'inbox_referral' ->> 'revision') is distinct from '13'
-             or (l.id <> a.id and l.id::text is distinct from p.enrichment_data -> 'inbox_referral' -> 'later' ->> 'through_message_id'))
+             or (select coalesce(array_agg(x order by x), '{}') from jsonb_array_elements_text(p.enrichment_data -> 'inbox_referral' -> 'later' -> 'message_ids') x)
+                is distinct from inbox_referral_later_ids(p.id, a.id))
     )
     select prospect_id, max(at) as at from (select * from fresh union all select * from open_ref) q
     group by prospect_id

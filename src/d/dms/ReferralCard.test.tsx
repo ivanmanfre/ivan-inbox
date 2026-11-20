@@ -151,7 +151,7 @@ describe('verified referral stays open and becomes a lead', () => {
   ])[0]
   const stored = { status: 'verified', input_message_id: HANDOFF, name: 'Tomas Weller', company: 'Northwind Games', role: 'Influencer Manager', summary: 'Influencer Manager at Northwind Games.',
     linkedin_url: 'https://www.linkedin.com/in/tomas-weller-test', draft: 'Hey Tomas\n\nPriya said you run creator campaigns at Northwind.\n\nWhat do you measure them on?', reason: null, sources: [],
-    revision: 13, later: { through_message_id: 'later-1', message_ids: ['later-1'], verdict: 'go', quote: null, checked_at: '2026-11-05T12:31:00Z' } }
+    revision: 13, story_key: 'story-v1', later: { through_message_id: 'later-1', message_ids: ['later-1'], verdict: 'go', quote: null, checked_at: '2026-11-05T12:31:00Z' } }
   it('a "You too!" after the handoff keeps the card, and Create stages the edited note', async () => {
     readLead.mockResolvedValue({ data: { referral: stored }, error: null })
     fetch.mockResolvedValueOnce({ ok: true, json: async () => ({ referral: stored }) })
@@ -163,7 +163,7 @@ describe('verified referral stays open and becomes a lead', () => {
     fireEvent.change(box, { target: { value: 'Hey Tomas, Priya pointed me your way.' } })
     fireEvent.click(screen.getByRole('button', { name: 'Create referred lead' }))
     expect(await screen.findByRole('link', { name: 'Open referred lead' })).toHaveAttribute('href', '#exp/d/dms?thread=00000000-0000-4000-8000-0000000000aa')
-    expect(JSON.parse(fetch.mock.calls[1][1].body)).toEqual({ prospect_id: 'priya', mode: 'referral_lead', input_message_id: HANDOFF, draft: 'Hey Tomas, Priya pointed me your way.', linkedin_url: 'https://www.linkedin.com/in/tomas-weller-test' })
+    expect(JSON.parse(fetch.mock.calls[1][1].body)).toEqual({ prospect_id: 'priya', mode: 'referral_lead', input_message_id: HANDOFF, draft: 'Hey Tomas, Priya pointed me your way.', linkedin_url: 'https://www.linkedin.com/in/tomas-weller-test', story_key: 'story-v1' })
     expect(staged).toHaveBeenCalled()
     expect(screen.queryByRole('button', { name: /^send|^approve/i })).not.toBeInTheDocument()
   })
