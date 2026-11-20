@@ -354,17 +354,28 @@ export async function setBotPushMuted(threadId: string, muted: boolean): Promise
   }
 }
 
-export async function listNotifications(
-  opts: { limit?: number; includeDismissed?: boolean } = {},
-): Promise<Notification[]> {
-  const { limit = 200, includeDismissed = false } = opts
-  let q = supabase.from(NOTIFICATIONS_VIEW).select(NOTIFICATION_COLS)
+function notificationFeed<Columns extends string>(columns: Columns, limit = 200, includeDismissed = false) {
+  let q = supabase.from(NOTIFICATIONS_VIEW).select(columns)
   if (!includeDismissed) q = q.is('dismissed_at', null)
     .not('family', 'in', `(${MUTED_NOTIFICATION_FAMILIES.join(',')})`)
     .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
-  const { data, error } = await q.order('last_seen_at', { ascending: false }).order('id', { ascending: false }).limit(limit)
+  return q.order('last_seen_at', { ascending: false }).order('id', { ascending: false }).limit(limit)
+}
+
+export async function listNotifications(
+  opts: { limit?: number; includeDismissed?: boolean } = {},
+): Promise<Notification[]> {
+  const { data, error } = await notificationFeed(NOTIFICATION_COLS, opts.limit, opts.includeDismissed)
   if (error) throw error
   return (data ?? []) as unknown as Notification[]
+}
+
+export type NotificationHead = Pick<Notification, 'id' | 'family'>
+
+export async function listNotificationHeads(): Promise<NotificationHead[]> {
+  const { data, error } = await notificationFeed('id,family')
+  if (error) throw error
+  return data ?? []
 }
 
 export function isActiveNotification(n: Pick<Notification, 'dismissed_at' | 'expires_at'>, nowMs = Date.now()): boolean {

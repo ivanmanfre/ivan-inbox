@@ -5,7 +5,7 @@ import { renderInFrame } from '../test-utils'
 import { useFrame } from './frame'
 import { useFrameCounts } from '../counts/useFrameCounts'
 import { parseDHash } from '../route'
-import type { Notification } from '../../lib/turns'
+import type { Notification, NotificationHead } from '../../lib/turns'
 
 const id = '123e4567-e89b-42d3-a456-426614174000'
 const row = (overrides: Partial<Notification> = {}): Notification => ({
@@ -16,13 +16,13 @@ const row = (overrides: Partial<Notification> = {}): Notification => ({
   ...overrides,
 })
 const getActiveNotification = vi.fn(async (_id: string): Promise<Notification | null> => row())
-const listNotifications = vi.fn(async (): Promise<Notification[]> => [])
+const listNotificationHeads = vi.fn(async (): Promise<NotificationHead[]> => [])
 const dismissNotification = vi.fn(async () => {})
 const markNotificationsRead = vi.fn(async () => {})
 vi.mock('../../lib/turns', async importOriginal => ({
   ...await importOriginal<typeof import('../../lib/turns')>(),
   getActiveNotification: (...args: Parameters<typeof getActiveNotification>) => getActiveNotification(...args),
-  listNotifications: () => listNotifications(),
+  listNotificationHeads: () => listNotificationHeads(),
   dismissNotification: (...args: Parameters<typeof dismissNotification>) => dismissNotification(...args),
   markNotificationsRead: (...args: Parameters<typeof markNotificationsRead>) => markNotificationsRead(...args),
 }))
@@ -161,18 +161,20 @@ describe('foreground important alerts', () => {
 
   it('seeds launch backlog and resumes without replay, then polls a newly arrived row', async () => {
     vi.useFakeTimers()
-    listNotifications.mockResolvedValueOnce([row()])
+    const backlog = { id, family: 'send_failed_alert' }
+    const fresh = { ...backlog, id: '123e4567-e89b-42d3-a456-426614174002' }
+    listNotificationHeads.mockResolvedValueOnce([backlog])
     renderInFrame(<Alert />)
     await act(async () => { await Promise.resolve() })
-    expect(listNotifications).toHaveBeenCalledTimes(1)
+    expect(listNotificationHeads).toHaveBeenCalledTimes(1)
     expect(screen.queryByLabelText('Important alert')).toBeNull()
     Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' })
     Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' })
     await act(async () => document.dispatchEvent(new Event('visibilitychange')))
     expect(screen.queryByLabelText('Important alert')).toBeNull()
-    listNotifications.mockResolvedValueOnce([row({ id: '123e4567-e89b-42d3-a456-426614174002' }), row()])
+    listNotificationHeads.mockResolvedValueOnce([fresh, backlog])
     await act(async () => { vi.advanceTimersByTime(20_000); await Promise.resolve() })
-    expect(getActiveNotification).toHaveBeenCalledWith('123e4567-e89b-42d3-a456-426614174002')
+    expect(getActiveNotification.mock.calls).toEqual([[fresh.id]])
   })
 
   it('clears an open popup on hide or offline and does not replay it on reconnect', async () => {

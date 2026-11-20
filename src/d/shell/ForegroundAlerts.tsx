@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { isImportantWorkflowFamily, isMutedNotificationFamily } from '../../../supabase/functions/_shared/notification-lifecycle'
 import {
-  dismissNotification, getActiveNotification, isActiveNotification, listNotifications,
+  dismissNotification, getActiveNotification, isActiveNotification, listNotificationHeads,
   markNotificationsRead, routableHash, type Notification,
 } from '../../lib/turns'
 import { pushClientEvent } from '../../lib/pushEvent'
@@ -61,7 +61,7 @@ export function ForegroundAlerts({ host }: { host: ForegroundHost }) {
     const poll = async () => {
       if (document.visibilityState !== 'visible' || !navigator.onLine) return
       try {
-        const rows = (await listNotifications()).filter(row => isImportantWorkflowFamily(row.family) && !isMutedNotificationFamily(row.family))
+        const rows = (await listNotificationHeads()).filter(row => isImportantWorkflowFamily(row.family) && !isMutedNotificationFamily(row.family))
         if (!alive) return
         const fresh = baseline ? [] : rows.filter(row => !seen.current.has(row.id))
         if (baseline) for (const row of rows) seen.current.add(row.id)

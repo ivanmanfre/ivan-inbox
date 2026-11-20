@@ -63,7 +63,7 @@ const {
   THREADS_TABLE, TURNS_TABLE, TURNS_VIEW, abortTurn, dismissGroup, dismissNotification,
   getActiveNotification, getBotThread, getThread, getTurn, groupNotifications, isActiveNotification,
   isUuid, latestThread, listGroupRows, nextNotificationExpiry,
-  listNotifications, listThreads, listTurns, markBotSeen, markNotificationsRead, mergeBackRows,
+  listNotificationHeads, listNotifications, listThreads, listTurns, markBotSeen, markNotificationsRead, mergeBackRows,
   notificationDeepLink, setBotPushMuted,
 } = await import('./turns')
 
@@ -232,6 +232,17 @@ describe('reads go through the views, never the base tables', () => {
     await listNotifications({ includeDismissed: true, limit: 5 })
     expect(steps[1].filters).toEqual([])
     expect(steps[1].limit).toBe(5)
+  })
+
+  it('polls only notification IDs and families using the active feed rules', async () => {
+    const head = { id: U1, family: 'send_failed_alert' }
+    queue.push({ data: [], error: null }, { data: [head], error: null })
+    await listNotifications()
+    expect(await listNotificationHeads()).toEqual([head])
+    expect(steps[0].cols).toContain('body')
+    const normalizeExpiry = (filter: string) => filter.replace(/\.gt\..+$/, '.gt.<now>')
+    expect(steps[1].filters.map(normalizeExpiry)).toEqual(steps[0].filters.map(normalizeExpiry))
+    expect(steps[1]).toMatchObject({ table: NOTIFICATIONS_VIEW, cols: 'id,family', order: 'id:desc', limit: 200 })
   })
 })
 
