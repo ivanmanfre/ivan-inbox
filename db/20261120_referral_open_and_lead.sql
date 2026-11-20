@@ -250,7 +250,12 @@ begin
      is distinct from inbox_referral_later_ids(p_referrer, p_input_message) then return false; end if;
   update outreach_prospects set enrichment_data = enrichment_data || jsonb_build_object('inbox_referral', ref || jsonb_build_object('later', p_later))
    where id = p_referrer;
-  if p_later ->> 'verdict' is distinct from 'go' then
+  if p_later ->> 'verdict' = 'go' then
+    -- "Go ahead after all": a hold this check put on the invite is lifted back to an unapproved draft (Send still decides).
+    update outreach_messages set send_blocked_at = null, send_blocked_reason = null
+     where id = (ref ->> 'lead_message_id')::uuid and ai_model = 'inbox_referral_lead_v1' and sent_at is null
+       and send_blocked_reason like 'referral_paused:%' and send_blocked_reason <> 'referral_paused: a newer handoff replaced this referral';
+  else
     update outreach_messages
        set approved_at = null, send_blocked_at = now(),
            send_blocked_reason = left('referral_paused: ' || coalesce(p_later ->> 'quote', 'the referrer wrote again'), 300)
@@ -279,6 +284,12 @@ declare
   handoff text;
 begin
   if new.direction is distinct from 'outbound' then return new; end if;
+  -- A claim needs the row as approved and unheld right now: another sender run may hold a cached copy of a row
+  -- whose approval was withdrawn meanwhile.
+  if tg_op = 'UPDATE' and old.sent_at is null and new.sent_at is not null
+     and (old.approved_at is null or old.send_blocked_at is not null or old.send_blocked_reason is not null) then
+    raise exception 'This referral draft is not approved any more.';
+  end if;
   if new.ai_model = 'inbox_referral_lead_v1' then
     referrer := nullif(new.draft_evidence ->> 'referrer_prospect_id', '')::uuid;
   elsif new.ai_model = 'inbox_referral_email_v1' then
@@ -374,12 +385,13 @@ begin
         and (p.enrichment_data -> 'inbox_referral' ->> 'status') = 'verified'
         and (nullif(p.enrichment_data -> 'inbox_referral' ->> 'lead_prospect_id', '') is null
              or exists (select 1 from outreach_messages lm where lm.id::text = p.enrichment_data -> 'inbox_referral' ->> 'lead_message_id'
-                          and lm.sent_at is null and lm.send_blocked_at is null))
+                          and lm.sent_at is null and (lm.send_blocked_at is null or lm.send_blocked_reason like 'referral_paused:%')))
         and p.enrichment_data -> 'inbox_referral' ->> 'dismissed_at' is null
         and not coalesce(p.blacklisted, false)
         and p.stage not in ('archived', 'skipped', 'disqualified', 'unsubscribed', 'blacklisted')
         and coalesce(a.sent_at, a.created_at) > now() - interval '60 days'
         and ((p.enrichment_data -> 'inbox_referral' ->> 'revision') is distinct from '13'
+             or jsonb_typeof(p.enrichment_data -> 'inbox_referral' -> 'later' -> 'message_ids') is distinct from 'array'
              or (select coalesce(array_agg(x order by x), '{}') from jsonb_array_elements_text(p.enrichment_data -> 'inbox_referral' -> 'later' -> 'message_ids') x)
                 is distinct from inbox_referral_later_ids(p.id, a.id))
     )

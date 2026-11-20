@@ -114,12 +114,14 @@ Deno.serve(async req => {
       const keyFor = (handoffId: string) => storyKey(storyAfter(conversation, handoffId), discardedAfter(conversation.find(m => m.id === handoffId)))
       const dismissedIds: string[] = Array.isArray(prospect.enrichment_data?.inbox_referral_dismissed) ? prospect.enrichment_data.inbox_referral_dismissed : []
       if (referralAction) {
-        if (!openReferral(cached) || cached.input_message_id !== actionMessage) return respond({ error: 'The referral changed. Refresh the conversation.' }, 409)
+        // Dismiss works for any referral the card can act on (an email-only one too); Create needs a verified profile.
+        if (!cached || cached.input_message_id !== actionMessage || cached.lead_prospect_id || cached.dismissed_at) return respond({ error: 'The referral changed. Refresh the conversation.' }, 409)
         if (referralAction === 'referral_dismiss') {
           const { data: ok, error: dismissError } = await sb.rpc('inbox_referral_dismiss', { p_referrer: id, p_input_message: actionMessage })
           if (dismissError) throw dismissError
           return ok === true ? respond({ dismissed: true }) : respond({ error: 'The referral changed. Refresh the conversation.' }, 409)
         }
+        if (!openReferral(cached)) return respond({ error: 'The referral changed. Refresh the conversation.' }, 409)
         // ARCH only: the referred person becomes an ARCH lead with ONE held first touch. Davorin approves it
         // through the normal Send; nothing here approves or sends.
         if (client !== 'arch') return respond({ error: 'Referred leads can be created for ARCH conversations only.' }, 409)
@@ -137,6 +139,15 @@ Deno.serve(async req => {
         try { profile = slug ? await apifyProfileDetails(sb, slug) : null }
         catch { return respond({ error: 'The LinkedIn profile lookup is unavailable. Try again.' }, 503) }
         if (!profile) return respond({ error: 'The LinkedIn profile could not be read. Try again.' }, 409)
+        // The lookup takes seconds: a message sent, a reply or a discard meanwhile means the note is no longer the one reviewed.
+        const { data: nowRows, error: nowError } = await sb.from('inbox_messages_v').select('id,direction,message_text,sent_at,created_at,send_blocked_reason').eq('prospect_id', id).order('created_at').order('id')
+        if (nowError) throw nowError
+        type Row = { id: string; direction: string; message_text?: string; sent_at?: string | null; created_at: string; send_blocked_reason?: string | null }
+        const nowAll = (nowRows ?? []) as Row[], nowConv = nowAll.filter(m => m.message_text?.trim() && (m.direction === 'inbound' || m.sent_at))
+        const nowHandoff = nowConv.find(m => m.id === cached.input_message_id)
+        const nowKey = storyKey(storyAfter(nowConv, cached.input_message_id), nowAll.filter(m => m.direction === 'outbound' && !m.sent_at && m.message_text?.trim()
+          && /^discarded/.test(m.send_blocked_reason ?? '') && (!nowHandoff || m.created_at >= nowHandoff.created_at)))
+        if (nowKey !== leadStory) return respond({ error: 'The conversation changed. Refresh to see the current draft.' }, 409)
         const first = (cached.name ?? profile.name).split(/\s+/)[0]
         const { data: made, error: makeError } = await sb.rpc('inbox_referral_create_lead', {
           p_referrer: id, p_input_message: actionMessage, p_revision: REFERRAL_REVISION, p_expected_url: leadUrl, p_later_ids: later.map(m => m.id),
@@ -195,7 +206,7 @@ Deno.serve(async req => {
       if ((referral.status === 'verified' || referral.email) && !referral.lead_prospect_id && !referral.dismissed_at && !laterChecked(referral, later)) {
         try {
           const after = conversation.slice(conversation.findIndex(m => m.id === target.id) + 1).map(m => ({ speaker: speakerOf(m), text: m.message_text }))
-          referral = { ...referral, later: await judgeLater({ referrer: rows[0].prospect_name, author: canon.author, person: referral.name ?? 'the referred person', handoffId: target.id, handoff: target.message_text, after, later }) }
+          referral = { ...referral, later: await judgeLater({ referrer: rows[0].prospect_name, author: canon.author, person: `${referral.name ?? 'the referred person'}${referral.email?.cc?.length ? ` (and the people copied on the email: ${referral.email.cc.join(', ')})` : ''}`, handoffId: target.id, handoff: target.message_text, after, later }) }
           changed = true
         } catch { /* stays unchecked: the card shows it and Create waits */ }
       }
