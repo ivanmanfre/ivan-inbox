@@ -10,7 +10,7 @@ create index if not exists outreach_prospects_inbox_referral_status_idx
 -- Same guard as inbox_set_referral_guarded, plus: a save for the same handoff keeps what the operator did
 -- (the referred lead link, a dismissal). A research run that started before the operator acted must not
 -- erase the link and offer the person again.
-create or replace function public.inbox_set_referral_v2(p_prospect uuid, p_referral jsonb, p_keep_verified boolean)
+create or replace function public.inbox_set_referral_v2(p_prospect uuid, p_referral jsonb, p_keep_verified boolean, p_expected_input text)
 returns boolean
 language plpgsql
 set search_path to 'public'
@@ -21,6 +21,12 @@ declare
 begin
   select enrichment_data -> 'inbox_referral' into cur from outreach_prospects where id = p_prospect for update;
   if not found then return false; end if;
+  -- The run started from another handoff than the one stored now: a newer handoff (maybe already dismissed or
+  -- turned into a lead) was saved meanwhile, so this older answer is dropped.
+  if cur ->> 'input_message_id' is distinct from p_expected_input
+     and cur ->> 'input_message_id' is distinct from p_referral ->> 'input_message_id' then
+    return false;
+  end if;
   if p_keep_verified and coalesce(p_referral ->> 'status', '') <> 'verified'
      and cur ->> 'input_message_id' = p_referral ->> 'input_message_id'
      and cur ->> 'revision' = p_referral ->> 'revision'
@@ -37,8 +43,37 @@ begin
    where id = p_prospect;
   return true;
 end $function$;
-revoke all on function public.inbox_set_referral_v2(uuid, jsonb, boolean) from public, anon, authenticated;
-grant execute on function public.inbox_set_referral_v2(uuid, jsonb, boolean) to service_role;
+revoke all on function public.inbox_set_referral_v2(uuid, jsonb, boolean, text) from public, anon, authenticated;
+grant execute on function public.inbox_set_referral_v2(uuid, jsonb, boolean, text) to service_role;
+
+-- Inbound replies after the handoff (same set the app and handler read: text present, later than the handoff).
+create or replace function public.inbox_referral_later_ids(p_referrer uuid, p_input_message uuid)
+returns text[]
+language sql stable
+set search_path to 'public'
+as $function$
+  select coalesce(array_agg(m.id::text order by m.id::text), '{}')
+  from inbox_messages_v m, inbox_messages_v h
+  where h.id = p_input_message and h.prospect_id = p_referrer
+    and m.prospect_id = p_referrer and m.direction = 'inbound' and m.id <> h.id
+    and nullif(btrim(m.message_text), '') is not null
+    and (coalesce(m.sent_at, m.created_at), m.created_at) >= (coalesce(h.sent_at, h.created_at), h.created_at)
+$function$;
+revoke all on function public.inbox_referral_later_ids(uuid, uuid) from public, anon, authenticated;
+grant execute on function public.inbox_referral_later_ids(uuid, uuid) to service_role;
+
+-- The stored check read exactly the replies there are now, and it said go.
+create or replace function public.inbox_referral_later_ok(p_referrer uuid, ref jsonb)
+returns boolean
+language sql stable
+set search_path to 'public'
+as $function$
+  select coalesce(ref -> 'later' ->> 'verdict' = 'go'
+    and (select coalesce(array_agg(x order by x), '{}') from jsonb_array_elements_text(ref -> 'later' -> 'message_ids') x)
+        = inbox_referral_later_ids(p_referrer, (ref ->> 'input_message_id')::uuid), false)
+$function$;
+revoke all on function public.inbox_referral_later_ok(uuid, jsonb) from public, anon, authenticated;
+grant execute on function public.inbox_referral_later_ok(uuid, jsonb) to service_role;
 
 -- The operator chose not to contact the referred person. Closes the card for good.
 create or replace function public.inbox_referral_dismiss(p_referrer uuid, p_input_message uuid)
@@ -63,7 +98,7 @@ grant execute on function public.inbox_referral_dismiss(uuid, uuid) to service_r
 -- profile (li_slug / member id) across every tenant first, because linkedin_url UNIQUE compares raw strings.
 -- An existing ARCH row is linked instead of copied. Another tenant's row, an earlier email to the person, a
 -- probable namesake row or a reply newer than the one the caller checked stops it. Never approves or sends.
-create or replace function public.inbox_referral_create_lead(p_referrer uuid, p_input_message uuid, p_revision integer, p_latest_inbound uuid, p_lead jsonb, p_text text, p_evidence jsonb)
+create or replace function public.inbox_referral_create_lead(p_referrer uuid, p_input_message uuid, p_revision integer, p_expected_url text, p_later_ids text[], p_lead jsonb, p_text text, p_evidence jsonb)
 returns jsonb
 language plpgsql
 set search_path to 'public'
@@ -78,27 +113,26 @@ declare
   lead uuid := gen_random_uuid();
   msg uuid := gen_random_uuid();
   held record;
-  checked_at timestamptz;
 begin
+  -- Serialize creates for the same person (two referrers naming them at once).
+  perform pg_advisory_xact_lock(hashtext('inbox_referral_lead:' || coalesce(slug, '')));
   select p.enrichment_data -> 'inbox_referral', c.client_id into ref, tenant
     from outreach_prospects p join outreach_campaigns c on c.id = p.campaign_id
    where p.id = p_referrer for update of p;
   if not found then return jsonb_build_object('status', 'error', 'reason', 'The referrer was not found.'); end if;
-  if tenant <> 'arch' then return jsonb_build_object('status', 'error', 'reason', 'Referred leads are ARCH only.'); end if;
+  if tenant is distinct from 'arch' or not exists (select 1 from outreach_campaigns where id = arch_cold and client_id = 'arch') then return jsonb_build_object('status', 'error', 'reason', 'Referred leads are ARCH only.'); end if;
   if nullif(ref ->> 'lead_prospect_id', '') is not null then
     return jsonb_build_object('status', 'exists', 'lead_prospect_id', ref ->> 'lead_prospect_id');
   end if;
   if ref ->> 'dismissed_at' is not null then return jsonb_build_object('status', 'error', 'reason', 'This referral was dismissed.'); end if;
   if ref ->> 'status' is distinct from 'verified' or ref ->> 'input_message_id' is distinct from p_input_message::text
-     or ref ->> 'revision' is distinct from p_revision::text then
+     or ref ->> 'revision' is distinct from p_revision::text or ref ->> 'linkedin_url' is distinct from p_expected_url then
     return jsonb_build_object('status', 'error', 'reason', 'The referral changed. Refresh the conversation.');
   end if;
-  -- A reply that arrived after the caller read the thread may be a "hold off": the caller must read it first.
-  select coalesce(sent_at, created_at) into checked_at from outreach_messages where id = p_latest_inbound and prospect_id = p_referrer;
-  if exists (select 1 from outreach_messages m where m.prospect_id = p_referrer and m.direction = 'inbound'
-               and nullif(btrim(m.message_text), '') is not null and m.id is distinct from p_latest_inbound
-               and (checked_at is null or coalesce(m.sent_at, m.created_at) > checked_at)) then
-    return jsonb_build_object('status', 'error', 'reason', 'A newer reply arrived. Refresh the conversation.');
+  -- Every reply after the handoff was read (a "hold off" imported late with an earlier time included) and said go.
+  if not inbox_referral_later_ok(p_referrer, ref)
+     or (select coalesce(array_agg(x order by x), '{}') from unnest(p_later_ids) x) is distinct from inbox_referral_later_ids(p_referrer, p_input_message) then
+    return jsonb_build_object('status', 'error', 'reason', 'A reply after the handoff is not read yet, or it pauses the referral. Refresh the conversation.');
   end if;
   if slug is null or li_slug(ref ->> 'linkedin_url') is distinct from slug then
     return jsonb_build_object('status', 'error', 'reason', 'The LinkedIn profile does not match the referral.');
@@ -108,7 +142,7 @@ begin
   end if;
 
   -- Same person already in outreach (any tenant), by normalized profile.
-  select p.id, p.stage, c.client_id,
+  select p.id, p.stage, c.client_id, p.linkedin_profile_id,
          (select count(*) from outreach_messages m where m.prospect_id = p.id and m.direction = 'outbound' and m.sent_at is not null) sent,
          (select count(*) from outreach_messages m where m.prospect_id = p.id and m.direction = 'outbound' and m.sent_at is null and m.approved_at is null and m.send_blocked_at is null) drafts
     into hit
@@ -118,6 +152,11 @@ begin
    order by (c.client_id = 'arch') desc nulls last, p.created_at
    limit 1;
   if found then
+    -- Same slug but a different known member id: not provably the same person.
+    if member is not null and nullif(btrim(hit.linkedin_profile_id), '') is not null
+       and li_member_key(hit.linkedin_profile_id) is distinct from li_member_key(member) then
+      return jsonb_build_object('status', 'blocked', 'reason', 'An outreach row with this profile URL belongs to a different LinkedIn member. Check it by hand.');
+    end if;
     if hit.client_id = 'arch' then
       update outreach_prospects set enrichment_data = enrichment_data || jsonb_build_object('inbox_referral', ref || jsonb_build_object(
           'lead_prospect_id', hit.id, 'lead_created_at', now(), 'lead_result', 'linked_existing'))
@@ -184,8 +223,58 @@ begin
    where id = p_referrer;
   return jsonb_build_object('status', 'created', 'lead_prospect_id', lead, 'message_id', msg);
 end $function$;
-revoke all on function public.inbox_referral_create_lead(uuid, uuid, integer, uuid, jsonb, text, jsonb) from public, anon, authenticated;
-grant execute on function public.inbox_referral_create_lead(uuid, uuid, integer, uuid, jsonb, text, jsonb) to service_role;
+revoke all on function public.inbox_referral_create_lead(uuid, uuid, integer, text, text[], jsonb, text, jsonb) from public, anon, authenticated;
+grant execute on function public.inbox_referral_create_lead(uuid, uuid, integer, text, text[], jsonb, text, jsonb) to service_role;
+
+-- The referrer wrote again while the staged invite waits for Send: store the model's read, and on a hold or
+-- redirect take the invite back to review (never once it is sent).
+create or replace function public.inbox_referral_lead_later(p_referrer uuid, p_input_message uuid, p_later jsonb)
+returns boolean
+language plpgsql
+set search_path to 'public'
+as $function$
+declare ref jsonb;
+begin
+  select enrichment_data -> 'inbox_referral' into ref from outreach_prospects where id = p_referrer for update;
+  if ref ->> 'input_message_id' is distinct from p_input_message::text or nullif(ref ->> 'lead_message_id', '') is null then return false; end if;
+  update outreach_prospects set enrichment_data = enrichment_data || jsonb_build_object('inbox_referral', ref || jsonb_build_object('later', p_later))
+   where id = p_referrer;
+  if p_later ->> 'verdict' is distinct from 'go' then
+    update outreach_messages
+       set approved_at = null, send_blocked_at = now(),
+           send_blocked_reason = left('referral_paused: ' || coalesce(p_later ->> 'quote', 'the referrer wrote again'), 300)
+     where id = (ref ->> 'lead_message_id')::uuid and ai_model = 'inbox_referral_lead_v1' and sent_at is null;
+  end if;
+  return true;
+end $function$;
+revoke all on function public.inbox_referral_lead_later(uuid, uuid, jsonb) from public, anon, authenticated;
+grant execute on function public.inbox_referral_lead_later(uuid, uuid, jsonb) to service_role;
+
+-- Approval guard for the staged invite: Send is refused while a reply from the referrer after the handoff is
+-- unread or pauses the referral. Only rows of this model; every other draft is untouched.
+create or replace function public.inbox_referral_lead_approval_guard()
+returns trigger
+language plpgsql
+security definer
+set search_path to 'public'
+as $function$
+declare ref jsonb;
+begin
+  if new.ai_model is distinct from 'inbox_referral_lead_v1' or new.approved_at is null or old.approved_at is not null or new.sent_at is not null then
+    return new;
+  end if;
+  select enrichment_data -> 'inbox_referral' into ref from outreach_prospects
+   where id = nullif(new.draft_evidence ->> 'referrer_prospect_id', '')::uuid;
+  if ref is null or ref ->> 'lead_message_id' is distinct from new.id::text then return new; end if;
+  if not inbox_referral_later_ok((new.draft_evidence ->> 'referrer_prospect_id')::uuid, ref) then
+    raise exception 'The referrer wrote again after this referral and it is not read yet, or it pauses the referral. Open their conversation, then try again.';
+  end if;
+  return new;
+end $function$;
+drop trigger if exists inbox_referral_lead_approval_guard on public.outreach_messages;
+create trigger inbox_referral_lead_approval_guard before update of approved_at on public.outreach_messages
+  for each row when (new.ai_model = 'inbox_referral_lead_v1' and new.approved_at is not null and old.approved_at is null)
+  execute function public.inbox_referral_lead_approval_guard();
 
 -- Warm-up: new handoff-like replies (any inbound of the last 45 minutes, not only the newest), and open
 -- verified referrals that need a redraft (older revision) or a read of a reply that came after them.
@@ -253,7 +342,9 @@ begin
       ) l on true
       where p.enrichment_data ? 'inbox_referral'
         and (p.enrichment_data -> 'inbox_referral' ->> 'status') = 'verified'
-        and nullif(p.enrichment_data -> 'inbox_referral' ->> 'lead_prospect_id', '') is null
+        and (nullif(p.enrichment_data -> 'inbox_referral' ->> 'lead_prospect_id', '') is null
+             or exists (select 1 from outreach_messages lm where lm.id::text = p.enrichment_data -> 'inbox_referral' ->> 'lead_message_id'
+                          and lm.sent_at is null and lm.send_blocked_at is null))
         and p.enrichment_data -> 'inbox_referral' ->> 'dismissed_at' is null
         and not coalesce(p.blacklisted, false)
         and p.stage not in ('archived', 'skipped', 'disqualified', 'unsubscribed', 'blacklisted')

@@ -9,7 +9,8 @@ import { isConversation } from '../../lib/inbox'
 const readLead = vi.hoisted(() => vi.fn())
 vi.mock('../../lib/supabase', () => ({ supabase: { from: () => ({ select: () => ({ eq: () => ({ single: readLead }) }) }), auth: { getSession: async () => ({ data: { session: { access_token: 'owner-token' } } }) } } }))
 const fetch = vi.fn()
-const referral = { status: 'verified', input_message_id: 'handoff', name: 'Ben Patton', company: 'Saint Spritz', role: 'CEO', summary: 'CEO at Saint Spritz.', linkedin_url: 'https://www.linkedin.com/in/ben-patton-9834411aa', draft: 'Hey Ben, Mallory said you handle paid growth at Saint Spritz. Want me to send you the growth scan?', reason: null, sources: [{ title: 'Saint Spritz', url: 'https://www.linkedin.com/company/saint-spritz' }] }
+const referral = { status: 'verified', input_message_id: 'handoff', name: 'Ben Patton', company: 'Saint Spritz', role: 'CEO', summary: 'CEO at Saint Spritz.', linkedin_url: 'https://www.linkedin.com/in/ben-patton-9834411aa', draft: 'Hey Ben, Mallory said you handle paid growth at Saint Spritz. Want me to send you the growth scan?', reason: null, sources: [{ title: 'Saint Spritz', url: 'https://www.linkedin.com/company/saint-spritz' }],
+  later: { through_message_id: 'handoff', message_ids: [], verdict: 'go', quote: null, checked_at: '2026-10-05T22:46:00Z' } }
 const thread = () => threads([msg({ id: 'handoff', prospect_id: 'mallory', prospect_name: 'Mallory Vaughan Patton', prospect_company: 'Saint Spritz', client_id: 'risedtc', direction: 'inbound', message_text: 'ben Patton does that side of biz', sent_at: '2026-10-05T22:45:00Z' })])[0]
 
 beforeEach(() => { cleanup(); vi.clearAllMocks(); vi.stubGlobal('fetch', fetch); window.fetch = fetch })
@@ -150,7 +151,7 @@ describe('verified referral stays open and becomes a lead', () => {
   ])[0]
   const stored = { status: 'verified', input_message_id: HANDOFF, name: 'Tomas Weller', company: 'Northwind Games', role: 'Influencer Manager', summary: 'Influencer Manager at Northwind Games.',
     linkedin_url: 'https://www.linkedin.com/in/tomas-weller-test', draft: 'Hey Tomas\n\nPriya said you run creator campaigns at Northwind.\n\nWhat do you measure them on?', reason: null, sources: [],
-    revision: 13, later: { through_message_id: 'later-1', verdict: 'go', quote: null, checked_at: '2026-11-05T12:31:00Z' } }
+    revision: 13, later: { through_message_id: 'later-1', message_ids: ['later-1'], verdict: 'go', quote: null, checked_at: '2026-11-05T12:31:00Z' } }
   it('a "You too!" after the handoff keeps the card, and Create stages the edited note', async () => {
     readLead.mockResolvedValue({ data: { referral: stored }, error: null })
     fetch.mockResolvedValueOnce({ ok: true, json: async () => ({ referral: stored }) })
@@ -162,7 +163,7 @@ describe('verified referral stays open and becomes a lead', () => {
     fireEvent.change(box, { target: { value: 'Hey Tomas, Priya pointed me your way.' } })
     fireEvent.click(screen.getByRole('button', { name: 'Create referred lead' }))
     expect(await screen.findByRole('link', { name: 'Open referred lead' })).toHaveAttribute('href', '#exp/d/dms?thread=00000000-0000-4000-8000-0000000000aa')
-    expect(JSON.parse(fetch.mock.calls[1][1].body)).toEqual({ prospect_id: 'priya', mode: 'referral_lead', input_message_id: HANDOFF, draft: 'Hey Tomas, Priya pointed me your way.' })
+    expect(JSON.parse(fetch.mock.calls[1][1].body)).toEqual({ prospect_id: 'priya', mode: 'referral_lead', input_message_id: HANDOFF, draft: 'Hey Tomas, Priya pointed me your way.', linkedin_url: 'https://www.linkedin.com/in/tomas-weller-test' })
     expect(staged).toHaveBeenCalled()
     expect(screen.queryByRole('button', { name: /^send|^approve/i })).not.toBeInTheDocument()
   })
@@ -173,6 +174,9 @@ describe('verified referral stays open and becomes a lead', () => {
     render(<ReferralCard t={rows()} />)
     expect(await screen.findByText(/please hold off until January/)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Create referred lead' })).not.toBeInTheDocument()
+    // Nothing that reaches the person is offered while paused.
+    expect(screen.queryByRole('button', { name: 'Copy DM' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Not contacting Tomas' })).toBeInTheDocument()
   })
   it('other lanes keep Copy DM only', async () => {
     const t = rows(); t.client_id = 'risedtc'

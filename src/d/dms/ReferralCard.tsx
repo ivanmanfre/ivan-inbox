@@ -54,8 +54,11 @@ export function ReferralCard({ t, onUseAcknowledgement, onStaged }: { t: Thread;
   const person = (r?.name ?? '').split(' ')[0] || 'them'
   // What the referrer wrote after the handoff, as read by the model: thanks or an emoji leave it open.
   const later = r?.status === 'verified' ? laterInbound(t.messages, r.input_message_id) : []
-  const unchecked = r?.status === 'verified' && !laterChecked(r, later)
-  const paused = r?.status === 'verified' && later.length > 0 && !unchecked && r.later?.verdict !== 'go' ? r.later : null
+  const open = r?.status === 'verified' && !leadId && !r.dismissed_at
+  const unchecked = open && !laterChecked(r!, later)
+  const paused = open && !unchecked && r!.later?.verdict !== 'go' ? r!.later : null
+  // While paused or unread, nothing that reaches the person is offered (no copy, no email, no lead).
+  const blocked = Boolean(paused || unchecked)
   const canCreate = t.client_id === 'arch' && r?.status === 'verified' && !leadId && !r.dismissed_at && !!r.draft && !paused && !unchecked
   const noteText = note?.stamp === stamp ? note.text : contact?.draft ?? ''
   const copy = async (kind: 'dm' | 'ack') => {
@@ -64,7 +67,7 @@ export function ReferralCard({ t, onUseAcknowledgement, onStaged }: { t: Thread;
   }
   const create = async () => {
     setActing(a => ({ ...a, busy: true, error: null }))
-    try { const lead = await createReferredLead(t, r!.input_message_id, noteText); setActing(a => ({ ...a, busy: false, lead })); onStaged?.() }
+    try { const lead = await createReferredLead(t, r!.input_message_id, noteText, r!.linkedin_url!); setActing(a => ({ ...a, busy: false, lead })); onStaged?.() }
     catch (e) { setActing(a => ({ ...a, busy: false, error: e instanceof Error ? e.message : 'The lead could not be created. Try again.' })) }
   }
   const dismiss = async () => {
@@ -81,9 +84,9 @@ export function ReferralCard({ t, onUseAcknowledgement, onStaged }: { t: Thread;
     {acting.lead?.status === 'linked_existing' && <p role="status">{r?.name} was already an ARCH lead, so nothing new was staged. Linked.</p>}
     {leadId && <a className="d-link" href={`#exp/d/dms?thread=${encodeURIComponent(leadId)}`}>Open referred lead</a>}
     {paused && <p role="status"><b>Paused.</b> {referrer} wrote later: “{paused.quote}”{paused.verdict === 'redirect' ? ' They point to someone else now.' : ''}</p>}
-    {unchecked && <p role="status">{referrer} wrote again after the handoff and it has not been read yet. Retry research to read it.</p>}
+    {unchecked && <p role="status">{later.length ? `${referrer} wrote again after the handoff` : 'The handoff'} has not been read for a hold yet. Retry research to read it.</p>}
     {r?.status === 'verified' && !r.draft && !leadId && r.reason && <p>{r.reason}</p>}
-    {contact && contact.draft && <>
+    {contact && contact.draft && !blocked && <>
       {r?.candidate && <h4>Possible match: {contact.name}</h4>}
       <p>{contact.summary}</p>
       <p className="dm-meta">Draft from {t.client_id === 'swishdm' ? 'Jonathan' : t.client_id === 'risedtc' ? 'Mattan' : t.client_id === 'arch' ? 'Davorin' : 'Ivan'}. {canCreate ? `It goes out as a LinkedIn invite note (${noteText.length}/${INVITE_NOTE_LIMIT}). Check whether Davorin already messaged ${person} by hand first.` : 'Review it on LinkedIn. Connection status has not been checked.'}</p>
@@ -98,7 +101,7 @@ export function ReferralCard({ t, onUseAcknowledgement, onStaged }: { t: Thread;
       <details><summary>Research sources</summary>{contact.sources.map(s => <a className="d-link" key={s.url} href={s.url} target="_blank" rel="noreferrer">{s.title}</a>)}</details>
     </>}
     {acting.error && <p role="alert">{acting.error}</p>}
-    {r?.email && handoff && <ReferralEmailDraft key={stamp} t={t} inbound={handoff} email={r.email} referredName={r.name} referredCompany={r.company} onStaged={onStaged} />}
+    {r?.email && handoff && !blocked && !leadId && !r.dismissed_at && <ReferralEmailDraft key={stamp} t={t} inbound={handoff} email={r.email} referredName={r.name} referredCompany={r.company} onStaged={onStaged} />}
     {r?.email_reason && <p>{r.email_reason}</p>}
     {r?.acknowledgement && !answered && !t.draft && <>
       <h4>Acknowledgement to {referrer}</h4>
@@ -110,6 +113,7 @@ export function ReferralCard({ t, onUseAcknowledgement, onStaged }: { t: Thread;
       <p className="dm-meta">Review before sending.</p>
     </>}
     {copyError && <p role="alert">Could not copy. Select the draft above and copy it.</p>}
+    {r?.status === 'verified' && blocked && <div className="dm-referral-actions"><button type="button" className="dm-k" disabled={acting.busy} onClick={() => void dismiss()}>Not contacting {person}</button></div>}
     {(result?.error || unchecked || r?.email_reason || r?.status === 'unresolved' && !r.lead_prospect_id || r?.status === 'verified' && !r.draft && !leadId) && <button type="button" className="dm-k" onClick={() => setRetry(n => n + 1)}>Retry research</button>}
   </section>
 }

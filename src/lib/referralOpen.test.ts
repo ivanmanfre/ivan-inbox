@@ -47,10 +47,18 @@ describe('later messages after the handoff', () => {
   it('lists only inbound messages after the handoff', () => {
     expect(laterInbound([pitch, handoff, ack, ...later], 'handoff').map(x => x.id)).toEqual(['l1', 'l2'])
   })
-  it('a check counts only when it covers the newest reply', () => {
-    expect(laterChecked({ later: { through_message_id: 'l1', verdict: 'go', quote: null, checked_at: at(31) } }, later)).toBe(false)
-    expect(laterChecked({ later: { through_message_id: 'l2', verdict: 'hold', quote: 'hold off', checked_at: at(41) } }, later)).toBe(true)
-    expect(laterChecked({}, [])).toBe(true)
+  it('a check counts only when it read exactly the replies there are now (a late import changes the set)', () => {
+    const check = (ids: string[]) => ({ later: { through_message_id: ids.at(-1) ?? 'handoff', message_ids: ids, verdict: 'go' as const, quote: null, checked_at: at(41) } })
+    expect(laterChecked(check(['l1']), later)).toBe(false)
+    expect(laterChecked(check(['l1', 'l2']), later)).toBe(true)
+    expect(laterChecked(check(['l2']), [later[1]])).toBe(true)
+    expect(laterChecked(check(['l2']), later)).toBe(false)
+    // The handoff itself is read once even when nothing came after it.
+    expect(laterChecked({}, [])).toBe(false)
+    expect(laterChecked(check([]), [])).toBe(true)
+  })
+  it('a dismissed handoff stays closed even while it is the newest message', () => {
+    expect(referralTarget([pitch, handoff], { ...verified, dismissed_at: at(20) })).toBeNull()
   })
   it('a hold must quote the referrer; an invented quote falls back to their newest words', () => {
     expect(readLaterVerdict({ verdict: 'hold', quote: 'please hold off until January' }, later)).toEqual({ verdict: 'hold', quote: 'please hold off until January' })

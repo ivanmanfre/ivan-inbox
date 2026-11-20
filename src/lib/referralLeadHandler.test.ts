@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import { runInNewContext } from 'node:vm'
 import ts from 'typescript'
 import { REFERRAL_REVISION } from '../../supabase/functions/inbox-dm-draft/research'
+import { storyKey } from '../../supabase/functions/inbox-dm-draft/referral'
 
 // Invented fixtures only (public repo): a made-up studio, referrer and referred person.
 const PROSPECT = '61d768d6-5bf9-4777-8eb7-cf6c0b38ae75'
@@ -20,6 +21,8 @@ const verified = { status: 'verified', input_message_id: HANDOFF, name: 'Tomas W
   linkedin_url: 'https://www.linkedin.com/in/tomas-weller-test', summary: 'Tomas Weller is Influencer Manager at Northwind Games.', reason: null,
   draft: 'Hey Tomas\n\nPriya said you are the person for creator campaigns at Northwind.\n\nAre you running them in-house or with an agency?',
   sources: [{ url: 'https://www.linkedin.com/in/tomas-weller-test', title: 'Tomas Weller | LinkedIn profile search' }], acknowledgement: "Thanks Priya, I'll reach out to Tomas." }
+const keyAfter = (...later: { id: string; message_text: string; direction: string; created_at: string }[]) => storyKey(later, [])
+const checked = (...ids: string[]) => ({ through_message_id: ids.at(-1) ?? HANDOFF, message_ids: ids, verdict: 'go', quote: null, checked_at: at(31) })
 const redrafted = 'Hey Tomas\n\nPriya said you are the person for creator campaigns at Northwind.\n\nWhat do you measure that work on these days?'
 
 type Call = { fn: string; args: Record<string, unknown> }
@@ -75,23 +78,25 @@ async function run(rows: Record<string, unknown>[], opts: { body?: Record<string
 }
 
 const judge = (verdict: string, quote: string | null = null) => (prompt: string) =>
-  prompt.includes('should still contact') ? { verdict, quote } : prompt.includes('Write the first') ? { paragraphs: redrafted.split('\n\n'), reason: null } : { name: null }
+  prompt.includes('A condition inside the handoff') ? { verdict, quote } : prompt.includes('Write the first') ? { paragraphs: redrafted.split('\n\n'), reason: null } : { name: null }
 
 describe('a verified referral stays open after later replies', () => {
   it('a courtesy reply is read by the model, leaves the card open and saves the check', async () => {
-    const cached = { ...verified, revision: REFERRAL_REVISION }
+    const cached = { ...verified, revision: REFERRAL_REVISION, story_key: keyAfter(youToo) }
     const { status, result, calls, upstream } = await run([pitch, handoff, ack, youToo], { server: true, body: { mode: 'referral' }, enrichment: { inbox_referral: cached }, model: judge('go') })
     expect(status).toBe(200)
-    expect(result.referral).toMatchObject({ status: 'verified', input_message_id: HANDOFF, later: { through_message_id: 'later-1', verdict: 'go' } })
+    expect(result.referral).toMatchObject({ status: 'verified', input_message_id: HANDOFF, later: { through_message_id: 'later-1', message_ids: ['later-1'], verdict: 'go' } })
     expect(upstream).toHaveLength(1)
     expect(upstream[0]).toContain('You too!')
     expect(calls[0]).toMatchObject({ fn: 'inbox_set_referral_v2', args: { p_keep_verified: true } })
   })
   it('"hold off" pauses it with the referrer’s own words', async () => {
     const hold = row('later-2', 'inbound', 'Please hold off contacting Tomas until January, he is on leave', 40)
-    const cached = { ...verified, revision: REFERRAL_REVISION, later: { through_message_id: 'later-1', verdict: 'go', quote: null, checked_at: at(31) } }
+    const cached = { ...verified, revision: REFERRAL_REVISION, story_key: keyAfter(youToo), later: checked('later-1') }
     const { result } = await run([pitch, handoff, ack, youToo, hold], { server: true, body: { mode: 'referral' }, enrichment: { inbox_referral: cached }, model: judge('hold', 'Please hold off contacting Tomas until January') })
-    expect(result.referral.later).toMatchObject({ through_message_id: 'later-2', verdict: 'hold', quote: 'Please hold off contacting Tomas until January' })
+    expect(result.referral.later).toMatchObject({ through_message_id: 'later-2', message_ids: ['later-1', 'later-2'], verdict: 'hold', quote: 'Please hold off contacting Tomas until January' })
+    // The new reply also redrafts the DM from the changed story.
+    expect(result.referral.story_key).toBe(keyAfter(youToo, hold))
   })
   it('an older-revision draft is redrafted from the stored identity with the whole story, without a new profile search', async () => {
     const cached = { ...verified, revision: REFERRAL_REVISION - 1 }
@@ -115,11 +120,28 @@ describe('a verified referral stays open after later replies', () => {
   })
 })
 
+describe('a conditional handoff and a staged invite', () => {
+  it('the handoff itself is read for a hold even with no later reply', async () => {
+    const conditional = row(HANDOFF, 'inbound', 'Hold off until January, then talk to Tomas Weller, he is the influencer manager here', 10)
+    const cached = { ...verified, revision: REFERRAL_REVISION, story_key: '' }
+    const { result, upstream } = await run([pitch, conditional], { server: true, body: { mode: 'referral' }, enrichment: { inbox_referral: cached }, model: judge('hold', 'Hold off until January') })
+    expect(upstream.some(p => p.includes('A condition inside the handoff counts too'))).toBe(true)
+    expect(result.referral.later).toMatchObject({ verdict: 'hold', quote: 'Hold off until January', message_ids: [] })
+  })
+  it('a reply after the invite was staged is read, and a hold takes the invite back to review', async () => {
+    const hold = row('later-2', 'inbound', 'Actually please hold off on Tomas for now', 40)
+    const linked = { ...verified, revision: REFERRAL_REVISION, story_key: keyAfter(youToo), later: checked('later-1'), lead_prospect_id: '00000000-0000-4000-8000-0000000000aa', lead_message_id: '00000000-0000-4000-8000-0000000000bb' }
+    const { calls } = await run([pitch, handoff, ack, youToo, hold], { server: true, body: { mode: 'referral' }, enrichment: { inbox_referral: linked }, model: judge('hold', 'please hold off on Tomas for now') })
+    const paused = calls.find(c => c.fn === 'inbox_referral_lead_later')!
+    expect(paused.args).toMatchObject({ p_referrer: PROSPECT, p_input_message: HANDOFF, p_later: { verdict: 'hold', message_ids: ['later-1', 'later-2'] } })
+  })
+})
+
 describe('create referred lead', () => {
-  const ready = { ...verified, revision: REFERRAL_REVISION, later: { through_message_id: 'later-1', verdict: 'go', quote: null, checked_at: at(31) } }
+  const ready = { ...verified, revision: REFERRAL_REVISION, story_key: keyAfter(youToo), later: checked('later-1') }
   const profile = [{ id: 'ACoAA-test-tomas', publicIdentifier: 'tomas-weller-test', firstName: 'Tomas', lastName: 'Weller', headline: 'Influencer Manager',
     location: { linkedinText: 'Lisbon, Portugal', parsed: { country: 'Portugal', city: 'Lisbon', state: null } } }]
-  const body = (draft = verified.draft) => ({ mode: 'referral_lead', input_message_id: HANDOFF, draft })
+  const body = (draft = verified.draft, linkedin_url = verified.linkedin_url) => ({ mode: 'referral_lead', input_message_id: HANDOFF, draft, linkedin_url })
   it('stages one held invite note through the database function, flagged for a by-hand check', async () => {
     const { status, result, calls, apifyBodies } = await run([pitch, handoff, ack, youToo], { body: body(), enrichment: { inbox_referral: ready }, apify: profile,
       rpc: fn => fn === 'inbox_referral_create_lead' ? { status: 'created', lead_prospect_id: '00000000-0000-4000-8000-0000000000aa', message_id: 'm' } : true })
@@ -127,7 +149,7 @@ describe('create referred lead', () => {
     expect(result.lead).toMatchObject({ status: 'created' })
     expect(apifyBodies[0]).toMatchObject({ publicIdentifiers: ['tomas-weller-test'] })
     const made = calls.find(c => c.fn === 'inbox_referral_create_lead')!
-    expect(made.args).toMatchObject({ p_referrer: PROSPECT, p_input_message: HANDOFF, p_revision: REFERRAL_REVISION, p_text: verified.draft,
+    expect(made.args).toMatchObject({ p_referrer: PROSPECT, p_input_message: HANDOFF, p_revision: REFERRAL_REVISION, p_text: verified.draft, p_expected_url: verified.linkedin_url, p_later_ids: ['later-1'],
       p_lead: { linkedin_url: 'https://www.linkedin.com/in/tomas-weller-test', provider_id: 'ACoAA-test-tomas', country: 'Portugal', company: 'Northwind Games' } })
     expect((made.args.p_evidence as { review_note: string }).review_note).toContain('already messaged Tomas by hand on LinkedIn')
   })
@@ -142,6 +164,8 @@ describe('create referred lead', () => {
     const long = await run([pitch, handoff, ack, youToo], { body: body('x'.repeat(301)), enrichment: { inbox_referral: ready } })
     expect(long.status).toBe(400)
     expect(long.result.error).toContain('300')
+    // The card reviewed another person than the one stored now.
+    expect((await run([pitch, handoff, ack, youToo], { body: body(verified.draft, 'https://www.linkedin.com/in/someone-else-test'), enrichment: { inbox_referral: ready } })).status).toBe(409)
     const rise = [pitch, handoff, ack, youToo].map(r => ({ ...r, client_id: 'risedtc' }))
     const other = await run(rise, { body: body(), enrichment: { inbox_referral: ready } })
     expect(other.status).toBe(409)

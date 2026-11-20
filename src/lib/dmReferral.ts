@@ -53,8 +53,8 @@ export async function requestDmReferral(t: Thread, retry = false, cached?: unkno
    thread (approved_at and sent_at null). Davorin approves it through the normal Send; this never approves or sends. */
 export const REFERRAL_LEAD_MODEL = 'inbox_referral_lead_v1'
 export type ReferredLeadResult = { status: 'created' | 'linked_existing' | 'exists'; lead_prospect_id: string; stage?: string; sent?: number; drafts?: number }
-export async function createReferredLead(t: Thread, inputMessageId: string, draft: string): Promise<ReferredLeadResult> {
-  const result = await callDraft({ prospect_id: t.prospect_id, mode: 'referral_lead', input_message_id: inputMessageId, draft }, 140_000)
+export async function createReferredLead(t: Thread, inputMessageId: string, draft: string, linkedinUrl: string): Promise<ReferredLeadResult> {
+  const result = await callDraft({ prospect_id: t.prospect_id, mode: 'referral_lead', input_message_id: inputMessageId, draft, linkedin_url: linkedinUrl }, 140_000)
   return result.lead as ReferredLeadResult
 }
 export async function dismissReferral(t: Thread, inputMessageId: string): Promise<void> {
