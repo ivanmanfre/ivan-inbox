@@ -33,6 +33,8 @@ const SWISH_ERROR: Record<string, string> = {
   search_too_few_brand_answers: 'too few ChatGPT and Gemini answers name the brand to make a fair page',
 }
 
+const RECENT_SLACK_MS = 15 * 60e3   // a stamp a few minutes before the owed message still belongs to it
+
 export function readSwishBuild(rq: SwishRequest | null, c: Ctx): BuildStatus | null {
   if (!rq || !rq.status) return null
   const yes = `${c.first} said yes to the report.`
@@ -54,6 +56,9 @@ export function readSwishBuild(rq: SwishRequest | null, c: Ctx): BuildStatus | n
     tone: 'wait', head: `${yes} The page waits for ${SWISH_HOLD[rq.hold ?? ''] ?? 'a fresh check on the brand'}.`,
     body: `It is re-checked every run and builds on its own after that. ${nothing}`,
   }
+  // error / built_held are finished states: they speak only for the yes this thread is owed on, never a later "thanks"
+  const forThisYes = Boolean(c.since && rq.at && Date.parse(rq.at) >= Date.parse(c.since) - RECENT_SLACK_MS)
+  if (!forThisYes) return null
   if (rq.status === 'error') return {
     tone: 'alert', head: `${yes} The page could not be built: ${SWISH_ERROR[rq.error ?? ''] ?? rq.error ?? 'unknown error'}.`,
     body: 'No reply was drafted. Write it yourself below, or answer on LinkedIn.',
@@ -64,8 +69,6 @@ export function readSwishBuild(rq: SwishRequest | null, c: Ctx): BuildStatus | n
   }
   return null
 }
-
-const RECENT_SLACK_MS = 15 * 60e3   // a build attempt a few minutes before the owed message still belongs to it
 
 export function readIvanBuild(sb: IvanBuild | null, c: Ctx): BuildStatus | null {
   if (!sb || !c.since) return null
@@ -88,11 +91,32 @@ export function readIvanBuild(sb: IvanBuild | null, c: Ctx): BuildStatus | null 
   }
 }
 
-export type BuildRaw = { sw: SwishRequest | null; sb: IvanBuild | null }
+export type BuildRaw = { sw: SwishRequest | null; sb: IvanBuild | null; readAt?: string | null }
 
 export async function fetchBuildRaw(prospectId: string): Promise<BuildRaw> {
   const { data, error } = await supabase.from('outreach_prospects')
-    .select('sw:enrichment_data->swishdm_page_request,sb:enrichment_data->scan_build').eq('id', prospectId).single()
+    .select('sw:enrichment_data->swishdm_page_request,sb:enrichment_data->scan_build,readAt:enrichment_data->swishdm_reply->>at').eq('id', prospectId).single()
   if (error) throw error
   return data as BuildRaw
+}
+
+/** Before the drafter has read a new reply there is no stamp yet: SwishDM's Accept + Reply Detector runs
+ *  every 15 min, Ivan's Warm Reply Drafter every 5 (Ivan 11-20, Jake/Hadley Pottery: yes at 16:42Z, stamp
+ *  16:45Z, and the pane said "no draft" in between). Shown only inside that window plus a few minutes. */
+export function readFreshReply(c: Ctx, everyMin: number, readAt?: string | null): BuildStatus | null {
+  if (!c.since) return null
+  if (readAt && Date.parse(readAt) >= Date.parse(c.since)) return null   // already read (SwishDM stamps swishdm_reply.at)
+  const ago = Math.max(0, Math.round((c.now - Date.parse(c.since)) / 60e3))
+  if (!Number.isFinite(ago) || ago > everyMin + 5) return null
+  return {
+    tone: 'wait',
+    head: `${c.first} replied ${ago === 0 ? 'just now' : `${ago} min ago`}. The drafter has not read it yet.`,
+    body: `It reads new replies every ${everyMin} minutes. A yes to the ${everyMin === 15 ? 'report' : 'audit'} starts the build then, and this note updates on its own.`,
+  }
+}
+
+/** The name to address someone by: the first word that is not a bare initial ("C. Jake George" is Jake). */
+export function firstName(full: string): string {
+  const words = full.trim().split(/\s+/)
+  return words.find(w => !/^\p{L}\.?$/u.test(w)) ?? words[0] ?? full
 }
