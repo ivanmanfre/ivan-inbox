@@ -88,6 +88,14 @@ describe('restricted rich email renderer', () => {
     expect(defaultEmailSignature('other@example.com')).toBeNull()
   })
 
+  it('SwishDM gets its own signature and keeps the closing above it', () => {
+    const signature = defaultEmailSignature('Jonathan <john@madebyswishdm.com>')
+    expect(renderEmailDocument(signature!).text).toBe('Jonathan Kiekbusch\nSwishDM\nswishdm.com (https://swishdm.com)')
+    expect(stripLegacyEmailSignature('Hello\n\nCheers,\n\nJonathan\n\nSwishDM', 'john@madebyswishdm.com')).toBe('Hello\n\nCheers,')
+    expect(stripLegacyEmailSignature('Hello\n\nCheers,\nMattan Danino\nRISE', 'john@madebyswishdm.com')).toContain('Mattan Danino')
+    expect(stripLegacyEmailSignature('Ask Jonathan at SwishDM', 'john@madebyswishdm.com')).toBe('Ask Jonathan at SwishDM')
+  })
+
   it('strips the sender first name plus verified company after a closing', () => {
     expect(stripLegacyEmailSignature('Hello\n\nBest regards\n\nDavorin\nARCH   ', 'davorin@madebyarch.com')).toBe('Hello')
     expect(stripLegacyEmailSignature('Hello\n\nThanks,\nMattan\nRISE DTC\nhttps://risedtc.com/\n', 'itsmattan@risedtc.com')).toBe('Hello')
