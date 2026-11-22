@@ -243,7 +243,8 @@ const STOPPED_WORDS: Record<(typeof STOPPED_ON_PURPOSE_PREFIXES)[number], string
 
 // A superseded row in any spelling (superseded_by_*, superseded_awaiting_*, 'superseded: ... rerouted to invite'):
 // something replaced it, nothing failed (send audit 2, Krishna Solanki drew a red "Send failed").
-const SUPERSEDED = /^superseded(?=$|[_:\s])/
+// nudge_superseded_* (SwishDM report-nudge drafter, 2026-11-22): the drafter pulled its own held card for a newer one.
+const SUPERSEDED = /^(?:nudge_)?superseded(?=$|[_:\s])/
 
 export function isIntentionalStopReason(reason: string | null | undefined): boolean {
   return INTENTIONAL_STOP.test(reason ?? '') || SUPERSEDED.test(reason ?? '') || isStoppedOnPurposeReason(reason)
@@ -317,7 +318,7 @@ export function isHiddenRetired(m: InboxMessage): boolean {
 /** Reasons that are never a failed send, judged on the reason alone: replaced, expired, scheduled, an invite
  *  instead, they replied, excluded, or stopped on purpose. A POSIX regex both Postgres (`~`, the Lanes and send
  *  log counts in lib/sends) and JS read the same way, so the count and the rows cannot disagree (send audit 2). */
-export const NOT_A_FAILURE_SQL = `^(discarded|superseded|redraft_requested|scheduled_in_inbox|scheduled_send_cancelled|stale_draft_expired|stale_convo_closed|model_meta_no_reply|writer_no_reply|replied_before_qualifier|routed_to_invite|manual_touch|invite_withdrawn|([a-z]+_)*(replied|reply|reaction|reacted)_stop|([a-z]+_)*exclu(sion|ded)|${STOPPED_ON_PURPOSE_PREFIXES.join('|')})`
+export const NOT_A_FAILURE_SQL = `^(discarded|superseded|nudge_superseded|redraft_requested|scheduled_in_inbox|scheduled_send_cancelled|stale_draft_expired|stale_convo_closed|model_meta_no_reply|writer_no_reply|replied_before_qualifier|routed_to_invite|manual_touch|invite_withdrawn|([a-z]+_)*(replied|reply|reaction|reacted)_stop|([a-z]+_)*exclu(sion|ded)|${STOPPED_ON_PURPOSE_PREFIXES.join('|')})`
 const NOT_A_FAILURE = new RegExp(NOT_A_FAILURE_SQL)
 export function isNotAFailureReason(reason: string | null | undefined): boolean {
   const r = reason ?? ''
@@ -348,7 +349,7 @@ export function retiredLabel(m: InboxMessage): string {
    own card), an engine retirement, an intentional stop, and the SwishDM review
    hold (a draft waiting for approval, nothing was attempted).
    ========================================================================== */
-const NOT_A_HOLD = /^(discarded|superseded|scheduled|routed_to_invite|owner_confirmation_superseded|redraft_requested)(?=$|[_:\s])/
+const NOT_A_HOLD = /^(discarded|superseded|nudge_superseded|scheduled|routed_to_invite|owner_confirmation_superseded|redraft_requested)(?=$|[_:\s])/
 
 export function isHeldSend(m: InboxMessage): boolean {
   if (m.direction !== 'outbound' || m.sent_at || m.unipile_message_id) return false

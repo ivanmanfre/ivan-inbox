@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DISCARD_REASON } from '../../lib/inbox'
+import { DISCARD_REASON, isNotAFailureReason, sendFailed, stopLabel } from '../../lib/inbox'
 import { NOW, drafted, iso, msg, owedNoDraft, threads, waiting } from './fixtures'
 import { firstLine, heldItems, laneChip, needsCount, outByDay, replied7d, rowTags, seatView } from './model'
 import { statusOf } from './status'
@@ -163,6 +163,16 @@ describe('held sends in the list', () => {
     const ts = threads(held('st', 3, { message_type: 'connection_note', message_text: '(blank invite - no note by design)', send_blocked_reason: 'stale_engagement: over 7 days since the engagement (Ivan 2026-10-25)' }))
     expect(heldItems(ts, new Set(), NOW)).toEqual({ recent: [], older: [] })
     expect(rowTags(ts[0]).some(x => x.kind === 'held')).toBe(false)
+  })
+  // Ivan 11-22: SwishDM follow-up cards the drafter pulled for newer copy sat in Held with "send it anyway".
+  it('a follow-up card the drafter replaced is a stop: not listed as Held, no Held tag, quiet replaced line', () => {
+    const ts = threads(held('ns', 3, { send_blocked_reason: 'nudge_superseded_cadence_copy_v3' }))
+    expect(heldItems(ts, new Set(), NOW)).toEqual({ recent: [], older: [] })
+    expect(rowTags(ts[0]).some(x => x.kind === 'held')).toBe(false)
+    const m = ts[0].messages.find(x => x.send_blocked_reason === 'nudge_superseded_cadence_copy_v3')!
+    expect(sendFailed(m)).toBe(false)
+    expect(isNotAFailureReason(m.send_blocked_reason)).toBe(true)
+    expect(stopLabel(m)).toBe('Not sent: replaced by another message')
   })
   it('not connected is still a held send (fixable with an invite)', () => {
     const ts = threads(held('nc', 3, { send_blocked_reason: 'no_connection_with_recipient' }))
