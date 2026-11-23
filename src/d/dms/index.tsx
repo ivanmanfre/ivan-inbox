@@ -89,7 +89,7 @@ function Dms({ layout, route, navigate }: PlaceProps) {
 
   const threads = data.threads
   const byId = useMemo(() => new Map(threads.map(t => [t.prospect_id, t])), [threads])
-  const views = useMemo(() => Object.fromEntries(SEATS.map(s => [s, seatView(threads, s, now, data.scanDays, data.interestRanks)])) as Record<Seat, ReturnType<typeof seatView>>, [threads, now, data.scanDays, data.interestRanks])
+  const views = useMemo(() => Object.fromEntries(SEATS.map(s => [s, seatView(threads, s, now, data.scanDays, data.interestRanks, data.strangers.rows)])) as Record<Seat, ReturnType<typeof seatView>>, [threads, now, data.scanDays, data.interestRanks, data.strangers.rows])
   const stats = useMemo(() => Object.fromEntries(SEATS.map(s => [s, { days: outByDay(threads, s, now), replied: replied7d(threads, s, now) }])) as PageModel['stats'], [threads, now])
   const matches = useMemo(() => {
     if (mode !== 'search') return { ivan: [], risedtc: [], arch: [] , swishdm: [], anna: []} as Record<Seat, Thread[]>
@@ -139,7 +139,7 @@ function Dms({ layout, route, navigate }: PlaceProps) {
     return n.prospect_name
   }
 
-  const failedN = (data.error ? 1 : 0) + (data.cameBack.failed ? 1 : 0) + (data.ownerEngagers?.failed ? 1 : 0) + (data.warm.failed ? 1 : 0) + (data.dated.failed ? 1 : 0) + (data.upcoming?.failed ? 1 : 0)
+  const failedN = (data.error ? 1 : 0) + (data.cameBack.failed ? 1 : 0) + (data.ownerEngagers?.failed ? 1 : 0) + (data.warm.failed ? 1 : 0) + (data.dated.failed ? 1 : 0) + (data.upcoming?.failed ? 1 : 0) + (data.strangers.failed ? 1 : 0)
   useReportFailed('dms', failedN)
 
   const openId = open?.prospect_id ?? null

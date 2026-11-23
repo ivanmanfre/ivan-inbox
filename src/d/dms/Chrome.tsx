@@ -7,7 +7,7 @@ import { AnswerRow, N } from '../ui/AnswerRow'
 import { Btn } from '../ui/Key'
 import { warsawHm } from '../ui/time'
 import type { Mode } from './Column'
-import type { SeatView } from './model'
+import { spamCount, type SeatView } from './model'
 import { TokenBar } from './Search'
 import type { DmsData } from './useDmsData'
 import type { FilterToken } from '../../lib/filterTokens'
@@ -22,7 +22,7 @@ export function Headline({ mode, views, counts, tools, noSub = false, phone = fa
   /** Brief 4: the sub line is drawn by the page's band tools instead. */ noSub?: boolean }) {
   const needs = dmNumbers(counts, 'needs')
   if (mode === 'spam') {
-    return <AnswerRow title={<>Likely spam: <N v={views.risedtc.spam.length} /> Mattan's, <N v={views.arch.spam.length} /> Davorin's, <N v={views.swishdm.spam.length} /> Jonathan's.</>} tools={tools} />
+    return <AnswerRow title={<>Likely spam: <N v={spamCount(views.risedtc)} /> Mattan's, <N v={spamCount(views.arch)} /> Davorin's, <N v={spamCount(views.swishdm)} /> Jonathan's.</>} tools={tools} />
   }
   if (mode === 'email') {
     return <AnswerRow title={<>Email waiting on you: <N v={views.ivan.emailWaiting.length} /> yours, <N v={views.risedtc.emailWaiting.length} /> Mattan's, <N v={views.arch.emailWaiting.length} /> Davorin's, <N v={views.swishdm.emailWaiting.length} /> Jonathan's.</>} tools={tools} />
@@ -60,7 +60,7 @@ export function Folders({ folder, setFolder, views, phone, v4 }: { folder: strin
   // Waiting only (emailFolder.ts): an old archived reply nobody stamped read never lights it.
   const spamDot = anyUnread(views.risedtc.spam) || anyUnread(views.arch.spam) || anyUnread(views.swishdm.spam)
   if (v4) {
-    const spamN = `Rise ${views.risedtc.spam.length}, Arch ${views.arch.spam.length}, SwishDM ${views.swishdm.spam.length}`
+    const spamN = `Rise ${spamCount(views.risedtc)}, Arch ${spamCount(views.arch)}, SwishDM ${spamCount(views.swishdm)}`
     return (
       <span className={`dm-folders dx-folders${phone ? ' dm-folders-phone' : ''}`} role="tablist" aria-label="Folders">
         <button type="button" role="tab" aria-selected={!folder} className={`dm-fd${!folder ? ' dm-on' : ''}`} onClick={() => setFolder(null)}>Conversations</button>
@@ -75,7 +75,7 @@ export function Folders({ folder, setFolder, views, phone, v4 }: { folder: strin
     <span className={`dm-folders${phone ? ' dm-folders-phone' : ''}`} role="tablist" aria-label="Folders">
       <button type="button" role="tab" aria-selected={!folder} className={`dm-fd${!folder ? ' dm-on' : ''}`} onClick={() => setFolder(null)}>Conversations</button>
       <button type="button" role="tab" aria-selected={folder === 'spam'} className={`dm-fd${folder === 'spam' ? ' dm-on' : ''}`} onClick={() => setFolder('spam')} data-unread={spamDot ? 'true' : undefined}>
-        <Dot on={spamDot} />Likely spam <small>Rise <b>{views.risedtc.spam.length}</b> Arch <b>{views.arch.spam.length}</b></small>
+        <Dot on={spamDot} />Likely spam <small>Rise <b>{spamCount(views.risedtc)}</b> Arch <b>{spamCount(views.arch)}</b></small>
       </button>
     </span>
   )

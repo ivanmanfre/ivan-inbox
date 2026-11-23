@@ -13,7 +13,7 @@ import { Empty, Failed, Skeleton } from '../ui/states'
 import { Bar, BulkBar, Folders, Headline, Health, noDraftLine } from './Chrome'
 import { ColumnBody, type Mode } from './Column'
 import type { MenuAct } from './Menu'
-import type { DayOut, SeatView } from './model'
+import { spamCount, type DayOut, type SeatView } from './model'
 import { SearchField, TokenBar } from './Search'
 import { SeatSquares, type SquareStat } from './SeatSquares'
 import { CameSignal } from './CameSignal'
@@ -83,7 +83,7 @@ function squareStats(m: PageModel): Record<Seat, SquareStat> {
     today: m.stats[s].days.at(-1),
     extra: m.mode === 'search' ? `${m.matches[s].length} match${m.matches[s].length === 1 ? '' : 'es'}`
       : m.mode === 'email' ? `${m.views[s].emailWaiting.length} email waiting`
-        : m.mode === 'spam' ? (s === 'ivan' ? 'no spam folder' : `${m.views[s].spam.length} likely spam`) : null,
+        : m.mode === 'spam' ? (s === 'ivan' ? 'no spam folder' : `${spamCount(m.views[s])} likely spam`) : null,
   }])) as Record<Seat, SquareStat>
 }
 
