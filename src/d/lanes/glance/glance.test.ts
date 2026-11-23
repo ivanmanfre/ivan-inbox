@@ -87,7 +87,7 @@ import { buildReady, laneOf, type Cand, type Ctx } from './ready'
 describe('glance: the picker filter, classified in code', () => {
   const NOW = Date.parse('2026-09-27T13:00:00Z')
   const x: Ctx = { now: NOW, cfg: { rise_company_expansion: 'on', profile_view_send_enabled: 'true', ivan_invite_retry_enabled: 'true' }, scorer: 17,
-    ivanIds: new Set(['iv']), riseLive: new Set(['b9c55e21-ed67-42e1-94ab-b9e948a4bed9', '92c745f2-bd37-4887-96c3-ef930d542e24']), archLive: new Set(['1a2701a0-931b-4949-95fb-9bbf2de16f09']),
+    ivanIds: new Set(['iv']), ivanQualifiedIds: new Set(), riseLive: new Set(['b9c55e21-ed67-42e1-94ab-b9e948a4bed9', '92c745f2-bd37-4887-96c3-ef930d542e24']), archLive: new Set(['1a2701a0-931b-4949-95fb-9bbf2de16f09']),
     stop: new Set(), touch: new Set(['spaced.com']), satNy: false }
   const c = (o: Partial<Cand>): Cand => ({ id: Math.random().toString(36), campaign_id: 'iv', stage: 'enriched', icp_score: 7, trigger_type: null, trigger_confidence: null, scorer_version: '17', country: 'US',
     preferred_channel: null, connection_sent_at: null, connected_at: null, last_dm_sent_at: null, liveness_checked_at: '2026-09-01', created_at: '2026-09-26T00:00:00Z', skip_state: null, skip_reason: null,

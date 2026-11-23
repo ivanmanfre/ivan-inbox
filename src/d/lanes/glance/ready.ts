@@ -17,6 +17,7 @@
    Checks the senders make only in code at send time (geo gate, ads gate,
    live gate, exclusion ledgers, qualification) are NOT replayed: the count
    is "passes the sender's filter", a ceiling, and the UI says so.
+   Ivan interest stock also requires the current rubric and the database economic check.
    Fresh stock excludes prior contact and holds. RISE warm stock comes from the
    canonical supply RPC; other RISE pools remain visible as candidates. No writes.
    ========================================================================== */
@@ -62,7 +63,7 @@ const RISE = {
   cold: '9a9ee3a5-c3a6-452d-8442-52285248d70c', expansion: 'b9c55e21-ed67-42e1-94ab-b9e948a4bed9', partner: '92c745f2-bd37-4887-96c3-ef930d542e24',
 }
 const ARCH_IDS = ['15de1a7c-86f4-40b7-bdbd-3c1fce94b6b9', '1a2701a0-931b-4949-95fb-9bbf2de16f09', '12c53034-7176-4950-be20-1c1bf5ba11a7', 'f17e4dac-d6b7-4c66-8d5c-8f1b2ace0685']
-export type Ctx = { now: number; cfg: Cfg; scorer: number; ivanIds: Set<string>; riseLive: Set<string>; archLive: Set<string>; stop: Set<string>; touch: Set<string>; satNy: boolean; riseReadyIds?: Set<string>; riseReadyCount?: number }
+export type Ctx = { ivanQualifiedIds: Set<string>; now: number; cfg: Cfg; scorer: number; ivanIds: Set<string>; riseLive: Set<string>; archLive: Set<string>; stop: Set<string>; touch: Set<string>; satNy: boolean; riseReadyIds?: Set<string>; riseReadyCount?: number }
 
 /** PURE: which lane (if any) the seat's sender would pick this row from, by its own filter. */
 export function laneOf(r: Cand, x: Ctx): { seat: Seat; lane: string } | null {
@@ -128,7 +129,7 @@ export function buildReady(rows: Cand[], x: Ctx, capped: boolean): ReadyRead {
     if (l.lane === 'retry' || l.lane === 'reconnect') continue
     const source = r.interest_lane ?? interestSource(l.seat, { trigger_type: r.trigger_type, source: r.source, source_kind: r.src, lane: r.ed_lane,
       engagement_kind: r.engagement_kind, post_id: r.post_id, anchor: r.anchor, company_first: Boolean(r.company_first) })
-    if (!source) continue
+    if (!source || (l.seat === 'ivan' && !x.ivanQualifiedIds.has(r.id))) continue
     const k = `${l.seat}|${source}`
     by.set(k, [...(by.get(k) ?? []), r])
   }
@@ -184,7 +185,12 @@ export function isSaturdayNy(now: number): boolean {
 
 /** THE read: config (3 small selects), ONE candidate select over the three seats' live campaigns, and the Rise domain list. */
 export async function fetchReady(now = Date.now()): Promise<ReadyRead> {
-  const [{ cfg, camps, scorer }, supply] = await Promise.all([config(), supabase.rpc('inbox_rise_ready')])
+  const [{ cfg, camps, scorer }, supply, ivan] = await Promise.all([
+    config(), supabase.rpc('inbox_rise_ready'), supabase.rpc('inbox_ivan_qualified_interest'),
+  ])
+  if (ivan.error) throw new Error(ivan.error.message)
+  if (!Array.isArray(ivan.data) || !ivan.data.every(id => typeof id === 'string')) throw new Error('Ivan qualified stock could not be verified')
+  const ivanQualifiedIds = new Set<string>(ivan.data)
   if (supply.error) throw new Error(supply.error.message)
   if (!supply.data || !Number.isInteger(supply.data.ready_count) || supply.data.ready_count < 0 || !Array.isArray(supply.data.ready_ids)) throw new Error('RISE ready stock could not be verified')
   const ivanIds = new Set(camps.filter(c => live(c) && c.client_id == null).map(c => c.id))
@@ -216,7 +222,7 @@ export async function fetchReady(now = Date.now()): Promise<ReadyRead> {
   const swishReady = swishSupply.data?.ready_count
   if (!Number.isInteger(swishReady) || swishReady < 0) throw new Error('SwishDM ready stock could not be verified')
   const rows = cand.rows
-  const ready = buildReady(rows, { now, cfg, scorer, ivanIds, riseLive, archLive, stop: dom.stop, touch: dom.touch, satNy: isSaturdayNy(now), riseReadyIds: new Set(supply.data.ready_ids), riseReadyCount: supply.data.ready_count }, cand.capped)
+  const ready = buildReady(rows, { now, cfg, scorer, ivanIds, ivanQualifiedIds, riseLive, archLive, stop: dom.stop, touch: dom.touch, satNy: isSaturdayNy(now), riseReadyIds: new Set(supply.data.ready_ids), riseReadyCount: supply.data.ready_count }, cand.capped)
   // SwishDM (2026-10-23, Ivan: "the numbers should be the ones that are ready to be sent"): the approved, unsent noted
   // invites its sender would pick now (swishdm_supply_snapshot.sendable_invites), not the unfiltered engager pool.
   ready.lanes.push({ seat: 'swishdm', lane: 'competitor_engager', label: INTEREST_LABEL.competitor_engager,
