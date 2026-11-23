@@ -142,7 +142,7 @@ describe('folder dots', () => {
   const mailThread = (read: boolean) => groupThreads([
     msg({ prospect_id: 'm', channel: 'email', message_type: 'email_reply', direction: 'inbound', read_at: read ? iso(1000) : null, sent_at: iso(3_600_000), created_at: iso(3_600_000) }),
   ], new Set(), NOW)
-  const views = (ts: Thread[]) => ({ ivan: seatView(ts, 'ivan', NOW), risedtc: seatView([], 'risedtc', NOW), arch: seatView([], 'arch', NOW) , swishdm: seatView([], 'swishdm', NOW), anna: seatView([], 'anna', NOW)})
+  const views = (ts: Thread[]) => ({ ivan: seatView(ts, 'ivan', NOW), risedtc: seatView([], 'risedtc', NOW), arch: seatView([], 'arch', NOW) , swishdm: seatView([], 'swishdm', NOW), anna: seatView([], 'anna', NOW), leah: seatView([], 'leah', NOW) })
 
   it('no separate Email tab: an unread email thread lights nothing extra (it lives in Conversations)', () => {
     render(<Folders folder={null} setFolder={() => {}} views={views(mailThread(false))} />)

@@ -8,7 +8,7 @@
    ========================================================================== */
 import type { ReactNode } from 'react'
 import type { PlaceProps } from '../places'
-import { SEATS, SEAT_NAME, type Seat } from '../seats'
+import { SEATS, SEAT_NAME, isStudioSeat, type Seat } from '../seats'
 import { AnswerRow } from '../ui/AnswerRow'
 import { Offline } from '../ui/states'
 import { useOnline } from '../ui/useOnline'
@@ -45,11 +45,11 @@ export default function HomePage({ layout }: PlaceProps) {
       <HotNow />
       {layout === 'desktop' ? (
         <div className="hm-grid">
-          {SEATS.filter(s => s !== 'anna').map(s => <h2 key={s} className="hm-sn">{SEAT_NAME[s]}</h2>)}
-          {rows.map(([id, Cell]) => SEATS.filter(s => s !== 'anna').map(s => <div key={`${id}-${s}`} className={`hm-c hm-c-${id}`}><Cell seat={s} h={h} /></div>))}
+          {SEATS.filter(s => !isStudioSeat(s)).map(s => <h2 key={s} className="hm-sn">{SEAT_NAME[s]}</h2>)}
+          {rows.map(([id, Cell]) => SEATS.filter(s => !isStudioSeat(s)).map(s => <div key={`${id}-${s}`} className={`hm-c hm-c-${id}`}><Cell seat={s} h={h} /></div>))}
         </div>
       ) : (
-        <div className="hm-stack">{SEATS.filter(s => s !== 'anna').map(s => <SeatBlock key={s} seat={s} h={h} />)}</div>
+        <div className="hm-stack">{SEATS.filter(s => !isStudioSeat(s)).map(s => <SeatBlock key={s} seat={s} h={h} />)}</div>
       )}
       <HomeTasks />
     </div>

@@ -71,6 +71,23 @@ it('does not draft when a fresh owner question replaced the retry failure', asyn
 })
 
 
+describe('Leah on-demand drafts', () => {
+  const makeLeah = () => threads(owedNoDraft('leah-prospect', { client_id: 'leah' }))[0]
+  it('saves an unapproved Leah draft with her identity evidence', async () => {
+    const t = makeLeah(); db.rows = t.messages
+    fetchDraft.mockResolvedValue({ ok: true, json: async () => ({ reply: 'We work on Studio together.', author: 'Leah McMichael', client_id: 'leah', input_message_ids: t.messages.map(m => m.id) }) })
+    await requestDmDraft(t)
+    expect(db.insert).toHaveBeenCalledWith(expect.objectContaining({ approved_at: null, sent_at: null, ai_model: 'inbox_on_demand_reply',
+      draft_evidence: expect.objectContaining({ author: 'Leah McMichael', client_id: 'leah' }) }))
+  })
+  it.each([{ author: 'Anna Sol Manfredi', client_id: 'anna' }, { author: 'Leah McMichael', client_id: 'anna' }, {}])('refuses wrong or absent author identity: %j', async identity => {
+    const t = makeLeah(); db.rows = t.messages
+    fetchDraft.mockResolvedValue({ ok: true, json: async () => ({ reply: 'Hi.', ...identity, input_message_ids: t.messages.map(m => m.id) }) })
+    await expect(requestDmDraft(t)).rejects.toThrow(/identity/i)
+    expect(db.insert).not.toHaveBeenCalled()
+  })
+})
+
 describe('Anna on-demand drafts', () => {
   const makeAnna = () => threads(owedNoDraft('anna-prospect', { client_id: 'anna' }))[0]
   it('saves an unapproved Anna draft with explicit identity evidence', async () => {

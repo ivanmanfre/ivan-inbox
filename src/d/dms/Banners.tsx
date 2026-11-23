@@ -134,7 +134,7 @@ export function NoDraftBanner({ t, now }: { t: Thread; now: number }) {
   const built = (build ? (swish ? readSwishBuild(build.sw, ctx) : ivan ? readIvanBuild(build.sb, ctx) : null) : null)
     ?? (swish ? readFreshReply(ctx, 15, build?.readAt) : ivan ? readFreshReply(ctx, 5) : null)
   const days = Math.max(0, Math.round((now - Date.parse(since)) / 86_400_000))
-  if (t.client_id === 'anna') return <div className="dm-ban dm-ban-hl"><b>{firstOf(t)} is waiting for a reply.</b><p>Write your reply below, or use Draft it to prepare a reply for review.</p></div>
+  if (t.client_id === 'anna' || t.client_id === 'leah') return <div className="dm-ban dm-ban-hl"><b>{firstOf(t)} is waiting for a reply.</b><p>Write your reply below, or use Draft it to prepare a reply for review.</p></div>
   if (wait) return (
     <div className="dm-ban" data-ban="check-wait">
       <b><DIcon name="time" />{firstOf(t)} replied before the first message. The ChatGPT and Gemini check on {t.prospect_company || 'their brand'} is still running{wait.startedAt ? ` (started ${warsawHm(wait.startedAt)})` : ''}.</b>
@@ -178,7 +178,7 @@ export function WaitingBanner({ t }: { t: Thread }) {
   const lo = t.messages.filter(m => m.direction === 'outbound' && m.sent_at).at(-1)
   const dated = seatOf(t.client_id) !== 'ivan'
   const cbDone = !dated && hasSentCamebackFollowup(t)
-  if (t.client_id === 'anna') return <div className="dm-ban"><b>Waiting on {firstOf(t)}.</b><p className="dm-hint">You can write another reply below.</p></div>
+  if (t.client_id === 'anna' || t.client_id === 'leah') return <div className="dm-ban"><b>Waiting on {firstOf(t)}.</b><p className="dm-hint">You can write another reply below.</p></div>
   return (
     <div className="dm-ban">
       <b><DIcon name="time" />Waiting on {firstOf(t)}{lo ? ` since ${warsawDow(eventTime(lo))} ${warsawDm(eventTime(lo))}` : ''}.</b>

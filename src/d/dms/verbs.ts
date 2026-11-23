@@ -1,3 +1,4 @@
+import { STUDIO_NAME, isStudioSeat } from '../seats'
 import { changeDraftFile } from './DraftFile'
 import { editHeldDm, sendRejectedDm } from '../../lib/rejectedDm'
 import { parseEmailCc } from '../../lib/emailCc'
@@ -180,7 +181,7 @@ export function useDmVerbs(ctx: VerbCtx) {
     /** Approve & send (both legs on a pair). Always asks first, as today's thread does.
      *  `onDeclined`: he cancelled the confirm, so nothing was written (the caller re-arms any autosave it paused). */
     async function send(t: Thread, ed: Edits, onDeclined?: () => void): Promise<string | null> {
-      if (t.client_id === 'anna' && (!t.draft || !isAnnaReviewedModel(t.draft.ai_model) || messageChannel(t.draft) !== 'dm' || t.draft.recipient_email || t.draft.email_mirror_text || t.companionDraft)) { fail('Anna supports reviewed LinkedIn reply drafts only.'); return 'Draft sending is unavailable.' }
+      if (isStudioSeat(t.client_id) && (!t.draft || !isAnnaReviewedModel(t.draft.ai_model, t.client_id) || messageChannel(t.draft) !== 'dm' || t.draft.recipient_email || t.draft.email_mirror_text || t.companionDraft)) { fail(`${STUDIO_NAME[t.client_id]} supports reviewed LinkedIn reply drafts only.`); return 'Draft sending is unavailable.' }
       const draft = t.draft
       if (!draft) return null
       const comp = t.companionDraft
@@ -202,8 +203,8 @@ export function useDmVerbs(ctx: VerbCtx) {
       } else {
         const ok = await confirm({
           title: `Send to ${t.prospect_name}?`,
-          message: t.client_id === 'anna' && draft.draft_evidence?.scan
-            ? `Approve this scan and send its delivery message from Anna’s LinkedIn. Review the scan page first.${draft.draft_evidence.scan.blockers_overridden || draft.draft_evidence.scan.blockers?.length ? ' The builder reported unresolved findings; approving accepts them.' : ''}`
+          message: isStudioSeat(t.client_id) && draft.draft_evidence?.scan
+            ? `Approve this scan and send its delivery message from ${STUDIO_NAME[t.client_id]}’s LinkedIn. Review the scan page first.${draft.draft_evidence.scan.blockers_overridden || draft.draft_evidence.scan.blockers?.length ? ' The builder reported unresolved findings; approving accepts them.' : ''}`
             : comp ? `Both legs go out: the ${legName(draft)} and the ${legName(comp)}. The sender picks them up within about 2 minutes.`
             : channelChoice ? `${mode === 'email' ? `Only the email to ${draft.recipient_email}${emailSenderLabel(t.client_id)}` : mode === 'both' ? `The LinkedIn DM and email to ${draft.recipient_email}${emailSenderLabel(t.client_id)}` : 'Only the LinkedIn DM'} will be sent. The sender picks it up within about 2 minutes.`
               : draft.draft_evidence?.dm_attachment
@@ -264,7 +265,7 @@ export function useDmVerbs(ctx: VerbCtx) {
     }
 
     async function sendAnyways(t: Thread, m: InboxMessage): Promise<void> {
-      if (t.client_id === 'anna') { fail('Send anyway is unavailable on Anna’s lane.'); return }
+      if (isStudioSeat(t.client_id)) { fail(`Send anyway is unavailable on ${STUDIO_NAME[t.client_id]}’s lane.`); return }
       // Jonathan's seat is sent only by the SwishDM senders: no override, no "about 2 minutes" promise.
       if (isSwishdmRow(m) || t.client_id === 'swishdm') { fail('SwishDM messages are sent only by the SwishDM senders. Nothing was sent.'); return }
       const ok = await confirm({ title: `Send anyway to ${t.prospect_name}?`,
@@ -539,7 +540,7 @@ export function useDmVerbs(ctx: VerbCtx) {
     async function compose(t: Thread, text: string, emailTarget?: EmailReplyTarget, composition?: EmailComposition | null): Promise<boolean> {
       const body = text.trim()
       if (!body) return false
-      const queueNote = t.client_id === 'anna' ? 'Anna’s sender picks it up while her lane is enabled. Paused replies stay queued.' : 'The sender picks it up within about 2 minutes.'
+      const queueNote = isStudioSeat(t.client_id) ? `${STUDIO_NAME[t.client_id]}’s sender picks it up while her lane is enabled. Paused replies stay queued.` : 'The sender picks it up within about 2 minutes.'
       const rich = emailTarget ? buildEmailComposition(emailTarget.message_text_prefix + text, emailTarget.instantly_reply?.eaccount ?? threadEmailSender(t), { composition }) : null
       const sentBody = rich ? renderEmailDocument(rich.body).text : body
       const reviewed = rich ? { ...rich, source_text: emailTarget!.message_text_prefix + sentBody } : null

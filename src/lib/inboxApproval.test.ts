@@ -129,6 +129,22 @@ it('refuses a rich approval from a caller that never loaded its formatting', asy
   await expect(approveDraft('draft', 'DM')).rejects.toThrow(/formatting changed|refresh/i)
   expect(db.rpc).not.toHaveBeenCalled()
 })
+it('routes Leah’s held ladder step and reply through Leah’s guarded approval only', async () => {
+  db.read.mockResolvedValue({ data: { ai_model: 'leah_content_system_dm4_v1', draft_evidence: { client_id: 'leah', lane: 'leah' } }, error: null })
+  await approveDraft('leah-ladder', 'Reviewed ladder text', 'leah-chat')
+  expect(db.rpc).toHaveBeenCalledWith('leah_approve_reply', { p_message_id: 'leah-ladder', p_text: 'Reviewed ladder text', p_expected_scan: null })
+  db.rpc.mockClear()
+  db.read.mockResolvedValue({ data: { ai_model: 'inbox_on_demand_reply', draft_evidence: { client_id: 'leah' } }, error: null })
+  await approveDraft('leah-reply', 'Reviewed reply', 'leah-chat')
+  expect(db.rpc).toHaveBeenCalledWith('leah_approve_reply', { p_message_id: 'leah-reply', p_text: 'Reviewed reply', p_expected_scan: null })
+  expect(db.rpc).not.toHaveBeenCalledWith('anna_approve_reply', expect.anything())
+  expect(db.rpc).not.toHaveBeenCalledWith('approve_inbox_on_demand_reply', expect.anything())
+})
+it('never sends an Anna ladder model through Leah’s approval', async () => {
+  db.read.mockResolvedValue({ data: { ai_model: 'anna_content_system_dm4_v1', draft_evidence: { client_id: 'leah', lane: 'leah' } }, error: null })
+  await approveDraft('mixed', 'text', 'chat').catch(() => {})
+  expect(db.rpc).not.toHaveBeenCalledWith('leah_approve_reply', expect.anything())
+})
 it('routes a held Anna ladder step through Anna’s guarded approval, never the pipeline RPC', async () => {
   db.read.mockResolvedValue({ data: { ai_model: 'anna_content_system_dm4_v1', draft_evidence: { client_id: 'anna', lane: 'anna' } }, error: null })
   await approveDraft('ladder-draft', 'Reviewed ladder text', 'anna-chat')

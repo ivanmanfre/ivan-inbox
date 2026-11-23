@@ -1878,7 +1878,9 @@ export function normalizeBubbleBreaks(text: string): string {
 
 // Anna's scripted ladder steps (DM1-DM5), held for review when her lane's ladder_autosend is off.
 export const ANNA_LADDER_MODEL = /^anna_content_system_[a-z0-9_]+$/
-export const isAnnaReviewedModel = (model: string | null | undefined) => model === 'inbox_on_demand_reply' || ANNA_LADDER_MODEL.test(model ?? '')
+export const LEAH_LADDER_MODEL = /^leah_content_system_[a-z0-9_]+$/
+/** Reviewed models on a studio seat's lane (Anna by default, Leah 2026-11-23 the same way). */
+export const isAnnaReviewedModel = (model: string | null | undefined, seat: 'anna' | 'leah' = 'anna') => model === 'inbox_on_demand_reply' || (seat === 'leah' ? LEAH_LADDER_MODEL : ANNA_LADDER_MODEL).test(model ?? '')
 
 export async function approveDraft(id: string, editedText: string, chatId?: string | null,
   snapshot?: Pick<InboxMessage, 'email_mirror_text' | 'recipient_email' | 'email_cc' | 'draft_evidence' | 'send_via'>): Promise<void> {
@@ -1891,8 +1893,9 @@ export async function approveDraft(id: string, editedText: string, chatId?: stri
       throw new Error('The email formatting changed after review. Refresh before sending.')
     }
   }
-  if (isAnnaReviewedModel(draft?.ai_model) && draft?.draft_evidence?.client_id === 'anna') {
-    const { error } = await supabase.rpc('anna_approve_reply', {
+  const studio = draft?.draft_evidence?.client_id === 'anna' || draft?.draft_evidence?.client_id === 'leah' ? draft.draft_evidence.client_id as 'anna' | 'leah' : null
+  if (studio && isAnnaReviewedModel(draft?.ai_model, studio)) {
+    const { error } = await supabase.rpc(`${studio}_approve_reply`, {
       p_message_id: id, p_text: editedText, p_expected_scan: snapshot?.draft_evidence?.scan ?? null,
     })
     if (error) throw error
@@ -2479,7 +2482,7 @@ export async function composeReply(t: Thread, text: string, expectedEmail?: Emai
   const replyCc = target ? parseEmailCc(expectedEmail?.cc ?? target.cc ?? []) : []
   // Anna has no conversation agent. Her dedicated dispatcher validates the
   // campaign and bound account; never route her through another seat's agent.
-  const manualRevision = t.client_id === 'anna' ? null : await takeOwnershipBeforeManualReply(t.prospect_id)
+  const manualRevision = t.client_id === 'anna' || t.client_id === 'leah' ? null : await takeOwnershipBeforeManualReply(t.prospect_id)
   const evidence = {
     ...(manualRevision === null ? {} : { conversation_agent_manual_revision: manualRevision }),
     ...(target?.email_headers ? { email_headers: target.email_headers } : {}),

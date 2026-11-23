@@ -8,14 +8,14 @@ export type AnnaScanReview = {
 }
 export type AnnaScanStatus = { status: string; url?: string | null; error?: string | null; review?: AnnaScanReview | null }
 
-export async function fetchAnnaScan(prospectId: string): Promise<AnnaScanStatus | null> {
-  const { data, error } = await supabase.rpc('anna_scan_status', { p_prospect: prospectId })
+export async function fetchAnnaScan(prospectId: string, seat: 'anna' | 'leah' = 'anna'): Promise<AnnaScanStatus | null> {
+  const { data, error } = await supabase.rpc(`${seat}_scan_status`, { p_prospect: prospectId })
   if (error) throw error
   return data as AnnaScanStatus | null
 }
 
-export async function requestAnnaScan(prospectId: string): Promise<AnnaScanStatus> {
-  const { data, error } = await supabase.rpc('anna_request_scan', { p_prospect: prospectId })
+export async function requestAnnaScan(prospectId: string, seat: 'anna' | 'leah' = 'anna'): Promise<AnnaScanStatus> {
+  const { data, error } = await supabase.rpc(`${seat}_request_scan`, { p_prospect: prospectId })
   if (error) throw error
   return data as AnnaScanStatus
 }

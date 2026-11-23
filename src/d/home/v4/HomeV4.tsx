@@ -1,7 +1,7 @@
 import { useMotionLevel } from '../../../ds/motionLevel'
 import { useState, type ReactNode } from 'react'
 import type { PlaceProps } from '../../places'
-import { SEATS, SEAT_NAME, type Seat } from '../../seats'
+import { SEATS, SEAT_NAME, isStudioSeat, type Seat } from '../../seats'
 import { dHash } from '../../route'
 import { AnswerRow } from '../../ui/AnswerRow'
 import { Figure, mapRead, slotRead } from '../../ui/Figure'
@@ -103,7 +103,7 @@ function RowFail({ src, rs, retry }: { src: string; rs: Read<unknown>[]; retry: 
 function Matrix({ h }: { h: HomeData }) {
   const [open, setOpen] = useState(() => {try{return localStorage.getItem('hm4-ready-open')==='1'}catch{return false}})
   function toggle(){setOpen(v=>{try{localStorage.setItem('hm4-ready-open',v?'0':'1')}catch{/* tab only */}return !v})}
-  const seats = SEATS.filter(s => s !== 'anna')
+  const seats = SEATS.filter(s => !isStudioSeat(s))
   return <section className="hm4-matrix" aria-label="Seats at a glance" data-bx-block>
     <div className="hm4-matrix-row hm4-matrix-head"><span />{seats.map(s=><b key={s}>{SEAT_NAME[s]}</b>)}</div>
     <div className="hm4-matrix-row"><b>Next week</b>{seats.map(s=><div key={s}><Week seat={s} h={h}/></div>)}</div>
@@ -207,6 +207,6 @@ export default function HomeV4({ layout }: PlaceProps) {
     <HotNow />
     {tasks && <HomeTasks v4 ops={ops} stalled={opsStalled} />}
     <h2 className="hm4-lanes-h">Lane numbers</h2>
-    {layout==='phone' ? <Matrix h={h}/> : <div className="hm4-seats">{SEATS.filter(s => s !== 'anna').map(s=><SeatCard key={s} seat={s} h={h}/>)}</div>}
+    {layout==='phone' ? <Matrix h={h}/> : <div className="hm4-seats">{SEATS.filter(s => !isStudioSeat(s)).map(s=><SeatCard key={s} seat={s} h={h}/>)}</div>}
   </div>
 }

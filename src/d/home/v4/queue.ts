@@ -15,7 +15,7 @@ const LABEL_MAX = 80
 
 // Anna has no DMs seat of her own: her replies live in her Lanes column, the
 // address Home's stand-alone Anna link used (Ruling R5).
-const repliesHref = (seat: Seat) => seat === 'anna' ? dHash('lanes', null, { seat }) : dHash('dms', null, { seat })
+const repliesHref = (seat: Seat) => seat === 'anna' || seat === 'leah' ? dHash('lanes', null, { seat }) : dHash('dms', null, { seat })
 
 function replies(waiting: QueueInput['waiting']): QueueSection | null {
   const items: QueueItem[] = []
