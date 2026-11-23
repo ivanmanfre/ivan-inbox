@@ -46,7 +46,7 @@ const base = () => supabase.from('outreach_prospects').select('id', { count: 'ex
 
 /** New people with classified person-level interest, by seat and source provenance. */
 export async function fetchEngagers7d(): Promise<Record<Seat, number>> {
-  const seats: Seat[] = ['ivan', 'risedtc', 'arch', 'swishdm', 'anna']
+  const seats: Seat[] = ['ivan', 'risedtc', 'arch', 'swishdm', 'anna', 'leah']
   const counts = await Promise.all(seats.map(async seat => {
     const { count, error } = await supabase.from('inbox_interest_prospects_v')
       .select('id', { count: 'exact', head: true }).eq('client_id', seat).gte('created_at', since(7))

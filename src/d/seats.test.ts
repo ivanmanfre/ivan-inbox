@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { outreachSeats, seatFilter, seatOf } from './seats'
+import { isStudioSeat, outreachSeats, seatFilter, seatOf } from './seats'
 import { groupThreads } from '../lib/inbox'
 import { msg, NOW } from './dms/fixtures'
 import { seatView } from './dms/model'
@@ -13,8 +13,8 @@ describe('Anna outreach seat', () => {
     expect(seatOf(null)).toBe('ivan')
   })
   it('remains selectable when the content registry does not include her', () => {
-    expect(outreachSeats([{ client_id: 'ivan' }, { client_id: 'arch' }])).toEqual(['ivan', 'arch', 'anna'])
-    expect(outreachSeats([{ client_id: 'anna' }])).toEqual(['anna'])
+    expect(outreachSeats([{ client_id: 'ivan' }, { client_id: 'arch' }])).toEqual(['ivan', 'arch', 'anna', 'leah'])
+    expect(outreachSeats([{ client_id: 'anna' }])).toEqual(['anna', 'leah'])
   })
   it('keeps Anna replies and needs-you counts out of Ivan’s inbox', () => {
     const threads = groupThreads([
@@ -26,5 +26,20 @@ describe('Anna outreach seat', () => {
     expect(seatView(threads, 'ivan', NOW).all.map(t => t.prospect_id)).toEqual(['ivan-lead'])
     expect(countDmSeat(threads, 'anna', NOW).needs).toBe(1)
     expect(countDmSeat(threads, 'ivan', NOW).needs).toBe(1)
+  })
+})
+
+describe('Leah outreach seat', () => {
+  it('is a studio seat like Anna, with her own conversations', () => {
+    expect(seatOf('leah')).toBe('leah')
+    expect(seatFilter('leah')).toBe('client_id.eq.leah')
+    expect(isStudioSeat('leah') && isStudioSeat('anna') && !isStudioSeat('ivan')).toBe(true)
+    const threads = groupThreads([
+      msg({ prospect_id: 'leah-lead', client_id: 'leah', direction: 'inbound', message_text: 'Yes, tell me more.', sent_at: '2026-09-27T08:00:00Z', created_at: '2026-09-27T08:00:00Z' }),
+      msg({ prospect_id: 'anna-lead', client_id: 'anna', direction: 'inbound', message_text: 'Yes, tell me more.', sent_at: '2026-09-27T08:00:00Z', created_at: '2026-09-27T08:00:00Z' }),
+    ], new Set(), NOW)
+    expect(seatView(threads, 'leah', NOW).all.map(t => t.prospect_id)).toEqual(['leah-lead'])
+    expect(seatView(threads, 'anna', NOW).all.map(t => t.prospect_id)).toEqual(['anna-lead'])
+    expect(countDmSeat(threads, 'leah', NOW).needs).toBe(1)
   })
 })

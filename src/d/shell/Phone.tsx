@@ -42,7 +42,7 @@ export function Dock() {
   const f = useFrame()
   const c = useFrameCounts()
   // Today's bar carried DMs, Content, Ops and Sales numbers; D keeps one per seat (never a total).
-  const opsF = { ivan: c.ops.failed, risedtc: c.ops.failed, arch: c.ops.failed , swishdm: c.ops.failed, anna: c.ops.failed}
+  const opsF = { ivan: c.ops.failed, risedtc: c.ops.failed, arch: c.ops.failed , swishdm: c.ops.failed, anna: c.ops.failed, leah: c.ops.failed}
   const x = useXWaiting()
   const trio: Partial<Record<string, { n: ReturnType<typeof dmNumbers>; failed: ReturnType<typeof seatFailed> }>> = {
     dms: { n: dmNumbers(c, 'needs'), failed: seatFailed(c.dms) },
@@ -206,7 +206,7 @@ export function PhoneTabs() {
   // Content shows its real review count, like DMs and Ops (review 2026-11-06 #36; was a dot), plus X posts
   // waiting (X is a Content tab); a loading or failed X read leaves the review count alone.
   const contentF = Object.values(seatFailed(c.content)).some(Boolean)
-  const contentN = total({ ...contentWithX(contentNumbers(c), x), anna: null })
+  const contentN = total({ ...contentWithX(contentNumbers(c), x), anna: null, leah: null })
   if (contentF && contentN == null) badge.content = { n: '!', tone: 'warn', label: 'Content count could not be read' }
   else if (contentN) badge.content = { n: contentN > 99 ? '99+' : String(contentN), tone: 'ink', label: `${contentN} posts to review` }
   const on = f.route.place

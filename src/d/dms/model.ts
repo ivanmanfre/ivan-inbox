@@ -163,7 +163,7 @@ export function replied7d(threads: Thread[], seat: Seat, now: number = Date.now(
   return n
 }
 
-export const SCHEDULE: Record<Seat, string> = { ivan: 'sends any hour', risedtc: 'DMs from 09:00 Warsaw', arch: 'sends Sun-Fri 08-21 CET' , swishdm: 'sends Sun-Fri 09-17 UK', anna: 'up to 25 invites a day'}
+export const SCHEDULE: Record<Seat, string> = { ivan: 'sends any hour', risedtc: 'DMs from 09:00 Warsaw', arch: 'sends Sun-Fri 08-21 CET' , swishdm: 'sends Sun-Fri 09-17 UK', anna: 'up to 25 invites a day', leah: 'invites ramp 15 to 30 a day' }
 
 // ---- the lane chip (LANES §8): lane KEY first, else a campaign word, never Arch's campaign name --
 

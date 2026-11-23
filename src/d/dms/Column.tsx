@@ -53,8 +53,8 @@ export type ColumnProps = {
   retry?: { warm?: () => void; came?: () => void; owners?: () => void; upcoming?: () => void; agent?: () => void }
 }
 
-const WHO: Record<Seat, string> = { ivan: 'you', risedtc: 'Mattan', arch: 'Davorin', swishdm: 'Jonathan', anna: 'Anna' }
-const OWNER: Record<Seat, string> = { ivan: 'you', risedtc: 'Mattan', arch: 'Davorin', swishdm: 'Jonathan', anna: 'Anna' }
+const WHO: Record<Seat, string> = { ivan: 'you', risedtc: 'Mattan', arch: 'Davorin', swishdm: 'Jonathan', anna: 'Anna', leah: 'Leah' }
+const OWNER: Record<Seat, string> = { ivan: 'you', risedtc: 'Mattan', arch: 'Davorin', swishdm: 'Jonathan', anna: 'Anna', leah: 'Leah' }
 
 export function ColumnBody(p: ColumnProps) {
   const { seat, view: v, mode, c } = p

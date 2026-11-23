@@ -89,7 +89,7 @@ export function heldWhy(m: InboxMessage): string {
   return `${sent.scheduled ? 'Scheduled for' : 'You sent this at'} ${at(sent.at)} · held at ${at(m.send_blocked_at)}: ${reason}`
 }
 
-const OURS: Record<string, string> = { ivan: 'You', risedtc: 'Mattan', arch: 'Davorin', swishdm: 'Jonathan', anna: 'Anna' }
+const OURS: Record<string, string> = { ivan: 'You', risedtc: 'Mattan', arch: 'Davorin', swishdm: 'Jonathan', anna: 'Anna', leah: 'Leah' }
 
 /** Who wrote our side of this thread: "You" on Ivan's seat, the seat owner's name on Rise and Arch. */
 export function oursLabel(t: Pick<Thread, 'client_id'>): string {

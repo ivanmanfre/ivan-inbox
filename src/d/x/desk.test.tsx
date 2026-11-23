@@ -94,7 +94,7 @@ describe('X desk count', () => {
     for (const k of ['select', 'neq', 'eq', 'is', 'in', 'or', 'not', 'gte', 'lte', 'order', 'limit']) empty[k] = () => empty
     const from = vi.spyOn(supabase, 'from').mockReturnValue(empty as unknown as ReturnType<typeof supabase.from>)
     try {
-      expect(await fetchOpsWaiting()).toEqual({ ivan: 0, risedtc: 0, arch: 0, swishdm: 0, anna: 0 })
+      expect(await fetchOpsWaiting()).toEqual({ ivan: 0, risedtc: 0, arch: 0, swishdm: 0, anna: 0, leah: 0 })
       expect(api.fetchXReview).not.toHaveBeenCalled()
     } finally { from.mockRestore() }
   })
@@ -102,8 +102,8 @@ describe('X desk count', () => {
   it('the Content line is review drafts plus X waiting (Ivan only); an X read that fails or is loading leaves it alone', () => {
     const sl = { value: null, failed: false, at: null }
     const cs = (v: number) => ({ value: v, failed: false, at: 1 })
-    const content = { ivan: cs(2), risedtc: cs(1), arch: cs(0), swishdm: cs(0), anna: cs(0) }
-    const seats = { ivan: sl, risedtc: sl, arch: sl, swishdm: sl, anna: sl }
+    const content = { ivan: cs(2), risedtc: cs(1), arch: cs(0), swishdm: cs(0), anna: cs(0), leah: cs(0) }
+    const seats = { ivan: sl, risedtc: sl, arch: sl, swishdm: sl, anna: sl, leah: sl }
     const c = { ops: sl, dms: seats, content, nextCall: sl } as unknown as Parameters<typeof navLines>[0]
     const lines = navLines(c, { n: 3, failed: false })
     expect('x' in lines).toBe(false)

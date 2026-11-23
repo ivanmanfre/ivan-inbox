@@ -15,7 +15,7 @@ vi.mock('../../content/next/store',()=>({useNextPosts:()=>st.next,refreshNextPos
 vi.mock('../../x/XFlag',()=>({XFlag:()=> <section data-x-flag aria-label="X review"/>}))
 import HomeV4 from './HomeV4'
 
-const SEATS = ['ivan','risedtc','arch','swishdm','anna'] as const
+const SEATS = ['ivan','risedtc','arch','swishdm','anna','leah'] as const
 const WAIT: Read<number> = { wait: true }
 const home = (waiting: Partial<Record<(typeof SEATS)[number], Read<number>>> = {}, rest: Read<number> = WAIT) => ({
   now:Date.parse('2026-10-08T10:00:00Z'),

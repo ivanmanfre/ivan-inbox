@@ -16,7 +16,7 @@ export type NavItem = {
   id: PlaceId; label: string; line: NavLine | null; failed: number
 }
 
-const allFailed = (b: boolean): Record<Seat, boolean> => ({ ivan: b, risedtc: b, arch: b , swishdm: b, anna: b})
+const allFailed = (b: boolean): Record<Seat, boolean> => ({ ivan: b, risedtc: b, arch: b , swishdm: b, anna: b, leah: b })
 const nFailed = (r: Record<Seat, boolean>) => Object.values(r).filter(Boolean).length
 
 /** The X review's count as a nav input: Ivan's items waiting (null until read), and a failed read. */

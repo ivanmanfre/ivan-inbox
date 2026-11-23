@@ -57,9 +57,9 @@ export function useHome() {
     now,
     lanes: lanes.data,
     content: week.content,
-    drafts: { ivan: dr('ivan'), risedtc: dr('risedtc'), arch: dr('arch') , swishdm: dr('swishdm'), anna: dr('anna')} as Record<Seat, Read<number>>,
-    waiting: { ivan: dr('ivan', wn), risedtc: dr('risedtc', wn), arch: dr('arch', wn), swishdm: dr('swishdm', wn), anna: dr('anna', wn) } as Record<Seat, Read<number>>,
-    review: { ivan: rv('ivan'), risedtc: rv('risedtc'), arch: rv('arch'), swishdm: rv('swishdm'), anna: { v: 0 } } as Record<Seat, Read<number>>,
+    drafts: { ivan: dr('ivan'), risedtc: dr('risedtc'), arch: dr('arch') , swishdm: dr('swishdm'), anna: dr('anna'), leah: dr('leah') } as Record<Seat, Read<number>>,
+    waiting: { ivan: dr('ivan', wn), risedtc: dr('risedtc', wn), arch: dr('arch', wn), swishdm: dr('swishdm', wn), anna: dr('anna', wn), leah: dr('leah', wn) } as Record<Seat, Read<number>>,
+    review: { ivan: rv('ivan'), risedtc: rv('risedtc'), arch: rv('arch'), swishdm: rv('swishdm'), anna: { v: 0 }, leah: { v: 0 } } as Record<Seat, Read<number>>,
     retry: {
       content: week.refresh,
       drafts: () => counts.refresh('dms'),

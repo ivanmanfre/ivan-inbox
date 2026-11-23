@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { ANNA_BOOKING_LINE, ANNA_BOOKING_URL, fetchAnnaScan, requestAnnaScan, type AnnaScanStatus } from '../../lib/annaReplies'
 import { Btn } from '../ui/Key'
+import { STUDIO_NAME, type StudioSeat } from '../seats'
 
-export function AnnaTools({ prospectId, onInsert, refresh }: {
-  prospectId: string; onInsert: (text: string) => void; refresh?: () => void | Promise<void>
+export function AnnaTools({ prospectId, onInsert, refresh, seat = 'anna' }: {
+  seat?: StudioSeat; prospectId: string; onInsert: (text: string) => void; refresh?: () => void | Promise<void>
 }) {
   const [scan, setScan] = useState<AnnaScanStatus | null>(null)
   const [busy, setBusy] = useState(false)
@@ -13,22 +14,22 @@ export function AnnaTools({ prospectId, onInsert, refresh }: {
   useEffect(() => {
     let live = true
     setLoading(true); setScan(null); setError(null)
-    const load = () => fetchAnnaScan(prospectId).then(value => { if (live) { setScan(value); setError(null) } })
+    const load = () => fetchAnnaScan(prospectId, seat).then(value => { if (live) { setScan(value); setError(null) } })
       .catch(() => { if (live) setError('Scan status could not be loaded.') }).finally(() => { if (live) setLoading(false) })
     void load()
     const timer = window.setInterval(() => { void load() }, 30_000)
     return () => { live = false; window.clearInterval(timer) }
-  }, [prospectId, version])
+  }, [prospectId, version, seat])
   const request = async () => {
     setBusy(true); setError(null)
-    try { setScan(await requestAnnaScan(prospectId)); await refresh?.() }
+    try { setScan(await requestAnnaScan(prospectId, seat)); await refresh?.() }
     catch (e) { setError(e instanceof Error ? e.message : 'The scan could not be requested.') }
     finally { setBusy(false) }
   }
   const waiting = ['queued', 'building', 'retry', 'working'].includes(scan?.status ?? '')
   const warnings = [...(scan?.review?.blockers ?? []), ...(scan?.review?.warnings ?? [])]
   const publicUrl = /^https:\/\/inboundonsteroids\.com\/scan\/[a-z0-9-]+\/$/.test(scan?.url ?? '') ? scan?.url : null
-  return <section className="dm-ctx" aria-label="Anna's scan and booking tools">
+  return <section className="dm-ctx" aria-label={`${STUDIO_NAME[seat]}'s scan and booking tools`}>
     <dl>
       <div><dt>Booking</dt><dd><a className="d-link" href={ANNA_BOOKING_URL} target="_blank" rel="noreferrer">Ivan’s booking page</a></dd></div>
       <div><dt>Scan</dt><dd aria-live="polite">{loading ? 'Loading…' : scan?.status === 'ready' ? 'Ready for your review' : waiting ? 'Preparing the scan. The delivery draft will need your approval.' : scan?.status === 'failed' ? 'The scan needs attention before delivery.' : 'No scan requested'}
