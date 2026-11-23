@@ -10,6 +10,7 @@ import { campaignLaneLabel, copyRouteTag, threadLaneLabel } from '../../lib/labe
 import { seatOf, type Seat } from '../seats'
 import { warsawDay } from '../ui/time'
 import { splitEmail } from './emailFolder'
+import { strangersFor, type Stranger } from './strangers'
 
 const DAY = 86_400_000
 
@@ -24,6 +25,8 @@ export type SeatView = {
   rest: Thread[]       // sent, waiting on them
   thrown: Thread[]     // a draft discarded in the last 3 days, nothing sent since
   spam: Thread[]
+  /** LinkedIn DMs the detectors filed as vendor or unsure: no thread in the engine, read-only rows. */
+  strangers: Stranger[]
   email: Thread[]
   /** Email-only people (no LinkedIn thread) who owe a reply: they live in the Email folder, and
    *  Needs you carries one pointer line so its count still matches the frame's. */
@@ -34,6 +37,9 @@ export type SeatView = {
   /** Every live conversation on the seat, newest activity first (All conversations). */
   all: Thread[]
 }
+
+/** What the Likely spam folder holds on a seat: spam threads plus filtered strangers. */
+export const spamCount = (v: Pick<SeatView, 'spam' | 'strangers'>): number => v.spam.length + v.strangers.length
 
 /** Nobody on LinkedIn: every message rode email. Such a thread stays in the Email folder only
  *  (Ivan 09-27: the email shows on the DM "only in cases where the DM is connected to the email"). */
@@ -60,10 +66,10 @@ export function isThrownRecently(t: Thread, now: number = Date.now()): boolean {
 }
 
 /** scanDays: prospect_id -> distinct days the scan was reopened (inbox_interest_cards). */
-export function seatView(threads: Thread[], seat: Seat, now: number = Date.now(), scanDays: ReadonlyMap<string, number> = new Map(), interestRanks: ReadonlyMap<string, number> = new Map()): SeatView {
+export function seatView(threads: Thread[], seat: Seat, now: number = Date.now(), scanDays: ReadonlyMap<string, number> = new Map(), interestRanks: ReadonlyMap<string, number> = new Map(), strangers: readonly Stranger[] = []): SeatView {
   const mine = seatThreads(threads, seat).filter(isConversation)
   const live = mine.filter(t => !t.spam)
-  const v: SeatView = { seat, owner: [], drafted: [], nodraft: [], later: [], older: [], auto: [], rest: [], thrown: [], spam: [], email: [], emailOwed: [], emailWaiting: [], emailRest: [], all: [] }
+  const v: SeatView = { seat, owner: [], drafted: [], nodraft: [], later: [], older: [], auto: [], rest: [], thrown: [], spam: [], strangers: strangersFor(strangers, seat, now), email: [], emailOwed: [], emailWaiting: [], emailRest: [], all: [] }
   for (const t of live) {
     const bucket = threadBucket(t, now)
     // 2026-11-06 (Ivan: "emails and conversations should share same conversation"): one list per lead,

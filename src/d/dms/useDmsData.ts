@@ -17,6 +17,7 @@ import { fetchConversationAgentCards, type ConversationAgentCard, type Conversat
 import { projectFollowups, type FollowupSource } from './upcoming'
 import { forget, recall, remember } from '../../lib/pageMemo'
 import { fetchOwnerEngagers, type OwnerEngagerCard } from './ownerEngagers'
+import { readStrangers, rememberedStrangers } from './strangers'
 
 /** `at`: when the last read that worked landed (ms), for a failed read's "last read HH:MM". */
 export type Side<T> = { rows: T[]; failed: boolean; loaded: boolean; at?: number | null }
@@ -115,6 +116,7 @@ export function useDmsData() {
   const inbox = useDInbox()
   const [cameRaw, reloadCame, editCame] = useSide(readCameBackRaw)
   const [ownerEngagers, reloadOwners, editOwners] = useSide<OwnerEngagerCard>(fetchOwnerEngagers)
+  const [strangers, reloadStrangers] = useSide(readStrangers, undefined, rememberedStrangers)
   const [warm, reloadWarm, editWarm] = useSide<WarmCard>(fetchWarmCards)
   const [viewSeen, reloadViewSeen] = useSide<ViewSeen>(fetchViewSeen)
   const [dated, readDates] = useSide(readDatedFollowUps)
@@ -183,15 +185,15 @@ export function useDmsData() {
   const interestRanks = useMemo(() => new Map(cameRaw.rows.map(c => [c.prospect_id, interestPriority(c)])), [cameRaw.rows])
 
   const refreshAll = useCallback(() => {
-    inbox.refresh(); reloadCame(); reloadOwners(); reloadWarm(); reloadViewSeen(); reloadDated(); reloadAgent()
-  }, [inbox, reloadCame, reloadOwners, reloadWarm, reloadViewSeen, reloadDated, reloadAgent])
+    inbox.refresh(); reloadCame(); reloadOwners(); reloadStrangers(); reloadWarm(); reloadViewSeen(); reloadDated(); reloadAgent()
+  }, [inbox, reloadCame, reloadOwners, reloadStrangers, reloadWarm, reloadViewSeen, reloadDated, reloadAgent])
 
   return {
     threads, loading: inbox.loading, error: inbox.error, loadedAt: inbox.loadedAt, priorityAt: inbox.priorityAt, fromCache: inbox.fromCache, cachedAt: inbox.cachedAt,
     refreshList: inbox.refresh, refreshAll, patch, solved: inbox.solved,
     cameBack: { ...cameRaw, rows: cameBack }, dropCameBack: (pid: string) => editCame(r => r.filter(c => c.prospect_id !== pid)), reloadCame,
     ownerEngagers, reloadOwners, dropOwnerEngager: (card: OwnerEngagerCard) => editOwners(r => r.filter(c => c.tenant !== card.tenant || c.profile_id !== card.profile_id)),
-    scanDays, interestRanks, warm, viewSeen, dropWarm: (pid: string) => editWarm(r => r.filter(c => c.prospect_id !== pid)), reloadWarm,
+    strangers, scanDays, interestRanks, warm, viewSeen, dropWarm: (pid: string) => editWarm(r => r.filter(c => c.prospect_id !== pid)), reloadWarm,
     dated, reloadDated, upcoming,
     agent, reloadAgent,
   }

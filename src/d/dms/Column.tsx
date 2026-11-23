@@ -5,7 +5,7 @@ import { cameBackRowLine, firstComment, sentLine, type CameBackCard } from '../.
 import { agentCardsWithoutWarmCards, type ConversationAgentCard } from '../../wb/dms/conversationAgentData'
 import { WARM_GROUPS, dm1Deliverable, evidenceLine, inCampaign, inviteLine, isWaiting, primaryAction, warmGroup, type WarmCard } from '../../wb/dms/warmSignalsData'
 import { type Seat } from '../seats'
-import { ago, firstLine, heldItems, needsCount, seatThreads, type SeatView } from './model'
+import { ago, firstLine, heldItems, needsCount, seatThreads, spamCount, type SeatView } from './model'
 import { scheduleHeld, SCHEDULE_REVIEW } from '../../lib/dmSchedule'
 import { sendTimeLabel } from '../../lib/dmScheduleTime'
 import { laterItems } from './later'
@@ -13,7 +13,7 @@ import { Btn } from '../ui/Key'
 import { Failed } from '../ui/states'
 import { Quiet, Row, Sec } from './Row'
 import { Section, useFolds, type Folds } from './Section'
-import { AnyRow, DraftRow, HeldRow, LaterRow, NoDraftRow, SpamRow, ThrownRow, dayMonth, type RowCtx } from './threadRows'
+import { AnyRow, DraftRow, HeldRow, LaterRow, NoDraftRow, SpamRow, StrangerRow, ThrownRow, dayMonth, type RowCtx } from './threadRows'
 import { AllConvos } from './AllConvos'
 import { SendLog } from './SendLog'
 import { signalItems, warmSeat } from './signals'
@@ -66,8 +66,10 @@ export function ColumnBody(p: ColumnProps) {
 
   if (mode === 'spam') {
     if (seat === 'ivan') return <Quiet>No Likely spam folder on your seat: the vendor filter runs on Rise and Arch only.</Quiet>
-    return <Section id="spam" label="Likely spam" n={v.spam.length} folds={folds}
-      rows={v.spam.map(t => <SpamRow key={t.prospect_id} t={t} c={c} />)} before={v.spam.length ? null : <Quiet>Nothing filed on this seat.</Quiet>} />
+    const filed = spamCount(v)
+    return <Section id="spam" label="Likely spam" n={filed} folds={folds}
+      rows={[...v.spam.map(t => <SpamRow key={t.prospect_id} t={t} c={c} />), ...v.strangers.map(s => <StrangerRow key={s.id} s={s} c={c} />)]}
+      before={filed ? null : <Quiet>Nothing filed on this seat.</Quiet>} />
   }
   if (mode === 'email') {
     return <>

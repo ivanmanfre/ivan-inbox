@@ -7,6 +7,7 @@ import { ago, firstLine, flat, lastDiscard, owedSince, rowTags } from './model'
 import { Row } from './Row'
 import type { DmVerbs } from './verbs'
 import type { CameTag } from './signals'
+import type { Stranger } from './strangers'
 
 export const dayMonth = (iso: string) => `${warsawDow(iso)} ${warsawDm(iso)}`
 
@@ -88,6 +89,13 @@ export function SpamRow({ t, c }: { t: Thread; c: RowCtx }) {
   return <Row {...extras(t, c)} id={t.prospect_id} name={t.prospect_name} company={t.prospect_company} tags={rowTags(t)} line={flat(lastIn?.message_text)}
     verbs={[{ label: 'Not spam', verb: 'not-spam', busy: c.busy === t.prospect_id, run: () => { c.setBusy(t.prospect_id); void c.verbs.notSpam(t).finally(() => c.setBusy(null)) } }]}
     selected={c.selected === t.prospect_id} onOpen={() => c.open(t)} />
+}
+
+/** A stranger the detectors filed as vendor or unsure: no thread in the engine, so no open, reply or verb. */
+export function StrangerRow({ s, c }: { s: Stranger; c: RowCtx }) {
+  const why = [s.verdict === 'vendor' ? 'Vendor' : 'Unsure', flat(s.reason)].filter(Boolean).join(': ')
+  return <Row v4={c.v4} id={s.id} conversation={false} name={s.who || 'Unknown'} tags={[{ text: 'LinkedIn DM, not in engine', kind: 'ch' }]}
+    line={flat(s.message_text)} sub={why} right={when(s.decided_at, c.now)} />
 }
 
 /** A search match or an email thread: owed ones read like Needs you, the rest like Sent. */
