@@ -6,7 +6,9 @@ export type AnnaEvent = {
   id: string; name: string; company: string | null; linkedin_url: string; status: string
   invited_at: string | null; accepted_at: string | null; last_reply_at: string | null; error: string | null
 }
+export type LinkedInSetup = { key: string; name: string; verified_at: string; week_caps: number[] }
 export type AnnaStatus = {
+  qualified_queued: number; setups: LinkedInSetup[]
   enabled: boolean; pause_reason: string | null; daily_cap: number
   sent_today: number; pending: number; accepted: number; replied: number; queued: number
   last_sync_at: string | null; events: AnnaEvent[]
@@ -16,7 +18,8 @@ export type AnnaRead = { value: AnnaStatus | null; error: string | null; busy: b
 export function parseAnnaStatus(value: unknown): AnnaStatus {
   const s = value as AnnaStatus | null
   if (!s || typeof s.enabled !== 'boolean' || !Array.isArray(s.events)
-    || ![s.daily_cap, s.sent_today, s.pending, s.accepted, s.replied, s.queued].every(n => Number.isInteger(n) && n >= 0)
+    || ![s.daily_cap, s.sent_today, s.pending, s.accepted, s.replied, s.queued, s.qualified_queued].every(n => Number.isInteger(n) && n >= 0)
+    || !Array.isArray(s.setups) || s.setups.some(l => !l || typeof l.key !== 'string' || typeof l.name !== 'string' || !Number.isFinite(Date.parse(l.verified_at)) || !Array.isArray(l.week_caps) || l.week_caps.length !== 4 || l.week_caps.some(n => !Number.isInteger(n) || n <= 0))
     || s.events.some(e => !e || typeof e.id !== 'string' || typeof e.name !== 'string' || typeof e.status !== 'string' || typeof e.linkedin_url !== 'string')) {
     throw new Error('Anna’s lane returned an incomplete reading.')
   }
@@ -24,7 +27,7 @@ export function parseAnnaStatus(value: unknown): AnnaStatus {
 }
 
 export async function fetchAnnaStatus(): Promise<AnnaStatus> {
-  const { data, error } = await supabase.rpc('anna_lane_status')
+  const { data, error } = await supabase.rpc('inbox_linkedin_lane_overview')
   if (error) throw error
   return parseAnnaStatus(data)
 }

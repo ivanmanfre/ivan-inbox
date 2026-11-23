@@ -24,7 +24,7 @@ export function AnnaLane({ read, refresh, control }: { read: AnnaRead; refresh: 
         <Btn verb="anna-toggle" disabled={read.busy || !!read.error} onClick={() => control(!s.enabled)}>{read.busy ? 'Saving…' : s.enabled ? 'Pause lane' : 'Resume lane'}</Btn>
       </div>
       <div className="dl4-kpis anna-kpis">
-        {([['Invited today', s.sent_today], ['Awaiting acceptance', s.pending], ['Accepted', s.accepted], ['Replied', s.replied], ['Queued', s.queued]] as const).map(([label, n]) =>
+        {([['Invited today', s.sent_today], ['Awaiting acceptance', s.pending], ['Accepted', s.accepted], ['Replied', s.replied], ['Qualified queue', s.qualified_queued]] as const).map(([label, n]) =>
           <div className="dl4-kpi" key={label}><small>{label}</small><strong className="anna-number">{n}</strong></div>)}
       </div>
       <section className="dl4-panel" aria-label="Anna’s invitation activity">

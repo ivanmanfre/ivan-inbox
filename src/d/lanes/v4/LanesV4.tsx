@@ -32,6 +32,7 @@ import { Strip } from './Strip'
 import { SeatView4 } from './SeatView'
 import { AnnaLane } from '../AnnaLane'
 import { useAnnaLane } from '../anna'
+import { LinkedInConnectionLane } from '../LinkedInConnectionLane'
 import { LanesSheet, type SheetKind } from '../Sheets'
 import { failedCount, useLanesData } from '../useLanesData'
 import '../lanes.css'
@@ -53,6 +54,8 @@ export default function LanesPage({ layout, route, navigate }: PlaceProps) {
   useReportFailed('lanes', failedCount(data))
 
   const q = route.query
+  const setupKey = q.get('setup')
+  const setup = anna.read.value?.setups.find(s => s.key === setupKey)
   const seats: Seat[] = outreachSeats(reg.lanes)
   const cols = seats.length ? seats : [...SEATS]
   const [kept, setKept] = useState<Seat>(storedSeat)
@@ -64,7 +67,7 @@ export default function LanesPage({ layout, route, navigate }: PlaceProps) {
     for (const [k, v] of Object.entries(patch)) { if (v == null) next.delete(k); else next.set(k, v) }
     navigate(dHash('lanes', null, next))
   }
-  const pick = (s: Seat) => { storeSeat(s); setKept(s); go({ seat: s, sheet: null, for: null, c: null }) }
+  const pick = (s: Seat) => { storeSeat(s); setKept(s); go({ seat: s, setup: null, sheet: null, for: null, c: null }) }
   const ctx: BandCtx = {
     d: data, now, range, selected: sheet === 'campaign' ? q.get('c') : null,
     openCampaign: id => go({ sheet: 'campaign', c: id }),
@@ -84,29 +87,29 @@ export default function LanesPage({ layout, route, navigate }: PlaceProps) {
   const p = data.cc.value
   const staleMin = p && monitorLiveness(p, now) === 'stale' && p.monitor.last_tick_at ? Math.max(1, Math.round((now - Date.parse(p.monitor.last_tick_at)) / 6e4)) : null
   const tools = (
-    <button type="button" className={`d-ib dl-refresh dl-refresh-${layout}`} data-verb="refresh" onClick={() => { refresh(); void anna.refresh() }} title={seat === 'anna' ? 'Refresh Anna’s lane' : `Read everything again · ${monitorLine(data, now)}`} aria-label="Refresh">
+    <button type="button" className={`d-ib dl-refresh dl-refresh-${layout}`} data-verb="refresh" onClick={() => { refresh(); void anna.refresh() }} title={setupKey ? 'Refresh connection record' : seat === 'anna' ? 'Refresh Anna’s lane' : `Read everything again · ${monitorLine(data, now)}`} aria-label="Refresh">
       <DIcon name="retry" />
     </button>
   )
   return (
     <div data-motion={motion} className={`dl-root dl4 dl4-${layout}`} data-layout-v4="lanes">
-      <AnswerRow title="Lanes" sub={seat === 'anna' ? null : staleMin != null ? `Monitor silent ${staleMin} min: numbers unverified.` : p ? ans.alert : null} tools={tools} />
+      <AnswerRow title="Lanes" sub={setupKey || seat === 'anna' ? null : staleMin != null ? `Monitor silent ${staleMin} min: numbers unverified.` : p ? ans.alert : null} tools={tools} />
       <div className="dl4-scroll" data-d-scroll>
         {!online && <Offline since={at ? hm(at) : null} />}
-        {seat !== 'anna' && data.cc.failed && !data.cc.value && <Failed what="the send monitor" detail={data.cc.failed} onRetry={refresh} />}
-        {seat !== 'anna' && otherFailed > 0 && <Failed what={otherFailed === 1 ? 'one of the reads on this page' : `${otherFailed} of the reads on this page`} onRetry={refresh} />}
+        {!setupKey && seat !== 'anna' && data.cc.failed && !data.cc.value && <Failed what="the send monitor" detail={data.cc.failed} onRetry={refresh} />}
+        {!setupKey && seat !== 'anna' && otherFailed > 0 && <Failed what={otherFailed === 1 ? 'one of the reads on this page' : `${otherFailed} of the reads on this page`} onRetry={refresh} />}
         
-        {seat !== 'anna' && summaryAt != null && <p className="dl-notice">Results and supply saved at {hm(summaryAt)}. Refresh reads them again.</p>}
-        {seat !== 'anna' && p?.coverage.degraded && <p className="dl-notice">Coverage degraded{p.coverage.degraded_reasons.length ? `: ${p.coverage.degraded_reasons.join(' · ')}` : '.'}</p>}
+        {!setupKey && seat !== 'anna' && summaryAt != null && <p className="dl-notice">Results and supply saved at {hm(summaryAt)}. Refresh reads them again.</p>}
+        {!setupKey && seat !== 'anna' && p?.coverage.degraded && <p className="dl-notice">Coverage degraded{p.coverage.degraded_reasons.length ? `: ${p.coverage.degraded_reasons.join(' · ')}` : '.'}</p>}
         
-        <Strip anna={anna.read} seats={cols} seat={seat} pick={pick} d={data} now={now} phone={layout === 'phone'} />
-        {seat === 'anna' ? <AnnaLane read={anna.read} refresh={anna.refresh} control={anna.control} /> : <SeatView4 key={seat} seat={seat} ctx={ctx} range={range} setRange={setRange} retry={refresh} onCustom={() => go({ sheet: 'range', c: null })} />}
+        <Strip setupKey={setupKey} pickSetup={key => go({ setup: key, sheet: null, for: null, c: null })} anna={anna.read} seats={cols} seat={seat} pick={pick} d={data} now={now} phone={layout === 'phone'} />
+        {setupKey ? <LinkedInConnectionLane setup={setup} read={anna.read} refresh={anna.refresh} /> : seat === 'anna' ? <AnnaLane read={anna.read} refresh={anna.refresh} control={anna.control} /> : <SeatView4 key={seat} seat={seat} ctx={ctx} range={range} setRange={setRange} retry={refresh} onCustom={() => go({ sheet: 'range', c: null })} />}
       </div>
-      {seat !== 'anna' && forSeat !== 'anna' && sheet === 'range' && <RangeSheet from={q.get('from')} to={q.get('to')} setRange={(from, to) => go({ from, to })} onClose={() => go({ sheet: null, from: null, to: null })} />}
-      {seat !== 'anna' && forSeat !== 'anna' && sheet === 'channels' && <ChannelsSheet seat={forSeat ?? seat} setSeat={s => go({ for: s })} now={now} onClose={close} />}
-      {seat !== 'anna' && forSeat !== 'anna' && sheet === 'control' && <ControlSheet seat={forSeat ?? seat} p={data.cc.value} pFailed={data.cc.failed} gov={data.gov.value?.find(x => x.client_id === (forSeat ?? seat)) ?? null}
+      {!setupKey && seat !== 'anna' && forSeat !== 'anna' && sheet === 'range' && <RangeSheet from={q.get('from')} to={q.get('to')} setRange={(from, to) => go({ from, to })} onClose={() => go({ sheet: null, from: null, to: null })} />}
+      {!setupKey && seat !== 'anna' && forSeat !== 'anna' && sheet === 'channels' && <ChannelsSheet seat={forSeat ?? seat} setSeat={s => go({ for: s })} now={now} onClose={close} />}
+      {!setupKey && seat !== 'anna' && forSeat !== 'anna' && sheet === 'control' && <ControlSheet seat={forSeat ?? seat} p={data.cc.value} pFailed={data.cc.failed} gov={data.gov.value?.find(x => x.client_id === (forSeat ?? seat)) ?? null}
         pauses={data.pauses.value} pausesFailed={data.pauses.failed} now={now} onClose={close} />}
-      {seat !== 'anna' && forSeat !== 'anna' && sheet && (SHEETS as string[]).includes(sheet) &&<LanesSheet kind={sheet as SheetKind} seat={forSeat} p={data.cc.value} pFailed={data.cc.failed} range={range} now={now} setSeat={s => go({ for: s })} onClose={close} />}
+      {!setupKey && seat !== 'anna' && forSeat !== 'anna' && sheet && (SHEETS as string[]).includes(sheet) &&<LanesSheet kind={sheet as SheetKind} seat={forSeat} p={data.cc.value} pFailed={data.cc.failed} range={range} now={now} setSeat={s => go({ for: s })} onClose={close} />}
     </div>
   )
 }
