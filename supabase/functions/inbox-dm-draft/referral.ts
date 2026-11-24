@@ -138,8 +138,11 @@ export function referralCandidate(text: string): boolean {
   }
   // A name may be followed by a title in apposition before the ownership verb.
   const withoutTitle = text.replace(/,\s*(?:our|my|the|their)\s+[\p{L}][\p{L}\p{M} &’'-]{0,80},/giu, ' ')
-  const named = withoutTitle.match(/\b([\p{L}][\p{L}'-]*(?:\s+[\p{L}][\p{L}'-]*){0,3})\s+(?:handles?|does|manages?|runs?|looks after|is responsible for|is in charge of)\b/iu)
-  return Boolean(named && !/\b(?:i|we|you|he|she|they|it)\b/i.test(named[1]))
+  // A question such as "interesting and does it cost anything?" has no named owner.
+  // Split at the auxiliary verb so a real handoff in another clause still matches.
+  const clauses = withoutTitle.replace(/\b(?:(?:(?:and|but|how much|when|where|why|what|how)\s+does)|does\s+(?:it|this|that)\s+(?:cost|work|include|require|mean|take|cover|apply))\b/gi, '.')
+  const owners = clauses.matchAll(/\b([\p{L}][\p{L}'-]*(?:\s+[\p{L}][\p{L}'-]*){0,3})\s+(?:handles?|does|manages?|runs?|looks after|is responsible for|is in charge of)\b/giu)
+  return Array.from(owners).some(owner => !/\b(?:i|we|you|he|she|they|it)\b/i.test(owner[1]))
 }
 
 const norm = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim()

@@ -3,7 +3,7 @@ import { draftBreaksRules, emailEnvelope, INVITE_NOTE_LIMIT, laterChecked, later
 import { judgeLater, redraftReferral, researchReferral, REFERRAL_REVISION } from './research.ts'
 import { apifyProfileDetails } from './apify.ts'
 import { readMentions } from './mention.ts'
-import { askClaude, DRAFT_MODEL } from './llm.ts'
+import { generateText } from './llm.ts'
 import { ANNA_AUTHOR, ANNA_IDENTITY_INSTRUCTION, ANNA_FOLLOWUP_INSTRUCTION, LEAH_AUTHOR, LEAH_IDENTITY_INSTRUCTION } from './anna.ts'
 
 /** Studio seats (Anna, Leah): Ivan's offer and voice, their own identity, server-only auto/follow-up modes. */
@@ -61,7 +61,7 @@ Deno.serve(async req => {
     if (typeof body.prospect_id !== 'string' || !UUID.test(body.prospect_id)) throw new Error()
     id = body.prospect_id
     referralMode = body.mode === 'referral'
-    annaMode = /^(?:anna|leah)_(?:auto|followup)$/.test(body.mode) ? body.mode : null
+    annaMode = typeof body.mode === 'string' && /^(?:anna|leah)_(?:auto|followup)$/.test(body.mode) ? body.mode : null
     retryReferral = body.retry === true
     if (body.mode === 'referral_lead' || body.mode === 'referral_dismiss') {
       referralAction = body.mode
@@ -278,15 +278,16 @@ Deno.serve(async req => {
     const context = JSON.stringify({ author: canon.author, client, name: rows[0].prospect_name, company: rows[0].prospect_company,
       operator_note: prospect.operator_note, first_dm_after_invite: firstDm, rules: prompts, messages: conversation.map(m => ({ speaker: m.direction === 'inbound' ? rows[0].prospect_name : canon.author, text: m.message_text, message_type: m.message_type, at: m.sent_at || m.created_at })) })
     if (context.length > 180_000) return respond({ error: 'This conversation is too long for direct drafting.' }, 413)
-    let text
-    try { text = await askClaude(`${instructions}\n\n${context}`, 2200, 120_000) }
+    let generation
+    try { generation = await generateText(`${instructions}\n\n${context}`, 2200, 120_000, !server) }
     catch (e) { return respond({ error: e instanceof Error ? e.message : 'The drafting service is unavailable. Try again.' }, 503) }
+    const { text, model } = generation
     let result
     try { result = JSON.parse(text.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1] ?? text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1)) } catch { return respond({ error: 'The drafter returned an invalid answer. Try again.' }, 502) }
     if (!result || (result.reply !== null && typeof result.reply !== 'string')) return respond({ error: 'The drafter returned no usable answer.' }, 502)
     const scanRequested = Boolean(STUDIO_SEAT[client]) && result.scan_requested === true
     const reply = scanRequested ? null : STUDIO_SEAT[client] && typeof result.reply === 'string' ? result.reply.replace(/^\s*-{3,}\s*$/gm, '').trim() : result.reply
-    return respond({ reply, ...(STUDIO_SEAT[client] ? { author: STUDIO_SEAT[client].author, client_id: client, scan_requested: scanRequested } : {}), reason: typeof result.reason === 'string' ? result.reason : null, model: DRAFT_MODEL,
+    return respond({ reply, ...(STUDIO_SEAT[client] ? { author: STUDIO_SEAT[client].author, client_id: client, scan_requested: scanRequested } : {}), reason: typeof result.reason === 'string' ? result.reason : null, model,
       sources: prompts!.map(p => ({ slug: p.slug, updated_at: p.updated_at })), input_message_ids: conversation.map(m => m.id) })
   } catch (e) {
     console.error('dm_draft_failed', e instanceof Error ? e.name : 'unknown')

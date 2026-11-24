@@ -16,6 +16,10 @@ describe('referral research guard', () => {
   it.each(['No thanks', 'Thanks Ben, I handle our ads myself', 'Do you handle paid ads?', 'I do that side of the business', 'We are happy with our current agency', 'Hi there! Happy to check out :)', 'Happy to connect!', 'Happy to connect with you', 'Sure, talk to you soon', 'Feel free to contact me'])('leaves ordinary replies alone: %s', text => {
     expect(referralCandidate(text)).toBe(false)
   })
+  it.each(['interesting and does it cost anything ?', 'Sounds good, how much does the plan cost?', 'Cool does this work for us?'])('keeps ordinary questions out of referral research: %s', text => {
+    expect(referralCandidate(text)).toBe(false)
+    expect(referralCandidate(text + ' Ben Patton does that side of the business.')).toBe(true)
+  })
   it('recognizes a named owner with an intervening job title', () => {
     expect(referralCandidate('However, Ed Kennon, our Sales and Marketing Director, looks after LinkedIn marketing so it may well be worth connecting with him in the first place.')).toBe(true)
     expect(referralCandidate('She, our Sales and Marketing Director, looks after LinkedIn marketing.')).toBe(false)

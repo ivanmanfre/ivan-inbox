@@ -6,21 +6,25 @@ const env = (k: string) => (globalThis as { Deno?: { env: { get(k: string): stri
 export const DRAFT_MODEL = env('INBOX_DM_DRAFT_MODEL') || 'claude-sonnet-5-5'
 
 export async function askClaude(prompt: string, maxTokens: number, timeoutMs = 60_000): Promise<string> {
+  return (await generateText(prompt, maxTokens, timeoutMs)).text
+}
+
+export async function generateText(prompt: string, maxTokens: number, timeoutMs: number, operatorDraft = false) {
   const base = (env('RAILWAY_CLAUDE_URL') ?? '').replace(/\/$/, '')
   const key = env('RAILWAY_CLAUDE_API_KEY')
   if (!base || !key) throw new Error('Drafting is not configured.')
   const r = await fetch(`${base}/v1/messages`, {
-    method: 'POST', headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
+    method: 'POST', headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json', ...(operatorDraft ? { 'x-proxy-caller': 'inbox-operator-draft' } : {}) },
     body: JSON.stringify({ model: DRAFT_MODEL, max_tokens: maxTokens, messages: [{ role: 'user', content: prompt }] }),
     signal: AbortSignal.timeout(timeoutMs),
   })
   if (!r.ok) throw new Error(`The drafting service is unavailable (${r.status}). Try again.`)
-  const body = await r.json() as { content?: { type?: string; text?: string }[] }
+  const body = await r.json() as { model?: string; content?: { type?: string; text?: string }[] }
   // Only text blocks: a thinking block ahead of the answer is not the answer.
   const text = (body.content ?? []).filter(c => c.type === 'text' && typeof c.text === 'string').map(c => c.text).join('').trim()
   // A capped proxy answers 200 with its limit notice as the "reply"; that is an outage, never an answer.
   if (!text || /\b(usage|session|rate|weekly) limit\b|limit reached|try again later/i.test(text)) throw new Error('The drafting service is unavailable. Try again.')
-  return text
+  return { text, model: body.model || DRAFT_MODEL }
 }
 
 /** The first JSON object in a model answer, with or without a code fence. Throws when there is none. */
