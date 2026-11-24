@@ -199,9 +199,18 @@ export async function fetchReady(now = Date.now()): Promise<ReadyRead> {
   const swishLive = camps.filter(c => c.client_id === 'swishdm' && live(c)).map(c => c.id)
   const ids = [...ivanIds, ...riseLive, ...archLive]
   const riseAll = camps.filter(c => c.client_id === 'risedtc').map(c => c.id)
-  const page = (from: number) => supabase.from('inbox_interest_prospects_v').select(COLS).in('campaign_id', ids).eq('blacklisted', false).is('connected_at', null)
-    .is('connection_sent_at', null).in('stage', ['enriched','identified','queued','dm_sent','inmail_ready'])
-    .order('id').range(from, from + PAGE - 1)
+  // The RISE sender already returned the eligible engager IDs. Push its intersection into the
+  // read whenever it fits in a request URL. laneOf applies the same check for larger sets.
+  const riseReadyIds = new Set<string>(supply.data.ready_ids)
+  const riseFilter = riseReadyIds.size <= 50 && [...riseReadyIds].every(id => typeof id === 'string' && /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(id))
+    ? [...riseReadyIds].join(',') : null
+  const page = (from: number) => {
+    let q = supabase.from('inbox_interest_prospects_v').select(COLS).in('campaign_id', ids).eq('blacklisted', false).is('connected_at', null)
+      .is('connection_sent_at', null).in('stage', ['enriched','identified','queued','dm_sent','inmail_ready'])
+    if (riseFilter === '') q = q.neq('campaign_id', RISE.engager)
+    else if (riseFilter !== null) q = q.or(`campaign_id.neq.${RISE.engager},id.in.(${riseFilter})`)
+    return q.order('id').range(from, from + PAGE - 1)
+  }
   const candidates = async (): Promise<{ rows: Cand[]; capped: boolean }> => {
     const rows: Cand[] = []
     for (let i = 0; i < MAX_PAGES; i++) {
@@ -222,7 +231,7 @@ export async function fetchReady(now = Date.now()): Promise<ReadyRead> {
   const swishReady = swishSupply.data?.ready_count
   if (!Number.isInteger(swishReady) || swishReady < 0) throw new Error('SwishDM ready stock could not be verified')
   const rows = cand.rows
-  const ready = buildReady(rows, { now, cfg, scorer, ivanIds, ivanQualifiedIds, riseLive, archLive, stop: dom.stop, touch: dom.touch, satNy: isSaturdayNy(now), riseReadyIds: new Set(supply.data.ready_ids), riseReadyCount: supply.data.ready_count }, cand.capped)
+  const ready = buildReady(rows, { now, cfg, scorer, ivanIds, ivanQualifiedIds, riseLive, archLive, stop: dom.stop, touch: dom.touch, satNy: isSaturdayNy(now), riseReadyIds, riseReadyCount: supply.data.ready_count }, cand.capped)
   // SwishDM (2026-10-23, Ivan: "the numbers should be the ones that are ready to be sent"): the approved, unsent noted
   // invites its sender would pick now (swishdm_supply_snapshot.sendable_invites), not the unfiltered engager pool.
   ready.lanes.push({ seat: 'swishdm', lane: 'competitor_engager', label: INTEREST_LABEL.competitor_engager,

@@ -23,6 +23,7 @@ import type { Attempt } from './glance/model'
 import { fetchLastAttempts } from './glance/reads'
 import { fetchReady, type ReadyRead } from './glance/ready'
 import { RETRY_MS, withTimeout } from '../ui/timeout'
+import { READ_MS } from '../../lib/noAnswer'
 import { recall, remember } from '../../lib/pageMemo'
 import { supabase } from '../../lib/supabase'
 import { fetchInterestReplacement } from './interestReads'
@@ -189,7 +190,9 @@ export function useLanesData(only?: readonly Key[]): { data: LanesData; loading:
           return value
         }).catch(() => { generatedAt = undefined; return direct() })
         : direct()
-      return withTimeout<unknown>(read).then(
+      // Stock spans several sequential queries and warm signals aggregate across seats.
+      // Each has its own deadline so a valid result can still settle on a busy connection.
+      return withTimeout<unknown>(read, k === 'ready' || k === 'warm' ? READ_MS : undefined).then(
       v => { remember(memoKey(k), v, { at: generatedAt }); put(k, () => ({ value: v, failed: null, ...(generatedAt != null ? { generatedAt } : {}) })) },
       e => {
         failed.push(k)

@@ -30,7 +30,7 @@ export function warmCountFor(data: unknown, tenant: string): number {
   return Array.isArray(data) ? data.filter(r => { const t = (r as { tenant?: string | null } | null)?.tenant; return (t || 'ivan') === tenant }).length : 0
 }
 export async function fetchWarmCount(): Promise<number> {
-  const { data, error } = await supabase.rpc('warm_signal_cards')
+  const { data, error } = await supabase.rpc('warm_signal_cards', {}, { get: true }).select('tenant')
   if (error) throw error
   return warmCountFor(data, 'ivan')
 }
