@@ -9,12 +9,12 @@ export async function askClaude(prompt: string, maxTokens: number, timeoutMs = 6
   return (await generateText(prompt, maxTokens, timeoutMs)).text
 }
 
-export async function generateText(prompt: string, maxTokens: number, timeoutMs: number, operatorDraft = false) {
+export async function generateText(prompt: string, maxTokens: number, timeoutMs: number, caller?: 'inbox-operator-draft' | 'inbox-auto-draft') {
   const base = (env('RAILWAY_CLAUDE_URL') ?? '').replace(/\/$/, '')
   const key = env('RAILWAY_CLAUDE_API_KEY')
   if (!base || !key) throw new Error('Drafting is not configured.')
   const r = await fetch(`${base}/v1/messages`, {
-    method: 'POST', headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json', ...(operatorDraft ? { 'x-proxy-caller': 'inbox-operator-draft' } : {}) },
+    method: 'POST', headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json', ...(caller ? { 'x-proxy-caller': caller } : {}) },
     body: JSON.stringify({ model: DRAFT_MODEL, max_tokens: maxTokens, messages: [{ role: 'user', content: prompt }] }),
     signal: AbortSignal.timeout(timeoutMs),
   })

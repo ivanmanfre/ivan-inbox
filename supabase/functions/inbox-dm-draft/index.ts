@@ -298,7 +298,8 @@ Deno.serve(async req => {
       operator_note: prospect.operator_note, first_dm_after_invite: firstDm, rules: prompts, messages: conversation.map(m => ({ speaker: m.direction === 'inbound' ? rows[0].prospect_name : canon.author, text: m.message_text, message_type: m.message_type, at: m.sent_at || m.created_at })) })
     if (context.length > 180_000) return respond({ error: 'This conversation is too long for direct drafting.' }, 413)
     let generation
-    try { generation = await generateText(`${instructions}\n\n${context}`, 2200, 120_000, !server) }
+    const caller = !server ? 'inbox-operator-draft' : annaMode?.endsWith('_auto') ? 'inbox-auto-draft' : undefined
+    try { generation = await generateText(`${instructions}\n\n${context}`, 2200, 120_000, caller) }
     catch (e) { return respond({ error: e instanceof Error ? e.message : 'The drafting service is unavailable. Try again.' }, 503) }
     const { text, model } = generation
     let result
