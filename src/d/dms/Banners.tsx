@@ -150,14 +150,14 @@ export function NoDraftBanner({ t, now }: { t: Thread; now: number }) {
   )
   if (hold?.owed) return (
     <div className="dm-ban">
-      <b><DIcon name="time" />{firstOf(t)} said yes to the scan. It is being built and repaired automatically.</b>
-      <p>The reply with the scan link drafts itself here once it passes the review. Nothing goes out without the scan.{hold.reason ? ` Last step: ${hold.reason}` : ''}</p>
+      <b><DIcon name="time" />The scan for {firstOf(t)} is in progress.</b>
+      <p>The reply draft will appear here once the scan passes review.{hold.reason ? ` Last step: ${hold.reason}` : ''}</p>
     </div>
   )
   if (hold) return (
     <div className="dm-ban dm-ban-hl">
-      <b><DIcon name="alert" />{firstOf(t)} said yes to the scan, but the page is held, so nothing was drafted.</b>
-      <p>Why: {hold.reason} Ship the page as it is, or write the reply yourself.</p>
+      <b><DIcon name="alert" />The reply for {firstOf(t)} is waiting on the scan.</b>
+      <p>{hold.reason || 'The scan is on hold.'} {hold.url ? 'Review the held page or write a reply below.' : 'You can write a reply below while the scan is unavailable.'}</p>
       {hold.url && <div className="dm-ban-row"><a className="d-link" href={hold.url} target="_blank" rel="noreferrer" data-verb="scan-hold-page">Open the held page</a></div>}
     </div>
   )
