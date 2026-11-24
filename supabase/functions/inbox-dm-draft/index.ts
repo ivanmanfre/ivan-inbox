@@ -99,6 +99,25 @@ Deno.serve(async req => {
       .sort((a, b) => (a.sent_at || a.created_at).localeCompare(b.sent_at || b.created_at))
     if (annaMode?.endsWith('_auto') && conversation.at(-1)?.direction !== 'inbound') return respond({ error: 'An automatic reply requires an unanswered inbound message.' }, 409)
     if (annaMode?.endsWith('_followup') && (conversation.at(-1)?.direction !== 'outbound' || !conversation.at(-1)?.sent_at || conversation.at(-1)?.message_type === 'connection_note')) return respond({ error: 'A follow-up requires the latest message to be a sent reply.' }, 409)
+    const offer = conversation.at(-2), acknowledgement = conversation.at(-1)
+    if (client === 'anna' && !prospect.operator_note?.trim() && offer?.direction === 'outbound' && offer.sent_at &&
+        offer.ai_model === 'anna_content_system_wins_v1' && offer.message_text.trimEnd().endsWith('May I send you your complete plan?') &&
+        acknowledgement?.direction === 'inbound' && conversation.filter(m => m.direction === 'inbound').length === 1) {
+      const text = acknowledgement.message_text.trim()
+      let accepted = /^👍\uFE0F?\p{Emoji_Modifier}?$/u.test(text)
+      if (/^\[Reaction: (?:LIKE|👍\uFE0F?\p{Emoji_Modifier}?)\]$/iu.test(text)) {
+        // Native reactions can arrive late and refer to an older message.
+        const { data: pair, error: pairError } = await sb.from('outreach_messages')
+          .select('id,is_reaction,unipile_message_id').eq('prospect_id', id).in('id', [offer.id, acknowledgement.id])
+        if (pairError) throw pairError
+        const offeredId = pair?.find(m => m.id === offer.id)?.unipile_message_id
+        const reaction = pair?.find(m => m.id === acknowledgement.id)
+        accepted = Boolean(offeredId && reaction?.is_reaction && reaction.unipile_message_id?.startsWith(offeredId + ':reaction:'))
+      }
+      if (accepted) return respond({ reply: null, scan_requested: true, author: ANNA_AUTHOR, client_id: client,
+        reason: 'Thumbs-up to the complete plan offer.', model: 'rule/anna_plan_acceptance_v1',
+        sources: [], input_message_ids: conversation.map(m => m.id) })
+    }
     if (referralMode || referralAction) {
       const cached = prospect.enrichment_data?.inbox_referral as ReferralDraft | undefined
       const inboundRows = conversation.filter(m => m.direction === 'inbound')

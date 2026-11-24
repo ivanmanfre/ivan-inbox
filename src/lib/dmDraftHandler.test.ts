@@ -193,6 +193,25 @@ describe('Anna reply identity', () => {
 describe('bounded Anna server drafting', () => {
   const server = { headers: { 'x-inbox-secret': 'configured' }, signedIn: false }
   const annaRows = [invite, inbound].map(row => ({ ...row, client_id: 'anna', channel: 'linkedin' }))
+  const planOffer = { ...annaRows[0], message_type: 'dm', ai_model: 'anna_content_system_wins_v1', unipile_message_id: 'offered', message_text: 'Two ideas for your profile.\nMay I send you your complete plan?' }
+  it.each([
+    { message_text: '👍🏽', is_reaction: false, unipile_message_id: 'reply-id' },
+    { message_text: '[Reaction: LIKE]', is_reaction: true, unipile_message_id: 'offered:reaction:peer:LIKE' },
+  ])('routes a thumbs-up to the sent plan offer without a model call', async acknowledgement => {
+    const { status, result, upstream } = await draft([planOffer, { ...annaRows[1], ...acknowledgement }], null, { ...server, body: { mode: 'anna_auto' } })
+    expect(status).toBe(200)
+    expect(result).toMatchObject({ reply: null, scan_requested: true, author: 'Anna Sol Manfredi', input_message_ids: ['invite', 'reaction'] })
+    expect(upstream).toHaveLength(0)
+  })
+  it.each([
+    [{ ...planOffer, message_text: 'Does Tuesday work?' }, annaRows[1]],
+    [planOffer, { ...annaRows[1], message_text: '[Reaction: LIKE]', is_reaction: true, unipile_message_id: 'old:reaction:peer:LIKE' }],
+    [planOffer, { ...annaRows[1], message_text: '👍 but please hold off' }],
+  ])('keeps ambiguous replies on the usual drafting path', async (out, reply) => {
+    const { result, upstream } = await draft([out, reply], null, { ...server, body: { mode: 'anna_auto' } })
+    expect(result.scan_requested).toBe(false)
+    expect(upstream).toHaveLength(1)
+  })
   it('generates an Anna auto reply without inserting or approving anything', async () => {
     const { status, result, saved } = await draft(annaRows, 'I work with Ivan.', { ...server, body: { mode: 'anna_auto' } })
     expect(status).toBe(200)
