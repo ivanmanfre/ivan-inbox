@@ -9,6 +9,8 @@ import { renderEmailComposition, renderEmailDocument, type EmailComposition } fr
 import { sameEmailComposition } from './emailCompositionSave'
 
 export type InboxMessage = {
+  is_reaction?: boolean;
+  reactionQueueAt?: string | null;
   id: string; prospect_id: string; direction: 'inbound' | 'outbound';
   message_text: string; message_type: string | null;
   channel: 'linkedin' | 'linkedin_inmail' | 'email';
@@ -1230,6 +1232,11 @@ export function isOwedInbound(m: InboxMessage, needsManualReply = false): boolea
   return REACTION.test(text) || (needsManualReply && SIGNOFF.test(text))
 }
 
+export function queuedReactionDm1(t: Thread): InboxMessage | undefined {
+  if (t.client_id !== 'swishdm' || t.stage !== 'swishdm_connected' || t.needsManualReply) return undefined
+  return t.messages.find(m => isPendingSend(m) && Number.isFinite(Date.parse(m.reactionQueueAt ?? '')))
+}
+
 // The core "does this thread owe a reply" test, with no staleness cutoff.
 // Extracted so needsAnswer (the badge/list predicate, which DOES cut off at
 // STALE_DAYS so the badge does not ring forever on something that will never
@@ -1246,7 +1253,11 @@ function unansweredSince(t: Thread): string | null {
   // him. It rings again the moment the push expires, and instantly if they
   // write back (which voids draftSnoozedUntil in groupThreads).
   if (t.draftSnoozedUntil !== null) return null
-  const lastInbound = t.messages.filter(m => m.direction === 'inbound' && isOwedInbound(m, t.needsManualReply))
+  // A pre-approved opener gets queued when the invite receives a reaction. Its original
+  // approval predates that reaction. Written replies and later reactions are still owed.
+  const coveredThrough = Date.parse(queuedReactionDm1(t)?.reactionQueueAt ?? '')
+  const lastInbound = t.messages.filter(m => m.direction === 'inbound' && isOwedInbound(m, t.needsManualReply)
+    && !(m.is_reaction && Date.parse(eventTime(m)) <= coveredThrough))
     .map(eventTime).sort().at(-1) ?? null
   if (t.ownerConfirmation) {
     const heldAt = eventTime(t.ownerConfirmation)

@@ -1,3 +1,4 @@
+import { withReactionQueues } from './swishdmReactionQueue'
 import { withTimeout } from '../d/ui/timeout'
 import { readFirstRows } from './firstRows'
 import { scheduleHeld } from './dmSchedule'
@@ -65,7 +66,7 @@ function sideProbes(): Promise<Probes> {
  * can re-assemble the same rows later without last time's annotations sticking.
  */
 export async function assembleInbox(viewRows: readonly InboxMessage[], probes?: Promise<Probes> | null): Promise<{ rows: InboxMessage[]; threads: Thread[] }> {
-  const rows = viewRows.map(m => ({ ...m }))
+  const copies = viewRows.map(m => ({ ...m }))
   // The needs_manual_reply probe rides alongside the message fetch, never in
   // front of it: a failed flag read degrades the badge (those threads drop to
   // "waiting"), it must not take the whole inbox down with it.
@@ -73,7 +74,9 @@ export async function assembleInbox(viewRows: readonly InboxMessage[], probes?: 
   // never take the inbox down. But it is no longer SILENT: null marks every
   // pending draft below, and the card says it cannot tell whether an email
   // rides along, because approving still mails it (check3-drafts E1.5).
-  const [manualReplyIds, emailStamps, emailTo] = await (probes ?? sideProbes())
+  const [[manualReplyIds, emailStamps, emailTo], rows] = await Promise.all([
+    probes ?? sideProbes(), withReactionQueues(copies).catch(() => copies),
+  ])
   const draftIds = groupThreads(rows, manualReplyIds).flatMap(t =>
     [t.draft, t.companionDraft, t.ownerConfirmation].flatMap(m => m ? [m.id] : []))
   // Scheduled messages are held, not drafts, but their exact send time belongs in the list.

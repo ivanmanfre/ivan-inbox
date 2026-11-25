@@ -1,3 +1,4 @@
+import { withReactionQueues } from '../../lib/swishdmReactionQueue'
 import { supabase } from '../../lib/supabase'
 import {
   dedupeMessages, fetchManualReplyIds, groupThreads, isConversation, threadBucket,
@@ -135,7 +136,8 @@ export async function fetchDmSeatCount(seat: Seat, now?: number): Promise<DmSeat
   // "Mark as solved" (outreach_prospects.solved_at) is not in the view: one small read for the
   // owed threads only, then TODAY'S rule (unansweredSince honours solvedAt). A failed read throws
   // like any other: the count says it could not be read, never a guess.
-  const threads = groupThreads(dedupeMessages(rows), manualReplyIds, at)
+  const visible = seat === 'swishdm' ? await withReactionQueues(rows).catch(() => rows) : rows
+  const threads = groupThreads(dedupeMessages(visible), manualReplyIds, at)
   const solved = await fetchSolvedAt(owedIds(threads.filter(t => seatOf(t.client_id) === seat)))
   return countDmSeat(withSolved(threads, solved), seat, at)
 }

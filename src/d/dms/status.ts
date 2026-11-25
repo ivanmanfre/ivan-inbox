@@ -1,7 +1,7 @@
 // All conversations (Ivan 09-27: "below everything... I want to see the full logs, each DM
 // conversation, collapsed, but I want to be able to open it"). Every conversation on the seat,
 // newest activity first, with ONE short status word from today's rules (never re-judged here).
-import { eventTime, heldSend, isAutoReplyThread, isOlderOwed, isSettledBySolve, threadBucket, type Thread } from '../../lib/inbox'
+import { eventTime, queuedReactionDm1, heldSend, isAutoReplyThread, isOlderOwed, isSettledBySolve, threadBucket, type Thread } from '../../lib/inbox'
 import { lastDiscard, owedSince } from './model'
 import { dayMonth } from './threadRows'
 
@@ -22,6 +22,7 @@ export function statusOf(t: Thread, now: number = Date.now(), datedAt: string | 
     const after = t.messages.some(m => (m.direction === 'outbound' && m.sent_at && Date.parse(m.sent_at) > at) || (m.direction === 'inbound' && Date.parse(eventTime(m)) > at))
     if (!after) return { kind: 'discarded', word: 'discarded' }
   }
+  if (queuedReactionDm1(t)) return { kind: 'waiting', word: 'first DM queued' }
   if (isAutoReplyThread(t)) return { kind: 'auto', word: 'auto-reply' }
   if (t.last.direction === 'inbound') return { kind: 'replied', word: 'replied' }
   return { kind: 'waiting', word: 'waiting on them' }
