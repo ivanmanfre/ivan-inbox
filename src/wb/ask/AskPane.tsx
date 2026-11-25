@@ -251,7 +251,7 @@ export function AskPane({ chat, job, about, aboutContext, subjects = [], onClose
           feed={feed}
           goJob={navigateToJob}
           openThread={(id, turn, from) => {
-            chat.openThread(id)
+            chat.openThread(id, turn)
             setFocusTurn(turn ?? null)
             setMorphFrom(from ?? null)
             setFeedOpen(false)

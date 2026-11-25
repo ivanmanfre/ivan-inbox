@@ -93,17 +93,25 @@ export default function ClaudeDrawer({ layout, route, onClose, variant = 'drawer
   // A hand-off from DMs brings the conversation back to the front.
   const handoffAt = handoff?.at ?? null
   useEffect(() => { if (handoffAt) setView('chat') }, [handoffAt])
+  const linkedThread = route.place === 'claude' ? route.query.get('thread') : null
+  const linkedTurn = route.place === 'claude' ? route.query.get('turn') : null
+  useEffect(() => { if (linkedThread || linkedTurn) setView('chat') }, [linkedThread, linkedTurn])
   // A job deep link (?job=) opens the runner popover, as it opened the inline list before.
   const runFocus = runner.focus
   useEffect(() => { if (runFocus) setRunOpen(true) }, [runFocus])
 
   const sendChat = chat.send
   const personName = person?.name
-  const send = useCallback((message: string) => {
-    setText('')
-    void sendChat(message, personName, context)
+  const send = useCallback((message: string, scanAlertTurnId?: string) => {
+    if (scanAlertTurnId) void sendChat(message, personName, context, scanAlertTurnId)
+    else void sendChat(message, personName, context)
     setView('chat')
-  }, [sendChat, personName, context, setText])
+  }, [sendChat, personName, context])
+
+  const sendComposer = useCallback((message: string) => {
+    setText('')
+    send(message)
+  }, [send, setText])
 
   const edge = useRef<{ x: number; y: number } | null>(null)
   const dismissStart = useRef<{ x: number; y: number } | null>(null)
@@ -194,7 +202,7 @@ export default function ClaudeDrawer({ layout, route, onClose, variant = 'drawer
         {!v4 && !page && <Context subjects={subjects} />}
         <Composer
           placeholder={person ? `Ask about ${person.first}…` : 'Message the assistant…'}
-          onSend={send}
+          onSend={sendComposer}
           top={v4 || page ? <Context subjects={attached} /> : undefined}
           more={a => <More chat={chat} runner={runner} text={text} onSent={() => setText('')} onCommands={a.onCommands} onPaste={a.onPaste} phone={layout === 'phone'}
             onJobs={page ? () => setRunOpen(true) : undefined}

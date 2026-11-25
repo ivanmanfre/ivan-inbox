@@ -148,7 +148,7 @@ export const Answer = memo(function Answer({ request = '', turn, setText, onRetr
   busy: boolean
   offline: boolean
   /** A recall noun asks Claude to recall it (today's buildRecallCommand). */
-  send: (text: string) => void
+  send: (text: string, scanAlertTurnId?: string) => void
 }) {
   const [details, setDetails] = useState(false)
   const [expanded, setExpanded] = useState(false)
@@ -163,7 +163,7 @@ export const Answer = memo(function Answer({ request = '', turn, setText, onRetr
   const actionLine = scheduled ? /(?:^|\n)Needs you:\s*\n[-*]\s+([^\n]+)/i.exec(report)?.[1] : undefined
   const lead = actionLine ?? report.trim().split(/\n\s*\n/)[0]
   const compact = scheduled && lead.length > 0 && lead.length < report.trim().length && report.length > 300
-  const folded = compact && !expanded
+  const folded = compact && !expanded && !(turn.error && details)
   const link = details ? detectLinks(report)[0]?.url : undefined
   const failedCheck = scheduled && !!turn.error
   // Earlier scan alerts are stored as prose. Match the watcher's exact template
@@ -178,8 +178,8 @@ export const Answer = memo(function Answer({ request = '', turn, setText, onRetr
     <div className="dcl-ans" data-turn={turn.turnId}>
       <span className="dcl-author-mark" aria-label="Assistant">✦</span>
       {shown && <Markdown text={shown} cites={buildCites(sourceBasenames(turn.sources))} onRecall={!details || busy ? undefined : n => send(buildRecallCommand(n))} recallOff={offline} />}
-      {scan && <div className="dcl-acts"><Btn verb="draft-scan-email" disabled={offline || busy}
-        onClick={() => send(`Draft the RISE scan email for ${scan[1]}.`)}><Mail size={15} aria-hidden="true" />Draft email</Btn></div>}
+      {scan && turn.turnId && <div className="dcl-acts"><Btn verb="draft-scan-email" disabled={offline || busy}
+        onClick={() => send(`Draft the RISE scan email for ${scan[1]}.`, turn.turnId)}><Mail size={15} aria-hidden="true" />Draft email</Btn></div>}
       {relevantAction && turn.turnId && primary && <BotActions turnId={turn.turnId} actions={[primary]} setText={setText} offline={offline} />}
       {compact && !turn.error && <button type="button" className="dcl-read-update" aria-expanded={expanded}
         onClick={() => setExpanded(v => !v)}>{expanded ? 'Show less' : 'Read full update'}</button>}

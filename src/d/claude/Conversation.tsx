@@ -31,7 +31,7 @@ function Empty({ first, send, offline }: { first: string | null; send: (t: strin
   )
 }
 
-export function Conversation({ first, send }: { first: string | null; send: (t: string) => void }) {
+export function Conversation({ first, send }: { first: string | null; send: (t: string, scanAlertTurnId?: string) => void }) {
   const { chat, setText, focusTurn, clearFocus, since, stepAt, online } = useClaude()
   const box = useRef<HTMLDivElement>(null)
   const pinned = useRef(true)

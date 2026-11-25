@@ -172,6 +172,8 @@ export type SendOptions = {
    * Sent as `turn_id`.
    */
   turnId?: string
+  /** The saved watcher turn whose private scan email the operator requested. */
+  scanAlertTurnId?: string
   signal?: AbortSignal
   onEvent: (e: ClaudeEvent) => void
 }
@@ -181,7 +183,7 @@ export type SendOptions = {
  * failures — those arrive as an 'error' event so the UI has exactly one path.
  */
 export async function sendToClaude(prompt: string, opts: SendOptions): Promise<void> {
-  const { onEvent, context, model, threadId, turnId, signal } = opts
+  const { onEvent, context, model, threadId, turnId, scanAlertTurnId, signal } = opts
   const { data } = await supabase.auth.getSession()
   const token = data.session?.access_token
   if (!token) return onEvent({ kind: 'error', code: 'not_signed_in' })
@@ -197,6 +199,7 @@ export async function sendToClaude(prompt: string, opts: SendOptions): Promise<v
         ...(model ? { model } : {}),
         ...(threadId ? { thread_id: threadId } : {}),
         ...(turnId ? { turn_id: turnId } : {}),
+        ...(scanAlertTurnId ? { scan_alert_turn_id: scanAlertTurnId } : {}),
       }),
       signal,
     })

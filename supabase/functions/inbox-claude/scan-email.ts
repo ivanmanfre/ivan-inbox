@@ -1,3 +1,5 @@
+import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
+
 // On-demand evidence for the operator's RISE scan questions. Prospect text and
 // provider bodies are inspected for exact URLs and never passed to the agent.
 export interface ScanCase {
@@ -15,6 +17,18 @@ export interface ScanCase {
   email_at: string | null
   email_report_at: string | null
   linkedin_report_at: string | null
+}
+
+export const staleScanAlert = 'This alert no longer matches a current RISE scan request. Open the latest scan check to find the request.'
+export async function readScanAlertInbound(db: SupabaseClient, owner: string, threadId: string, alertId: string): Promise<string | undefined> {
+  const { data, error } = await db.from('inbox_turns').select('sources')
+    .match({ id: alertId, user_id: owner, thread_id: threadId, origin: 'bot', status: 'done' }).maybeSingle()
+  if (error) throw new Error('scan_alert_lookup_failed')
+  const sources = Array.isArray(data?.sources)
+    ? data.sources.filter((s: { kind?: string } | null) => s?.kind === 'rise_scan_watch') : []
+  if (sources.length !== 1) return
+  const path = sources[0].path
+  if (typeof path === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-9a-f][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(path)) return path
 }
 
 const draftRequest = /^(?:(?:can|could|would) you\s+)?(?:please\s+)?(?:draft|write|prepare)\b/i
@@ -75,6 +89,17 @@ function namedCases(prompt: string, rows: ScanCase[]): ScanCase[] {
     (r.company && prompt.toLowerCase().includes(r.company.toLowerCase()))
   )
   return named
+}
+
+function draftCases(prompt: string, rows: ScanCase[]): ScanCase[] {
+  const words = (text: string) => (text.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? []).join(' ')
+  const specified = /\b(?:for|to)\s+(.+?)\s*[.!?]?$/i.exec(prompt)?.[1]
+  const question = ' ' + words(prompt) + ' '
+  return rows.filter((r) => [r.person, r.company].some((name) => {
+    if (!name) return false
+    const identity = words(name)
+    return !!identity && (specified ? words(specified) === identity : question.includes(' ' + identity + ' '))
+  }))
 }
 
 // Read one account listing and fetch bodies only for the requested sender and
@@ -261,7 +286,8 @@ export async function answerScanEmail(
     const draft = draftRequest.test(prompt.trim())
     const named = watchedInbound
       ? cohort.filter((r) => r.inbound_id === watchedInbound)
-      : namedCases(previousScanQuestion ?? prompt, cohort)
+      : draft ? draftCases(previousScanQuestion ?? prompt, cohort) : namedCases(prompt, cohort)
+    if (watchedInbound && named.length !== 1) return staleScanAlert
     if (draft && named.length !== 1) {
       return 'Which RISE prospect should the scan email be for? Include the person’s name and “scan email” so I can check the recipient and report.'
     }

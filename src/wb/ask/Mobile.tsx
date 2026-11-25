@@ -240,7 +240,7 @@ export function Mobile(p: BrainMobileProps) {
   useEffect(() => {
     if (bootHandled.current) return
     bootHandled.current = true
-    if (boot.focus === 'chat' && boot.thread && boot.thread !== chat.threadId) chat.openThread(boot.thread)
+    if (boot.focus === 'chat' && boot.thread) chat.openThread(boot.thread, boot.turn)
     if (boot.feed) setFeedOpen(true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -407,7 +407,7 @@ export function Mobile(p: BrainMobileProps) {
   const scrimTo = (1 - openness) * (1 - drop)
 
   const openThreadAt = useCallback((id: string, turn?: string, from?: DOMRect | null) => {
-    chat.openThread(id)
+    chat.openThread(id, turn)
     setFocusTurn(turn ?? null)
     setMorphFrom(from ?? null)
     setPlace('ask')

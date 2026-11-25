@@ -504,6 +504,7 @@ export function AskThread({
   const text = textProp ?? ownText
   const setText = onText ?? setOwnText
   const scroller = useRef<HTMLDivElement>(null)
+  const earlierAnchor = useRef<{ node: Element; top: number } | null>(null)
   // The runner lives HERE rather than in either shell, because this is the one
   // component both the phone screen and the docked desktop pane draw. The model
   // the picker holds rides with a job the same way it rides with a turn.
@@ -533,6 +534,12 @@ export function AskThread({
   useEffect(() => {
     const el = scroller.current
     if (!el) return
+    const anchor = earlierAnchor.current
+    if (anchor && el.contains(anchor.node)) {
+      el.scrollTop += anchor.node.getBoundingClientRect().top - anchor.top
+      earlierAnchor.current = null
+      return
+    }
     // While a deep link is being honoured the thread does NOT chase its own
     // bottom: he arrived here to read one specific answer, and a scroll to the
     // newest turn would take it off the screen a frame later. The mark and the
@@ -646,6 +653,16 @@ export function AskThread({
 
         {/* P1 speed: the transcript on screen is the saved copy and the
             last read of it failed. Quiet, never a skeleton over it. */}
+        {chat.hasEarlier && (
+          <Button variant="quiet" size="sm" disabled={chat.earlierState === 'loading' || chat.turnsLoading}
+            onClick={() => {
+              const node = scroller.current?.querySelector('[data-turn]')
+              if (node) earlierAnchor.current = { node, top: node.getBoundingClientRect().top }
+              void chat.loadEarlier()
+            }}>
+            {chat.earlierState === 'loading' ? 'Loading…' : chat.earlierState === 'error' ? 'Retry earlier messages' : 'Earlier messages'}
+          </Button>
+        )}
         {chat.turnsStale && !empty && <div className="a-brain-day" data-stale>Saved copy. Could not refresh.</div>}
         {empty && claude ? (
           <motion.div className="cl-empty" variants={list} initial="hidden" animate="show">

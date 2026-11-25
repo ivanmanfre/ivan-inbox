@@ -15,14 +15,15 @@ import './island.css'
 export function Island() {
   const c = useClaudeMaybe()
   const f = useFrame()
+  const chatVisible = f.claudeOpen || f.route.place === 'claude'
   const busy = !!c && (c.chat.busy || c.chat.runningElsewhere)
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
-    if (!busy) return
+    if (!busy || chatVisible) return
     const t = window.setInterval(() => setNow(Date.now()), 1000)
     return () => window.clearInterval(t)
-  }, [busy])
-  if (!c || f.claudeOpen) return null
+  }, [busy, chatVisible])
+  if (!c || chatVisible) return null
   const open = () => { c.clearLanded(); f.setClaudeOpen(true) }
   if (c.landed) {
     return (

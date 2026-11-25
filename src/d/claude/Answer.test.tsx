@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import type { Turn } from '../../exp/v2c/chat/events'
 import { Answer } from './Answer'
+import { renderInFrame } from '../test-utils'
 
 afterEach(cleanup)
 
@@ -27,11 +28,22 @@ it('shows an operator-requested reply in full', () => {
   expect(screen.queryByText('Read full update')).toBeNull()
 })
 
-it('pins the private draft request to the person named in a scan alert', () => {
+it('pins the private draft request to the saved alert turn', () => {
   const alert = 'Mira Jones supplied mira@example.test after the scan offer. Mattan shared the report on LinkedIn. I checked the connected RISE sender and found no email to that address. Reply “draft the email” to prepare it here.'
   const send = vi.fn()
   render(<Answer {...common} send={send} turn={{ ...base, text: alert, origin: 'bot',
     sources: [{ kind: 'rise_scan_watch', path: 'request', at: '' }] }} />)
   fireEvent.click(screen.getByRole('button', { name: 'Draft email' }))
-  expect(send).toHaveBeenCalledWith('Draft the RISE scan email for Mira Jones.')
+  expect(send).toHaveBeenCalledWith('Draft the RISE scan email for Mira Jones.', base.turnId)
+})
+
+it('a failed scheduled update can reveal its complete saved reply and original action', () => {
+  const extra = text + '\n\n[Open original](https://example.test/source)\n\n' +
+    '```actions\n[{"label":"Open original","kind":"open","payload":{"url":"https://example.test/source"}}]\n```'
+  renderInFrame(<Answer {...common} request="Scheduled bundle" turn={{ ...base, text: extra, origin: 'bot',
+    error: { message: 'test failure', retryable: true } }} />)
+  fireEvent.click(screen.getByLabelText('Message details and actions'))
+  const expand = screen.queryByRole('button', { name: 'Read full update' })
+  if (expand) fireEvent.click(expand)
+  expect(screen.queryByRole('button', { name: 'Open original' })).toBeTruthy()
 })

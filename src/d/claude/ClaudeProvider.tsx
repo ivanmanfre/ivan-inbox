@@ -133,6 +133,8 @@ export function ClaudeProvider({ children }: { children: ReactNode }) {
     // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [handoffAt])
 
+  const chatVisible = claudeOpen || route.place === 'claude'
+
   // Busy edges: start the clock, and when a turn lands while the drawer is
   // closed, hold a card that says so (it stays until he opens or dismisses it).
   useEffect(() => {
@@ -141,17 +143,17 @@ export function ClaudeProvider({ children }: { children: ReactNode }) {
     if (chat.busy && !before) { setBusySince(Date.now()); steps.current.clear(); setLanded(null) }
     if (!chat.busy && before) {
       setBusySince(null)
-      if (claudeOpen) return
+      if (chatVisible) return
       const last = [...chat.turns].reverse().find(t => t.role === 'assistant')
       if (!last || last.aborted) return
       setLanded(last.error
         ? { title: 'Claude could not finish', line: firstLine(last.error.message), failed: true }
         : { title: 'Claude answered', line: firstLine(last.text), failed: false })
     }
-  }, [chat.busy, chat.turns, claudeOpen])
+  }, [chat.busy, chat.turns, chatVisible])
 
-  // Opening the drawer is reading the answer.
-  useEffect(() => { if (claudeOpen) setLanded(null) }, [claudeOpen])
+  // Opening either chat surface dismisses the completion card.
+  useEffect(() => { if (chatVisible) setLanded(null) }, [chatVisible])
 
   // Arrival times of streamed tool calls (the "+9s" on each step).
   useEffect(() => {

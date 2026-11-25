@@ -1,5 +1,6 @@
+import { createClient } from '@supabase/supabase-js'
 import { describe, expect, it, vi } from 'vitest'
-import { answerScanEmail, asksAboutScanEmail, containsReport, readReceipts, type ScanCase } from './scan-email'
+import { answerScanEmail, asksAboutScanEmail, containsReport, readReceipts, readScanAlertInbound, type ScanCase } from './scan-email'
 
 const item: ScanCase = {
   inbound_id: 'req1',
@@ -158,4 +159,44 @@ describe('main assistant RISE scan evidence', () => {
       'Private email draft',
     )
   })
+})
+
+it('a stale source alert must not prepare a draft for a different prospect sharing a first name', async () => {
+  const prompt = 'Draft the RISE scan email for Mira Jones.'
+  const recipient = { ...item, person: 'Mira Patel', address: 'different-prospect@example.test' }
+  const reader = { cases: async () => ({ data: [recipient], error: null }), providerKey: async () => 'fixture' }
+  const request = vi.fn(async (_uri: RequestInfo | URL, init?: RequestInit) => init?.method === 'HEAD'
+    ? new Response('', { headers: { 'Content-Type': 'text/html' } })
+    : Response.json({ data: [], has_more: false }))
+  const draft = await answerScanEmail(prompt, reader, request)
+  expect(draft).toContain('Which RISE prospect')
+  expect(request).not.toHaveBeenCalled()
+  const stale = await answerScanEmail(prompt, reader, request, undefined, 'withdrawn')
+  expect(stale).toContain('no longer matches')
+  expect(request).not.toHaveBeenCalled()
+})
+
+it('resolves a saved alert only for its owner, thread, origin and completed status', async () => {
+  const inboundId = 'b9ed356a-a3b4-447a-945b-b068eed97f6b'
+  const row = { id: 'clicked-turn', user_id: 'operator', thread_id: 'main', origin: 'bot', status: 'done' }
+  const sources = [{ kind: 'rise_scan_watch', path: inboundId }]
+  const request = async (url: RequestInfo | URL) => {
+    const q = new URL(String(url)).searchParams
+    const matches = Object.entries(row).every(([key, value]) => q.get(key) === 'eq.' + value)
+    return Response.json(matches ? [{ sources }] : [])
+  }
+  const db = createClient('https://fixture.supabase.co', 'fixture', { global: { fetch: request }, auth: { persistSession: false } })
+  const read = (user = 'operator', thread = 'main', id = 'clicked-turn') => readScanAlertInbound(db, user, thread, id)
+  expect(await read()).toBe(inboundId)
+  expect(await read('other')).toBeUndefined()
+  expect(await read('operator', 'other')).toBeUndefined()
+  expect(await read('operator', 'main', 'other')).toBeUndefined()
+  row.origin = 'operator'
+  expect(await read()).toBeUndefined()
+  row.origin = 'bot'
+  row.status = 'running'
+  expect(await read()).toBeUndefined()
+  row.status = 'done'
+  sources.push({ kind: 'rise_scan_watch', path: inboundId })
+  expect(await read()).toBeUndefined()
 })

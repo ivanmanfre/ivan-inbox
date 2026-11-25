@@ -230,12 +230,15 @@ function bootThreadId(): string | null {
 }
 const cachedTurns = (id: string | null): Turn[] => readThreadCache(id, turnsFromRows)?.turns.slice(-2 * TURN_PAGE_SIZE) ?? []
 
-type History = { threadId: string; before: TurnCursor | null; older: Turn[]; linked: Turn[] }
+type History = { threadId: string; headIds: string[]; before: TurnCursor | null; older: Turn[]; linked: Turn[] }
 
 export function useChat() {
   const [turns, setTurns] = useState<Turn[]>(() => cachedTurns(bootThreadId()))
   // The turns on screen are the saved copy and the last read of the rows failed.
   const [history, setHistory] = useState<History | null>(null)
+  const historyRef = useRef(history)
+  historyRef.current = history
+  const pendingFocus = useRef<{ threadId: string; turnId: string; reading: boolean } | null>(null)
   const [earlierState, setEarlierState] = useState<'idle' | 'loading' | 'error'>('idle')
   const olderRequest = useRef<symbol | null>(null)
   const [turnsStale, setTurnsStale] = useState(false)
@@ -269,7 +272,7 @@ export function useChat() {
   botRef.current = botThread
 
   const abortRef = useRef<AbortController | null>(null)
-  const lastSent = useRef<{ prompt: string; about?: string; see?: string } | null>(null)
+  const lastSent = useRef<{ prompt: string; about?: string; see?: string; scanAlertTurnId?: string } | null>(null)
   const alive = useRef(true)
   // `send` is memoised on sessionId, so it cannot close over the current turns.
   // A ref keeps the context block reading the live transcript instead of the one
@@ -281,6 +284,7 @@ export function useChat() {
   const threadIdRef = useRef<string | null>(null)
   const threadRef = useRef<Thread | null>(null)
   const turnIdRef = useRef<string | null>(null)
+  const threadVisit = useRef(0)
   const pollRef = useRef<{ id: string; until: number; timer: number } | null>(null)
   // Hydration generation. A cold boot with a cached id that is not the deep-linked
   // one runs two hydrations at once, and `alive` cannot tell them apart: last to
@@ -305,9 +309,12 @@ export function useChat() {
   const refreshThread = useCallback(async () => {
     const id = threadIdRef.current
     if (!id) return
+    const visit = threadVisit.current
+    const turnId = turnIdRef.current
     try {
       const t = await getThread(id)
-      if (!alive.current || !t) return
+      if (!alive.current || visit !== threadVisit.current || turnId !== turnIdRef.current) return
+      if (!t || t.id !== threadIdRef.current) return
       threadRef.current = t
       setThread(t)
     } catch { /* offline: the next send just replays a little more than it needs to */ }
@@ -369,19 +376,22 @@ export function useChat() {
   }, [stopPoll])
 
   const poll = useCallback(async (id: string, until: number) => {
+    // Visibility can request a newer read of the same row while this one is in flight.
+    const request = { id, until, timer: 0 }
+    pollRef.current = request
     let row: TurnRow | null = null
     try { row = await getTurn(id) } catch { /* transient: try again on the next tick */ }
-    if (!alive.current) return
-    if (row && !OPEN(row.status)) return land(row)
+    if (!alive.current || pollRef.current !== request) return
+    if (row?.id === id && row.thread_id === threadIdRef.current && !OPEN(row.status)) return land(row)
     if (Date.now() >= until) { giveUp(id); return }
-    const timer = window.setTimeout(() => void poll(id, until), POLL_MS)
-    pollRef.current = { id, until, timer }
+    request.timer = window.setTimeout(() => {
+      if (pollRef.current === request) void poll(id, until)
+    }, POLL_MS)
   }, [giveUp, land])
 
   const armPoll = useCallback((id: string) => {
     stopPoll()
     const until = Date.now() + POLL_MAX_MS
-    pollRef.current = { id, until, timer: 0 }
     void poll(id, until)
   }, [poll, stopPoll])
 
@@ -391,13 +401,25 @@ export function useChat() {
   const settle = useCallback(async (id: string) => {
     let row: TurnRow | null = null
     try { row = await getTurn(id) } catch { /* the stream's own text stands */ }
-    if (!alive.current) return
-    if (!row) return
+    if (!alive.current || turnIdRef.current !== id || row?.id !== id) return
+    if (threadIdRef.current && row.thread_id !== threadIdRef.current) return
+    // The SSE connection may have dropped before the first turn frame identified a new chat.
+    if (!threadIdRef.current) {
+      threadIdRef.current = row.thread_id
+      setThreadId(row.thread_id)
+      writeThreadKey(row.thread_id)
+    }
     if (OPEN(row.status)) { armPoll(id); return }
     land(row)
   }, [armPoll, land])
 
   const hydrate = useCallback(async (id?: string, focusId?: string) => {
+    if (id && focusId) pendingFocus.current = { threadId: id, turnId: focusId, reading: false }
+    const focus = pendingFocus.current?.threadId === id ? pendingFocus.current : null
+    // A visibility wake may coincide with a notification read. That request
+    // already includes the head page and owns the highlighted turn.
+    if (focus?.reading) return
+    if (focus) focus.reading = true
     const gen = ++hydrateGen.current
     const stale = () => !alive.current || gen !== hydrateGen.current
     olderRequest.current = null
@@ -408,10 +430,11 @@ export function useChat() {
     void refreshBot()
     try {
       const [known, firstPage] = id
-        ? await Promise.all([getThread(id), listTurnPage(id, undefined, focusId)])
+        ? await Promise.all([getThread(id), listTurnPage(id, undefined, focus?.turnId)])
         : [null, null]
       const t = known ?? await latestThread()
       if (stale()) return
+      if (id && t?.id !== id && turnIdRef.current) return
       if (!t) {
         // The cached id points at nothing any more (a thread deleted, another
         // account). Forget it rather than painting an id with no thread behind it.
@@ -423,26 +446,53 @@ export function useChat() {
         if (turnsRef.current.length > 0) setTurnsStale(true)
         return
       }
+      const page = known && firstPage ? firstPage : await listTurnPage(t.id, undefined, t.id === id ? focus?.turnId : undefined)
+      if (stale()) return
+      if (id && t.id !== id && turnIdRef.current) return
       threadIdRef.current = t.id
       threadRef.current = t
       setThreadId(t.id)
       setThread(t)
       writeThreadKey(t.id)
-      const page = known && firstPage ? firstPage : await listTurnPage(t.id, undefined, focusId)
-      if (stale()) return
       const rows = page.rows
       const fresh = turnsFromRows(rows)
-      const previous = turnsRef.current
+      const previous = id && t.id !== id ? [] : turnsRef.current
       if (emptyOverKnown(previous, fresh.length)) { setTurnsStale(true); return }
-      setHistory(h => {
-        // Keep already opened pages when a focus/visibility refresh overlaps.
-        const overlap = h?.threadId === t.id && h.older.length && rows.length
-          ? previous.findIndex(turn => turn.turnId === rows[0].id) : -1
-        const retain = overlap >= 0 && h?.threadId === t.id && h.older.length > 0
-        return { threadId: t.id, older: retain ? [...h.older, ...previous.slice(0, overlap)] : [],
-          before: retain ? h.before : page.before,
-          linked: page.linked ? turnsFromRows([page.linked]) : (!focusId && h?.threadId === t.id ? h.linked : []) }
-      })
+      const prior = historyRef.current?.threadId === t.id ? historyRef.current : null
+      let older: Turn[] = []
+      let before = page.before
+      if (prior?.older.length) {
+        // Only server-confirmed contiguous rows count as an overlap. A pinned
+        // notification or a local optimistic send can sit beyond either end.
+        const headIds = new Set(prior.headIds)
+        const known = [...prior.older, ...previous.filter(turn => turn.turnId && headIds.has(turn.turnId))]
+        const knownIds = new Set(known.map(turn => turn.turnId))
+        const bridge: TurnRow[][] = []
+        let edge = page
+        let match = edge.rows.find(row => knownIds.has(row.id))
+        const visited = new Set<string>()
+        while (!match && edge.before) {
+          if (visited.has(edge.before.id)) throw new Error('Repeated chat history cursor')
+          visited.add(edge.before.id)
+          edge = await listTurnPage(t.id, edge.before)
+          if (stale()) return
+          bridge.push(edge.rows)
+          match = edge.rows.find(row => knownIds.has(row.id))
+        }
+        const between = bridge.reverse().flat()
+        if (match) {
+          const prefix = known.slice(0, known.findIndex(turn => turn.turnId === match.id))
+          const overlap = between.findIndex(row => row.id === match.id)
+          older = [...prefix, ...keepIds(known, turnsFromRows(overlap >= 0 ? between.slice(overlap) : []))]
+          before = prior.before
+        } else {
+          older = turnsFromRows(between)
+          before = edge.before
+        }
+      }
+      setHistory({ threadId: t.id, headIds: rows.map(row => row.id), older, before,
+        linked: page.linked ? turnsFromRows([page.linked]) : (!focus ? prior?.linked ?? [] : []) })
+      if (focus === pendingFocus.current) pendingFocus.current = null
       setTurns(prev => {
         const liveId = abortRef.current && turnIdRef.current
         const live = liveId && !rows.some(row => row.id === liveId) ? prev.filter(turn => turn.turnId === liveId) : []
@@ -458,6 +508,8 @@ export function useChat() {
         setRunningElsewhere(true)
         armPoll(open.id)
       } else {
+        const polledId = pollRef.current?.id
+        if (polledId && rows.some(row => row.id === polledId && !OPEN(row.status))) stopPoll()
         setRunningElsewhere(false)
       }
     } catch {
@@ -466,9 +518,10 @@ export function useChat() {
       // precondition for talking.
       if (!stale() && turnsRef.current.length > 0) setTurnsStale(true)
     } finally {
+      if (focus) focus.reading = false
       if (!stale()) setTurnsLoading(false)
     }
-  }, [armPoll, refreshBot])
+  }, [armPoll, refreshBot, stopPoll])
 
   useEffect(() => {
     alive.current = true
@@ -528,15 +581,22 @@ export function useChat() {
     return () => document.removeEventListener('visibilitychange', onVisible)
   }, [hydrate, poll, refreshBot])
 
-  const send = useCallback(async (prompt: string, about?: string, see?: string) => {
+  const send = useCallback(async (prompt: string, about?: string, see?: string, scanAlertTurnId?: string) => {
     const text = prompt.trim()
     if (!text || abortRef.current) return
-    lastSent.current = { prompt: text, about, see }
+    lastSent.current = { prompt: text, about, see, scanAlertTurnId }
+    stopPoll()
     const ctrl = new AbortController()
     abortRef.current = ctrl
     const turnId = mintTurnId()
     turnIdRef.current = turnId
     const onThread = threadIdRef.current
+    if (!onThread) {
+      // A send from a fresh pane owns the thread the broker creates, even if a
+      // mount-time read of the last conversation is still pending.
+      hydrateGen.current++
+      setTurnsLoading(false)
+    }
     // THE CONTINUITY SWITCH. Once the container holds this thread's CLI session,
     // the transcript is already in front of the model and replaying it re-sends
     // and re-bills what it can already see. Before that, the replay is still the
@@ -552,13 +612,14 @@ export function useChat() {
     setStatus('sending')
     setSlow(false)
     setRunningElsewhere(false)
-    const slowTimer = window.setTimeout(() => setSlow(true), SLOW_MS)
+    const ownsStream = () => alive.current && abortRef.current === ctrl && turnIdRef.current === turnId
+    const slowTimer = window.setTimeout(() => { if (ownsStream()) setSlow(true) }, SLOW_MS)
 
     // The pacer holds the authoritative text of the in-flight turn; `acc` is what
     // gets committed to the transcript, so a turn that ends before the pacer has
     // drained never loses characters.
     let acc = ''
-    const pacer = createPacer(shown => { if (alive.current) setStreamText(shown) })
+    const pacer = createPacer(shown => { if (ownsStream()) setStreamText(shown) })
     const tools: ToolCall[] = []
     let failed: { message: string; retryable: boolean } | null = null
     let aborted = false
@@ -567,9 +628,9 @@ export function useChat() {
     try {
       for await (const ev of getTransport()({
         prompt: text, sessionId, context, model: wanted,
-        threadId: onThread ?? undefined, turnId, signal: ctrl.signal,
+        threadId: onThread ?? undefined, turnId, scanAlertTurnId, signal: ctrl.signal,
       })) {
-        if (!alive.current) break
+        if (!ownsStream()) break
         switch (ev.type) {
           case 'session':
             // The live broker has no session id to give; it sends an empty string
@@ -579,11 +640,12 @@ export function useChat() {
             setModel(ev.model)
             break
           case 'turn':
+            if (ev.turnId !== turnId || (onThread && ev.threadId !== onThread)) {
+              throw new Error('The reply could not be matched to this conversation.')
+            }
             setGrounding({ session: ev.session, groundedOn: ev.groundedOn })
             if (ev.threadId !== threadIdRef.current) {
-              // The broker minted a thread for this turn (or moved us to another
-              // one). Persist the id and go and read the row: session_started_at
-              // and the title are facts, not things to assume.
+              // The broker minted a thread for the first turn. Read its title and session.
               threadIdRef.current = ev.threadId
               setThreadId(ev.threadId)
               writeThreadKey(ev.threadId)
@@ -620,8 +682,8 @@ export function useChat() {
       clearTimeout(slowTimer)
       pacer.flush()
       pacer.stop()
-      abortRef.current = null
-      if (alive.current) {
+      if (ownsStream()) {
+        abortRef.current = null
         // Whatever streamed before a failure is kept. Discarding half an answer
         // to show a red box loses the useful part of the turn.
         if (acc || tools.length || failed || aborted) {
@@ -642,12 +704,11 @@ export function useChat() {
         setStreamTools([])
         setStatus('idle')
         setSlow(false)
+        // The database also keeps detached turns for the next time their thread opens.
+        void settle(turnId)
       }
-      // However this ended — done, error, abort, an exception, the tab going
-      // away and coming back — the row is what actually happened. Go and read it.
-      void settle(turnId)
     }
-  }, [refreshThread, sessionId, settle, wanted])
+  }, [refreshThread, sessionId, settle, stopPoll, wanted])
 
   // Abort is client-side and immediate — spec §2.3: do not wait for a server
   // acknowledgement that may never arrive. But the CONTAINER does not stop when
@@ -674,7 +735,7 @@ export function useChat() {
     // A retry re-sends the context the ORIGINAL turn carried, not whatever is
     // attached now. Re-asking the same question against a different screen
     // would be a different question wearing the first one's words.
-    void send(last.prompt, last.about, last.see)
+    void send(last.prompt, last.about, last.see, last.scanAlertTurnId)
   }, [send])
 
   // The clean reset /clear needs: abort anything in flight, empty the
@@ -690,7 +751,10 @@ export function useChat() {
     setTurnsLoading(false)
     setEarlierState('idle')
     setHistory(null)
+    pendingFocus.current = null
+    threadVisit.current++
     abortRef.current?.abort()
+    abortRef.current = null
     stopPoll()
     lastSent.current = null
     turnIdRef.current = null
@@ -707,26 +771,34 @@ export function useChat() {
     setThread(null)
     setGrounding(null)
     setRunningElsewhere(false)
+    setSlow(false)
     setStatus('idle')
   }, [stopPoll])
 
   const openThread = useCallback((id: string, focusId?: string) => {
     if (!isUuid(id)) return
     if (id === threadIdRef.current) {
-      if (focusId && !turnsRef.current.some(turn => turn.turnId === focusId)) void hydrate(id, focusId)
+      if (focusId) void hydrate(id, focusId)
       return
     }
+    threadVisit.current++
     abortRef.current?.abort()
+    abortRef.current = null
     stopPoll()
     lastSent.current = null
     turnIdRef.current = null
     threadIdRef.current = id
     threadRef.current = null
+    pendingFocus.current = null
+    setHistory(null)
     setTurns(cachedTurns(id))
     setTurnsStale(false)
     setStreamText('')
     setStreamTools([])
     setStatus('idle')
+    setSessionId(null)
+    setModel(null)
+    setSlow(false)
     setGrounding(null)
     setRunningElsewhere(false)
     setThreadId(id)

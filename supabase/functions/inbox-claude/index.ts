@@ -35,7 +35,7 @@ import {
 import { persistedAnswer } from './persisted-answer.ts'
 import { answerContent, contentIntent } from './content-turn.ts'
 import { BOT_TOOLS, MAX_SYSTEM_APPEND_CHARS } from './bot-tools.ts'
-import { asksAboutScanEmail, answerScanEmail, scanDraftReference } from './scan-email.ts'
+import { asksAboutScanEmail, answerScanEmail, readScanAlertInbound, scanDraftReference, staleScanAlert } from './scan-email.ts'
 import { DEPTH_BLOCK, DEPTH_BLOCK_CHARS } from './depth-block.ts'
 import { unfurl, UnfurlError } from './unfurl.ts'
 
@@ -229,18 +229,11 @@ Deno.serve(async (req) => {
   // credentials (main.py:256-270). They are never read from the caller and never
   // forwarded, so no caller can steer the container at another tenant.
   //
-  // `model` IS read from the caller, and is the only new caller-steerable field.
-  // It is safe in a way working_directory and client_id are not: it is validated
-  // against a literal allowlist of five model IDs and can address nothing. It
-  // cannot name a path, a tenant, a repo or a credential.
-  //
-  // `thread_id` and `turn_id` are the other two caller-steerable fields, and they
-  // are safe for the same reason: a thread is loaded and REQUIRED to belong to
-  // this user before anything is written to it, and a turn id addresses only a row
-  // this request is about to create.
+  // Model selection uses the allowlist. The broker resolves thread and alert
+  // references under the authenticated owner. A turn ID names the new row.
   let body: {
     prompt?: unknown; context?: unknown; model?: unknown
-    thread_id?: unknown; turn_id?: unknown; unfurl?: unknown
+    thread_id?: unknown; turn_id?: unknown; scan_alert_turn_id?: unknown; unfurl?: unknown
   }
   // Who this turn belongs to, and who authored it. Both are decided by the door
   // the request came through, and everything after this point reads them instead
@@ -364,6 +357,11 @@ Deno.serve(async (req) => {
   const wantModel = typeof body.model === 'string' ? body.model.trim() : ''
   const wantThreadId = typeof body.thread_id === 'string' ? body.thread_id.trim() : ''
   const wantTurnId = typeof body.turn_id === 'string' ? body.turn_id.trim() : ''
+  const boundScanDraft = body.scan_alert_turn_id !== undefined
+  const scanAlertTurnId = typeof body.scan_alert_turn_id === 'string' ? body.scan_alert_turn_id : ''
+  if (boundScanDraft && (!UUID_RE.test(scanAlertTurnId) || !UUID_RE.test(wantThreadId) || turnOrigin !== 'operator')) {
+    return fail(400, 'invalid_scan_alert', origin)
+  }
   if (!prompt) return fail(400, 'empty_prompt', origin)
   if (prompt.length > MAX_PROMPT_CHARS) return fail(413, 'prompt_too_long', origin)
   if (context.length > MAX_CONTEXT_CHARS) return fail(413, 'context_too_long', origin)
@@ -449,7 +447,7 @@ Deno.serve(async (req) => {
     thread = t
   }
 
-  let editorial = turnOrigin === 'operator' ? contentIntent(prompt) : null
+  let editorial = turnOrigin === 'operator' && !boundScanDraft ? contentIntent(prompt) : null
   let previousContent: { id: string } | undefined
   if (editorial === 'reference') {
     const { data: prior, error } = await db.from('inbox_turns').select('origin,status,sources')
@@ -612,7 +610,14 @@ Deno.serve(async (req) => {
 
   let previousScanQuestion: string | undefined
   let watchedInbound: string | undefined
-  if (turnOrigin === 'operator' && scanDraftReference.test(prompt.trim())) {
+  if (boundScanDraft) {
+    try {
+      watchedInbound = await readScanAlertInbound(db, user.id, thread.id, scanAlertTurnId)
+    } catch {
+      await markTurnError('scan_alert_lookup_failed')
+      return fail(503, 'scan_alert_lookup_failed', origin)
+    }
+  } else if (turnOrigin === 'operator' && scanDraftReference.test(prompt.trim())) {
     const { data: prior } = await db.from('inbox_turns').select('origin,status,sources,prompt')
       .eq('thread_id', thread.id).neq('id', turnId).order('created_at', { ascending: false }).limit(1).maybeSingle()
     if (prior?.status === 'done' && Array.isArray(prior.sources)) {
@@ -621,12 +626,15 @@ Deno.serve(async (req) => {
       if (prior.origin === 'operator' && previous?.kind === 'rise_scan_email') previousScanQuestion = prior.prompt
     }
   }
-  if (turnOrigin === 'operator' && (watchedInbound || previousScanQuestion || asksAboutScanEmail(prompt))) {
+  if (turnOrigin === 'operator' && (boundScanDraft || watchedInbound || previousScanQuestion || asksAboutScanEmail(prompt))) {
     return persistedAnswer({
       db, turnId, threadId: thread.id, headers: cors(origin),
       run: async () => ({
-        text: await answerScanEmail(prompt, {
-          cases: () => db.rpc('assistant_rise_scan_email').limit(51),
+        text: boundScanDraft && !watchedInbound ? staleScanAlert : await answerScanEmail(boundScanDraft ? 'Draft the email' : prompt, {
+          cases: () => {
+            const cases = db.rpc('assistant_rise_scan_email')
+            return watchedInbound ? cases.eq('inbound_id', watchedInbound).limit(2) : cases.limit(51)
+          },
           providerKey: async () => {
             const { data } = await db.from('integration_config').select('value').eq('key', 'resend_api_key').maybeSingle()
             return typeof data?.value === 'string' ? data.value : undefined

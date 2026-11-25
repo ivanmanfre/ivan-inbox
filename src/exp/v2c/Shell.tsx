@@ -505,7 +505,7 @@ function ShellBody({ brain }: { brain?: BrainId } = {}) {
     if (mobile) return
     if (boot.focus === 'chat') {
       openDrawer()
-      if (boot.thread) chat.openThread(boot.thread)
+      if (boot.thread) chat.openThread(boot.thread, boot.turn)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -521,7 +521,7 @@ function ShellBody({ brain }: { brain?: BrainId } = {}) {
         // thread instead of docking a chat peer — same shape as the boot
         // effect above, just for a hash change after mount.
         openDrawer()
-        if (r.thread) chat.openThread(r.thread)
+        if (r.thread) chat.openThread(r.thread, r.turn)
       } else if (r.thread) {
         // W2-1: an IN-APP hash write naming a DM thread (Today's urgency-row
         // tap writes the brain-b-prefixed form directly now) opens it as a

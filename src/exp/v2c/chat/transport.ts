@@ -145,6 +145,7 @@ function httpStream(req: ChatRequest): AsyncGenerator<ChatEvent> {
       model: (req.model ?? null) as ClaudeModelId | null,
       threadId: req.threadId,
       turnId: req.turnId,
+      scanAlertTurnId: req.scanAlertTurnId,
       signal: req.signal,
       onEvent: e => {
         if (e.kind === 'tool') seq += 1

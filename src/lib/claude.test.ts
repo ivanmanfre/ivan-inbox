@@ -190,12 +190,13 @@ describe('thread and turn plumbing', () => {
     await sendToClaude('hi', { onEvent: () => {} })
     expect(calls[0]).not.toHaveProperty('thread_id')
     expect(calls[0]).not.toHaveProperty('turn_id')
+    expect(calls[0]).not.toHaveProperty('scan_alert_turn_id')
   })
 
   it('sends the snake_case ids the broker reads', async () => {
     const calls = stubBroker({ 'x-broker-model': 'container-default' })
-    await sendToClaude('hi', { threadId: 'th-1', turnId: 'tu-1', onEvent: () => {} })
-    expect(calls[0]).toMatchObject({ thread_id: 'th-1', turn_id: 'tu-1' })
+    await sendToClaude('Draft the scan email', { threadId: 'th-1', turnId: 'tu-1', scanAlertTurnId: 'old-turn', onEvent: () => {} })
+    expect(calls[0]).toMatchObject({ thread_id: 'th-1', turn_id: 'tu-1', scan_alert_turn_id: 'old-turn' })
   })
 
   it('names the row off the response headers, before the first token', async () => {

@@ -52,6 +52,7 @@ export type ChatRequest = {
   // cross-tenant vector rule 1 in transport.ts closes.
   threadId?: string
   turnId?: string
+  scanAlertTurnId?: string
   signal?: AbortSignal
 }
 

@@ -59,6 +59,11 @@ describe('ClaudeProvider', () => {
     renderInFrame(<ClaudeProvider><Island /></ClaudeProvider>, { hash: '#exp/d/dms', frame: { claudeOpen: true } })
     expect(document.querySelector('[data-island]')).toBeNull()
   })
+  it('keeps the composer clear when a reply runs on the Assistant page', () => {
+    busy = true
+    renderInFrame(<ClaudeProvider><Island /></ClaudeProvider>, { hash: '#exp/d/claude' })
+    expect(document.querySelector('[data-island]')).toBeNull()
+  })
   it('Stop on a turn running elsewhere writes the stop on that row (today\'s abortTurn)', () => {
     elsewhere = true
     renderInFrame(<ClaudeProvider><StopKey /></ClaudeProvider>, { hash: '#exp/d/dms' })

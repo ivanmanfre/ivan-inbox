@@ -160,3 +160,44 @@ describe('Claude drawer verbs', () => {
     expect(chat.send).not.toHaveBeenCalled()
   })
 })
+
+it('a private scan reply must preserve unrelated text in the composer', () => {
+  const alert = 'Mira Jones supplied mira@example.test after the scan offer. Mattan shared the report on LinkedIn. I checked the connected RISE sender and found no email to that address. Reply “draft the email” to prepare it here.'
+  const chat = fakeChat({ turns: [{ id: 'scan', turnId: 'source', role: 'assistant', tools: [], error: null, text: alert,
+    origin: 'bot', sources: [{ kind: 'rise_scan_watch', path: 'request', at: '' }] }] })
+  renderInFrame(<Host chat={chat} />)
+  fireEvent.change(field(), { target: { value: 'Do not lose this content draft.' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Draft email' }))
+  expect(field().value).toBe('Do not lose this content draft.')
+  expect(chat.send).toHaveBeenCalledWith('Draft the RISE scan email for Mira Jones.', undefined, expect.anything(), 'source')
+})
+
+it('a turn deep link closes Chats and shows the target conversation', async () => {
+  const chat = fakeChat({ turns: [{ id: 'answer', turnId: 'target', role: 'assistant', tools: [], error: null, text: 'Focused reply' }] })
+  const current = chat as ChatHandle
+  const target = { value: null as string | null }
+  const force = { refresh: () => {} }
+  function Wrapper() {
+    const [, bump] = useState(0)
+    force.refresh = () => bump(n => n + 1)
+    const v: ClaudeCtx = { chat: current, online: true, text: '', setText: vi.fn(), see: EMPTY_SEE, setSee: vi.fn(),
+      focusTurn: target.value, clearFocus: vi.fn(), since: null, stepAt: vi.fn(), landed: null, clearLanded: vi.fn(), savedAt: null,
+      stop: vi.fn(), voiceOpen: false, setVoiceOpen: vi.fn(), dictateOnOpen: false, clearDictateOnOpen: vi.fn() }
+    return <ClaudeValueProvider value={v}><ClaudeDrawer layout="desktop" route={{ place: 'claude', sub: null,
+      query: target.value ? new URLSearchParams({ thread: 'current', turn: target.value }) : new URLSearchParams() }}
+      onClose={() => {}} variant="page" /></ClaudeValueProvider>
+  }
+  renderInFrame(<Wrapper />, { hash: '#exp/d/claude' })
+  fireEvent.click(screen.getByRole('button', { name: 'Chats' }))
+  target.value = 'target'
+  // jsdom does not implement the DOM scroll method used when focusing a linked turn.
+  const scroll = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'scrollIntoView')
+  Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', { value: vi.fn(), configurable: true })
+  try {
+    act(force.refresh)
+    expect(screen.queryByText('Focused reply')).toBeTruthy()
+  } finally {
+    if (scroll) Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', scroll)
+    else Reflect.deleteProperty(HTMLElement.prototype, 'scrollIntoView')
+  }
+})
