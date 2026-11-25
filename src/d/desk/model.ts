@@ -20,6 +20,7 @@ export type DeskDraftCard = { handle: string; id?: string; first_line: string; s
 export type DeskT3 = { id: string; status: T3Status; title: string; link?: string | null }
 export type DeskAttachment = { kind: 'photo' | 'link'; url: string; name?: string }
 export type DeskMeta = {
+  main_thread?: string
   chips?: DeskChip[]; actions?: DeskAction[]; attachments?: DeskAttachment[]
   t3_job?: DeskT3; drafts?: DeskDraftCard[]
   model?: string; timings?: Record<string, number>; tool_calls?: number

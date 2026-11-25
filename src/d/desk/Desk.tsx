@@ -347,7 +347,7 @@ function bodyBesideCards(m: DeskMessage): string {
   return Array.isArray(m.meta.notes) ? m.meta.notes.filter(n => typeof n === 'string' && n.trim()).join('\n\n') : ''
 }
 
-function DraftCard({ d }: { d: DeskDraftCard }) {
+export function DraftCard({ d }: { d: DeskDraftCard }) {
   const when = d.scheduled_at
   const status = /sched|queue/i.test(d.status) ? 'Scheduled' : /post|publish/i.test(d.status) ? 'Posted' : /review/i.test(d.status) ? 'In review'
     : /approved/i.test(d.status) ? 'Approved' : /error/i.test(d.status) ? 'Needs a look' : d.status
@@ -505,7 +505,7 @@ function undoUncovered(b: HTMLElement): boolean {
   return true
 }
 
-function ActionRow({ a, desk }: { a: DeskAction; at: string; desk: DeskHandle }) {
+export function ActionRow({ a, desk }: { a: DeskAction; at: string; desk: Pick<DeskHandle, 'act' | 'refresh'> }) {
   useSyncExternalStore(actionStore.subscribe, actionStore.version, actionStore.version)
   useSyncExternalStore(heldSeenStore.subscribe, heldSeenStore.version, heldSeenStore.version)
   const isHeld = a.state === 'held'

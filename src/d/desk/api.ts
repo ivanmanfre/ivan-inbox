@@ -179,7 +179,7 @@ export const cancelAction = (id: string) => op('cancel', id)
 /** The newest 60 desk messages, oldest first. Owner RLS decides what comes back. */
 export async function readMessages(): Promise<DeskMessage[]> {
   if (mockOn()) return mockApi.read()
-  let q = supabase.from('desk_messages').select(MESSAGE_COLS)
+  let q = supabase.from('desk_messages').select(MESSAGE_COLS).is('meta->>main_thread', null)
   if (!evalOn()) q = q.or('meta->>test.is.null,meta->>test.neq.true')
   const { data, error } = await q.order('created_at', { ascending: false }).limit(60)
   if (error) throw error
@@ -199,7 +199,7 @@ export function subscribeDesk(topic: string, userId: string, on: { message: (m: 
   const ch = supabase.channel(topic)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'desk_messages', filter: `user_id=eq.${userId}` }, p => {
       const row = (p as unknown as { new?: DeskMessage }).new
-      if (row && row.id && (evalOn() || !isTestRow(row))) on.message(asMessage(row))
+      if (row && row.id && !row.meta?.main_thread && (evalOn() || !isTestRow(row))) on.message(asMessage(row))
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'desk_t3_jobs', filter: `user_id=eq.${userId}` }, p => {
       const row = (p as unknown as { new?: T3Job }).new

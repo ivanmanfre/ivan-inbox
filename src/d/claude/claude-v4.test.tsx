@@ -3,7 +3,7 @@
 // SAME RunnerJobs (Stop still goes through runner.stop), the context chips ride inside the composer
 // well, and the workspace (page variant) draws no chats toggle and no close key. Flag off = today.
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { useState } from 'react'
 
 vi.mock('../../lib/turns', async orig => ({
@@ -66,12 +66,14 @@ describe('Claude drawer under the claude section', () => {
   })
   it('workspace (page variant): rail + conversation, no chats toggle, no close key', async () => {
     __resetSkinForTests(new Set(['claude', 'tokens', 'type', 'motion', 'shell']))
-    const list = { threads: [], failed: false, reload: () => {} }
-    renderInFrame(<Value><ClaudeWorkspace layout="desktop" route={{ place: 'claude', sub: null, query: new URLSearchParams() }} title="Claude" list={list} onNew={() => {}} /></Value>, { hash: '#exp/d/claude' })
-    expect(document.querySelector('.dcl-rail [data-chats]')).not.toBeNull()
+    renderInFrame(<Value><ClaudeWorkspace layout="desktop" route={{ place: 'claude', sub: null, query: new URLSearchParams() }} title="Assistant" onNew={() => {}} /></Value>, { hash: '#exp/d/claude' })
+    expect(document.querySelector('.dcl-rail')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Chats' }))
+    expect(document.querySelector('.dcl-ws [data-chats]')).not.toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Back to the chat' }))
     expect(document.querySelector('.dcl-ws[data-claude-drawer]')).not.toBeNull()
-    expect(document.querySelector('.dcl-ws [data-verb="chats"]')).toBeNull()
+    expect(document.querySelector('.dcl-ws [data-verb="chats"]')).not.toBeNull()
     expect(document.querySelector('.dcl-ws button[aria-label^="Close Claude"]')).toBeNull()
-    expect(document.querySelector('.dcl-ws textarea[aria-label="Message to Claude"]')).not.toBeNull()
+    expect(document.querySelector('.dcl-ws textarea[aria-label="Message the assistant"]')).not.toBeNull()
   })
 })

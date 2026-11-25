@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import type { Turn } from '../../exp/v2c/chat/events'
 import { groundedClause, sourceBasenames, sourcesChipLabel } from '../../exp/brain/b/brainMeta'
 import { parseActions, type Action } from '../../wb/ask/actions'
@@ -12,6 +12,8 @@ import { detectLinks } from '../../lib/unfurl'
 import { buildRecallCommand } from '../../exp/brain/b/recall'
 import { errorCopy, THREAD_BUSY_RE, turnMetaLine } from './model'
 import { Steps } from './Steps'
+
+const ContentArtifact = lazy(() => import('./ContentArtifact').then(m => ({ default: m.ContentArtifact })))
 
 // One answer: the steps it took, the prose, what it was grounded on, and (on
 // Claude's own thread) the action keys the bot offered. Every write here is
@@ -102,8 +104,9 @@ function Foot({ text, onAgain, offline }: { text: string; onAgain?: () => void; 
   )
 }
 
-export function Answer({ turn, setText, onRetry, last, busy, offline, send }: {
+export function Answer({ request = '', turn, setText, onRetry, last, busy, offline, send }: {
   turn: Turn
+  request?: string
   setText: (v: string) => void
   onRetry: () => void
   /** The newest answer: the only one that carries Retry / Ask again (chat.retry replays the last ask). */
@@ -113,6 +116,7 @@ export function Answer({ turn, setText, onRetry, last, busy, offline, send }: {
   /** A recall noun asks Claude to recall it (today's buildRecallCommand). */
   send: (text: string) => void
 }) {
+  const artifact = turn.sources?.find(s => s.kind === 'content_desk' || s.kind === 'content_choice')
   const bot = turn.origin === 'bot'
   const parsed = bot ? parseActions(turn.text || '') : null
   const body = parsed ? parsed.body : turn.text
@@ -126,6 +130,7 @@ export function Answer({ turn, setText, onRetry, last, busy, offline, send }: {
       <Steps calls={turn.tools} live={false} t0={null} />
       {body && <Markdown text={body} cites={buildCites(sourceBasenames(turn.sources))} onRecall={busy ? undefined : n => send(buildRecallCommand(n))} recallOff={offline} />}
       {parsed && turn.turnId && parsed.actions.length > 0 && <BotActions turnId={turn.turnId} actions={parsed.actions} setText={setText} offline={offline} />}
+      {artifact && <Suspense fallback={null}><ContentArtifact key={artifact.path} id={artifact.path} choose={artifact.kind === 'content_choice'} request={request} setText={setText} /></Suspense>}
       {link && <LinkCard url={link} />}
       {turn.aborted && <div className="dcl-note">You stopped this one. Nothing more is coming.</div>}
       {turn.error && (
@@ -135,7 +140,7 @@ export function Answer({ turn, setText, onRetry, last, busy, offline, send }: {
         </div>
       )}
       <Sources turn={turn} />
-      <Foot text={body || ''} offline={offline} onAgain={last && !turn.error && !busy ? onRetry : undefined} />
+      <Foot text={body || ''} offline={offline} onAgain={last && !turn.error && !busy && !artifact ? onRetry : undefined} />
     </div>
   )
 }

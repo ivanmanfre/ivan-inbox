@@ -19,7 +19,7 @@ const { renderInFrame } = await import('../test-utils')
 afterEach(() => { cleanup(); document.documentElement.classList.remove('brief-native') })
 
 // bridge.js (apps/daily-brief) has a test that feeds placesOf this exact string: keep the two in step.
-const WIRE = '[{"id":"home","label":"Home","group":"main"},{"id":"dms","label":"DMs","group":"main"},{"id":"content","label":"Content","group":"main"},{"id":"ops","label":"Ops","group":"main"},{"id":"sales","label":"Sales","group":"main"},{"id":"lanes","label":"Lanes","group":"main"},{"id":"intel","label":"Intel","group":"main"},{"id":"settings","label":"Settings","group":"low"}]'
+const WIRE = '[{"id":"home","label":"Home","group":"main"},{"id":"dms","label":"DMs","group":"main"},{"id":"content","label":"Content","group":"main"},{"id":"ops","label":"Ops","group":"main"},{"id":"sales","label":"Sales","group":"main"},{"id":"lanes","label":"Lanes","group":"main"},{"id":"intel","label":"Intel","group":"main"},{"id":"claude","label":"Assistant","group":"main"},{"id":"settings","label":"Settings","group":"low"}]'
 
 describe('PlacesNode', () => {
   it('lists the seven main places and Settings in order, with labels, and no hidden place', () => {
@@ -29,8 +29,7 @@ describe('PlacesNode', () => {
     expect(node.hidden).toBe(true)
     expect(node.textContent).toBe(WIRE)
     const list = JSON.parse(node.textContent!) as Array<{ id: string; label: string; group: string }>
-    expect(list.map(p => p.id)).toEqual(['home', 'dms', 'content', 'ops', 'sales', 'lanes', 'intel', 'settings'])
-    expect(list.map(p => p.id)).not.toContain('claude')
+    expect(list.map(p => p.id)).toEqual(['home', 'dms', 'content', 'ops', 'sales', 'lanes', 'intel', 'claude', 'settings'])
   })
 
   it('sits inside the side panel beside the glance line when the page runs in Brief', () => {

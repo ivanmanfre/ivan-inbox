@@ -46,3 +46,7 @@ verify_jwt = false
 
 [functions.inbox-dm-draft-file]
 verify_jwt = false
+
+# The daily scan check uses the inbox server credential.
+[functions.inbox-scan-watch]
+verify_jwt = false

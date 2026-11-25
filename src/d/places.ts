@@ -1,7 +1,6 @@
 import { lazy, type ComponentType, type LazyExoticComponent } from 'react'
 import type { DRoute } from './route'
 import type { DIconName } from './ui/icons'
-import { claudeNav } from './desk/navFlag'
 
 // ---------------------------------------------------------------------------
 // THE PLACE REGISTRY. One entry per place in the left panel / dock.
@@ -61,12 +60,8 @@ export const PLACES: Record<PlaceId, PlaceDef> = {
   // Back in the main nav 2026-11-20 (Ivan asked for it after the 11-17 trim hid it).
   intel: { id: 'intel', label: 'Intel', icon: 'intel', nav: 'main', dock: false, today: '#exp/d/intel', Page: lazy(() => import('./intel')) },
 
-  // Out of the nav since daily-brief-trim Task 6.2: ⌘J and the panel's Claude key open the drawer;
-  // #exp/d/claude?thread=&turn= (push links) still opens the place. Back in the main nav once the Content
-  // Desk's desk_config.nav_visible was read true on this device (src/d/desk/navFlag.ts).
-  // `nav` is a getter: it reads the desk flag store at every render, so the authenticated read can show
-  // or hide the place in the same session (it was captured once at module load before).
-  claude: { id: 'claude', label: 'Claude', icon: 'claude', get nav() { return claudeNav() }, dock: false, today: '#exp/brain-b/ask', Page: lazy(() => import('./claude')) },
+  // Keep the existing address so saved chat links and notifications reopen the same turn.
+  claude: { id: 'claude', label: 'Assistant', icon: 'claude', nav: 'main', dock: false, today: '#exp/brain-b/ask', Page: lazy(() => import('./claude')) },
 
   settings: { id: 'settings', label: 'Settings', icon: 'settings', nav: 'low', dock: false, today: '#exp/brain-b/settings', Page: lazy(() => import('./settings')) },
 }

@@ -23,6 +23,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2'
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { notify } from '../_shared/notify.ts'
 import { planCompletion } from './completion.ts'
+import { canSummarize, startSummary, summarizeBundle, SUMMARY_CLAIM } from './bundle-summary.ts'
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' }
 
@@ -141,6 +142,43 @@ Deno.serve(async (req) => {
   const now = new Date()
   const nowIso = now.toISOString()
 
+  if (row.origin === 'bot' && row.error_code === SUMMARY_CLAIM) {
+    return Response.json({ id: turnId, ignored: 'summary_in_progress', pushed: false }, { status: 202 })
+  }
+  if (canSummarize(row, p, now.getTime())) {
+    const claim = async () => {
+      const { data, error } = await db.from('inbox_turns').update({ error_code: SUMMARY_CLAIM })
+        .eq('id', turnId).eq('origin', 'bot').eq('status', 'running').is('error_code', null)
+        .select('id').maybeSingle()
+      if (error) throw new Error('summary_claim_failed')
+      return !!data
+    }
+    const run = async () => {
+      let result: Record<string, unknown>
+      try {
+        const summary = await summarizeBundle(row.prompt, Deno.env.get('RAILWAY_CLAUDE_URL') ?? '',
+          Deno.env.get('RAILWAY_CLAUDE_API_KEY') ?? '')
+        result = { status: 'done', answer: summary.answer, ran_on: summary.model,
+          grounding: { source: 'notification_bundle', provider: summary.provider },
+          session_id: null, resumed: false, sources: [], tool_events: [], usage: summary.usage,
+          error_code: null, error_detail: null }
+      } catch {
+        result = { status: 'error', error_code: 'bot_bundle_summary_unavailable',
+          error_detail: 'The agent subscription refused the turn and the notification summary was unavailable.' }
+      }
+      const { error } = await db.from('inbox_turns').update({ ...result, finished_at: new Date().toISOString() })
+        .eq('id', turnId).eq('status', 'running').eq('error_code', SUMMARY_CLAIM)
+      if (error) console.error('bundle summary completion failed', turnId, error.code)
+      // Summary-only work never updates Claude session state or notification
+      // ownership. Normal completion side effects below belong to native turns.
+    }
+    const runtime = (globalThis as { EdgeRuntime?: { waitUntil(p: Promise<void>): void } }).EdgeRuntime
+    try {
+      const started = await startSummary(claim, run, runtime?.waitUntil.bind(runtime))
+      return Response.json({ id: turnId, summary_claimed: started, pushed: false }, { status: 202 })
+    } catch { return err(500, 'summary_claim_failed') }
+  }
+
   // ---- status -------------------------------------------------------------
   // An aborted turn stays aborted. Ivan pressed stop; the container finishing
   // anyway does not un-press it.
@@ -176,6 +214,7 @@ Deno.serve(async (req) => {
   // is reading it. A late callback must leave the next bundle alone.
   let update = db.from('inbox_turns').update(patch).eq('id', turnId)
   if (row.origin === 'bot') update = update.in('status', ['queued', 'running'])
+    .or(`error_code.is.null,error_code.neq.${SUMMARY_CLAIM}`)
   const { data: updated, error: updErr } = await update.select('id').maybeSingle()
   if (updErr) return err(500, 'turn_update_failed', updErr.message)
   if (!updated) return Response.json({ id: turnId, ignored: 'already_closed', pushed: false, bot_push: false })

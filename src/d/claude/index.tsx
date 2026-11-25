@@ -24,7 +24,7 @@ export default function ClaudePage({ layout, route }: PlaceProps) {
   const title = <>Claude: <N v={list.failed ? null : n} /> chats{chat.botThread ? ", plus Claude's thread." : '.'}</>
   // Phone: the helper sentence is cut; "Claude is working on your last ask." (a state) stays.
   const sub = chat.busy ? 'Claude is working on your last ask.' : layout === 'phone' ? undefined : 'Pick a chat and it opens in the drawer. Asking never sends a DM.'
-  if (v4 && layout === 'desktop') return <ClaudeWorkspace layout={layout} route={route} title={title} list={list} onNew={() => chat.newThread()} />
+  if (v4 && layout === 'desktop') return <ClaudeWorkspace layout={layout} route={route} title="Assistant" onNew={() => chat.newThread()} />
   return (
     <div className={`dcl-page dcl-page-${layout}`}>
       <AnswerRow title={title} sub={sub} tools={

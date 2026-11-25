@@ -24,7 +24,7 @@ vi.mock('../../lib/supabase', async orig => {
 
 const { SubNav, subOf, contentRedirect } = await import('../content/SubNav')
 const { renderInFrame } = await import('../test-utils')
-const { claudeNav, saveDeskFlags, FLAGS_OFF, resetDeskFlagStore } = await import('./navFlag')
+const { saveDeskFlags, FLAGS_OFF, resetDeskFlagStore } = await import('./navFlag')
 const { resetDeskFlagReads } = await import('./flags')
 const { PLACES } = await import('../places')
 
@@ -47,22 +47,15 @@ describe('desk entry points', () => {
     expect(subOf('desk')).toBe('desk')
     expect(contentRedirect('desk', new URLSearchParams())).toBeNull()
   })
-  it('the Claude place returns to the main nav only once nav_visible was read true', () => {
-    expect(claudeNav()).toBe('hidden')
-    saveDeskFlags({ ...FLAGS_OFF, desk_enabled: true, nav_visible: true })
-    expect(claudeNav()).toBe('main')
-  })
-  it('the nav slot follows a later read in the same session (never captured at load)', () => {
-    saveDeskFlags({ ...FLAGS_OFF, desk_enabled: true, nav_visible: true })
+  it('keeps the main assistant available when the content desk is disabled', () => {
+    saveDeskFlags(FLAGS_OFF)
     expect(PLACES.claude.nav).toBe('main')
-    saveDeskFlags({ ...FLAGS_OFF, desk_enabled: true, nav_visible: false })
-    expect(PLACES.claude.nav).toBe('hidden')
+    expect(PLACES.claude.label).toBe('Assistant')
   })
 })
 
 vi.mock('./Desk', () => ({ Desk: () => <div data-desk-bypass>Desk opened</div> }))
 const { default: DeskPage } = await import('./index')
-const { Side } = await import('../shell/Side')
 
 it('does not mount a disabled Desk while its authenticated flag read is pending', async () => {
   const initial = { ...FLAGS_OFF, desk_enabled: true, nav_visible: true }
@@ -76,16 +69,6 @@ it('does not mount a disabled Desk while its authenticated flag read is pending'
   flagGate = null
   expect(screen.getByText('The Content Desk is off.')).toBeTruthy()
   expect(beforeRead).toBe(false)
-})
-
-it('removes the Claude nav link when the flag store sends a disable without navigation', async () => {
-  saveDeskFlags({ ...FLAGS_OFF, desk_enabled: true, nav_visible: true })
-  const { container } = renderInFrame(<Side />, { hash: '#exp/d/home' })
-  await waitFor(() => expect(container.querySelector('a[href="#exp/d/claude"]')).toBeTruthy())
-  await act(async () => {})
-  act(() => { saveDeskFlags(FLAGS_OFF) })
-  expect(PLACES.claude.nav).toBe('hidden')
-  expect(container.querySelector('a[href="#exp/d/claude"]')).toBeNull()
 })
 
 it('r3 review: a failed flag read leaves a recovery state for a previously enabled Desk', async () => {

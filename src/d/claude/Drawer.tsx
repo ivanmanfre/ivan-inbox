@@ -78,7 +78,7 @@ export default function ClaudeDrawer({ layout, route, onClose, variant = 'drawer
   const last = chat.turns[chat.turns.length - 1]
   // Today's honest-degrade: a picked model the container refused keeps the pick and says so.
   const modelRefused = !!(last?.role === 'assistant' && last.error && /model/i.test(last.error.message) && chat.wanted !== null)
-  const title = chat.thread?.kind === 'bot' ? "Claude's thread" : chat.thread?.title ? shortTitle(chat.thread.title, 48) : chat.turns.length ? null : 'New chat'
+  const title = chat.thread?.kind === 'bot' ? "Main conversation" : chat.thread?.title ? shortTitle(chat.thread.title, 48) : chat.turns.length ? null : 'New chat'
 
   // A hand-off from DMs brings the conversation back to the front.
   const handoffAt = handoff?.at ?? null
@@ -122,12 +122,12 @@ export default function ClaudeDrawer({ layout, route, onClose, variant = 'drawer
     <div className={`dcl dcl-${layout}${v4 ? ' dcl-v4' : ''}${page ? ' dcl-ws' : ''}`} data-claude-drawer {...touch}>
       {layout === 'phone' && <div className="dcl-grab" aria-hidden="true" {...dismissTouch} />}
       <div className="dcl-head" {...dismissTouch}>
-        {!page && <button type="button" className={`dcl-ib${view === 'chats' ? ' dcl-on' : ''}`} data-verb="chats" aria-pressed={view === 'chats'}
+        <button type="button" className={`dcl-ib${view === 'chats' ? ' dcl-on' : ''}`} data-verb="chats" aria-pressed={view === 'chats'}
           aria-label={view === 'chats' ? 'Back to the chat' : chat.botUnread ? "Chats, Claude's thread has something new" : 'Chats'} title="Chats" onClick={() => setView(v => (v === 'chats' ? 'chat' : 'chats'))}>
           <CIcon name="chats" />{chat.botUnread && <i className="dcl-dot" aria-hidden="true" />}
-        </button>}
+        </button>
         <div className="dcl-title">
-          <b>{view === 'chats' ? 'Chats' : 'Claude'}</b>
+          <b>{view === 'chats' ? 'Chats' : 'Assistant'}</b>
           {view === 'chats' ? <small>{chatsN == null ? 'reading…' : `${chatsN} chats`}</small> : <StatusPill />}
           {view === 'chat' && title && <small className="dcl-tname" title={chat.thread?.title ?? undefined}>{title}</small>}
         </div>
@@ -156,7 +156,7 @@ export default function ClaudeDrawer({ layout, route, onClose, variant = 'drawer
           <button type="button" className="dcl-link" data-verb="model-default" onClick={() => chat.setWanted(null)}>Use the Claude default</button>
         </div>
       )}
-      {view === 'chats' && !page
+      {view === 'chats'
         ? <Chats list={list} onPicked={() => setView('chat')} />
         : <Conversation first={person?.first ?? null} send={send} />}
       {!v4 && <RunnerJobs runner={runner} />}
@@ -164,7 +164,7 @@ export default function ClaudeDrawer({ layout, route, onClose, variant = 'drawer
         {v4 && runner.note && <div className="dcl-fail" role="alert"><span>{runner.note}</span><button type="button" className="dcl-link" onClick={runner.clearNote}>Dismiss</button></div>}
         {!v4 && <Context subjects={subjects} />}
         <Composer
-          placeholder={person ? `Ask about ${person.first}…` : 'Ask Claude…'}
+          placeholder={person ? `Ask about ${person.first}…` : 'Message the assistant…'}
           onSend={send}
           top={v4 ? <Context subjects={subjects} /> : undefined}
           more={a => <More chat={chat} runner={runner} text={text} onSent={() => setText('')} onCommands={a.onCommands} onPaste={a.onPaste} phone={layout === 'phone'} />}

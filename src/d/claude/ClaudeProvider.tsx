@@ -91,6 +91,16 @@ export function ClaudeProvider({ children }: { children: ReactNode }) {
   // (today's `#exp/brain-b/ask?thread=…` maps here) opens that chat in the
   // drawer and scrolls to the turn. Keyed on the address, so it runs once per arrival.
   const qs = route.place === 'claude' ? route.query.toString() : null
+  // An ordinary visit opens the private conversation that receives proactive
+  // messages. A deep link, a composed message or a turn in progress wins.
+  const defaultOpened = useRef(false)
+  const mainId = chat.botThread?.id
+  useEffect(() => {
+    if (qs !== '') { defaultOpened.current = false; return }
+    if (defaultOpened.current) return
+    if (chat.busy || text) { defaultOpened.current = true; return }
+    if (mainId) { defaultOpened.current = true; chat.openBot() }
+  }, [qs, mainId, chat.busy, chat.openBot, text])
   useEffect(() => {
     if (qs === null) return
     const q = new URLSearchParams(qs)

@@ -18,7 +18,7 @@ import { Slash, runCommand, slashKey } from './Slash'
 // device; the message carries `[attached: name]`), and while a turn runs here
 // or elsewhere the round key is Stop. Asking never sends a DM.
 
-type Att = { id: string; name: string; kind: 'image' | 'pdf' | 'pasted'; url: string; size: number }
+type Att = { file: File; id: string; name: string; kind: 'image' | 'pdf' | 'pasted'; url: string; size: number }
 const FIELD_MAX = 140
 
 /** The message that leaves: the text, then one `[attached: name]` line per file (today's Composer). */
@@ -49,8 +49,16 @@ export function Composer({ placeholder, onSend, more, top }: {
     field.current?.focus()
   })
   const cmds = matchCommands(text)
+  const [uploading, setUploading] = useState(false)
+  const uploadLock = useRef(false)
+  const uploaded = useRef(new WeakMap<File, string>())
+  const current = useRef({ thread: chat.threadId, text, atts })
+  current.current = { thread: chat.threadId, text, atts }
+  const mounted = useRef(true)
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false } }, [])
+  const contentPhotos = atts.length > 0 && (/^content:/i.test(text.trim()) || /\b(?:attach|stage|use|add)\b/i.test(text) && /\b(?:post|draft)\b/i.test(text) && !/\b(?:email|dm|scan)\b/i.test(text))
   const running = chat.busy || chat.runningElsewhere
-  const canSend = text.trim().length > 0 && !running && online
+  const canSend = text.trim().length > 0 && !running && !uploading && online
   const recording = stt.state === 'recording'
   const link = detectLinks(text)[0]?.url
 
@@ -86,7 +94,7 @@ export function Composer({ placeholder, onSend, more, top }: {
       const img = f.type.startsWith('image/')
       if (!pdf && !img) continue
       next.push({
-        id: `${f.name}:${f.size}:${f.lastModified}`, size: f.size,
+        file: f, id: `${f.name}:${f.size}:${f.lastModified}`, size: f.size,
         kind: pasted && img ? 'pasted' : pdf ? 'pdf' : 'image',
         name: pasted && img && /^image\.\w+$/i.test(f.name) ? 'Pasted image' : f.name,
         url: URL.createObjectURL(f),
@@ -117,11 +125,31 @@ export function Composer({ placeholder, onSend, more, top }: {
   }
 
   const pick = (c: Command) => runCommand(c, chat, setText)
-  const send = () => {
+  const send = async () => {
     // The palette gets first refusal: a highlighted command runs, it never goes out as text.
     if (cmds.length) { pick(cmds[Math.min(cursor, cmds.length - 1)]); return }
-    if (!canSend) return
-    onSend(outgoing(text, atts))
+    if (!canSend || uploadLock.current) return
+    if (contentPhotos) {
+      if (atts.length > 4 || atts.some(a => a.kind === 'pdf')) { setNote('For a content post, attach up to four images.'); return }
+      const started = current.current
+      uploadLock.current = true
+      setUploading(true)
+      try {
+        const { uploadDeskPhoto } = await import('../desk/api')
+        const urls: string[] = []
+        for (const a of atts) {
+          const url = uploaded.current.get(a.file) ?? await uploadDeskPhoto(a.file)
+          uploaded.current.set(a.file, url)
+          urls.push(url)
+        }
+        if (!mounted.current || current.current.thread !== started.thread || current.current.text !== started.text || current.current.atts !== started.atts) {
+          if (mounted.current) setNote('Your draft changed during upload. Review it before sending.')
+          return
+        }
+        onSend('Content: ' + text.trim().replace(/^content:\s*/i, '') + '\n' + urls.map(u => '[Content photo](' + u + ')').join('\n'))
+      } catch { setNote('The photo could not be uploaded. Your post request is still here.'); return }
+      finally { uploadLock.current = false; if (mounted.current) setUploading(false) }
+    } else onSend(outgoing(text, atts))
     for (const a of atts) URL.revokeObjectURL(a.url)
     setAtts([]); setHeard(null); stt.clearClip()
   }
@@ -146,7 +174,7 @@ export function Composer({ placeholder, onSend, more, top }: {
               <button type="button" data-verb="remove-attachment" aria-label={`Remove ${a.name}`} onClick={() => drop(a.id)}><CIcon name="x" /></button>
             </span>
           ))}
-          <span className="dcl-dim">The file stays on this device for now; Claude gets its name.</span>
+          <span className="dcl-dim">{contentPhotos ? (uploading ? 'Uploading photos…' : 'Send uploads these photos to your public post-image library.') : 'The file stays on this device for now; Claude gets its name.'}</span>
         </div>
       )}
       {recording && (
@@ -161,7 +189,7 @@ export function Composer({ placeholder, onSend, more, top }: {
       <div className="dcl-box">
         {top}
         <textarea
-          ref={field} rows={2} value={text} placeholder={placeholder} aria-label="Message to Claude" enterKeyHint={isTouch() ? 'enter' : 'send'}
+          ref={field} rows={2} value={text} placeholder={placeholder} aria-label="Message the assistant" enterKeyHint={isTouch() ? 'enter' : 'send'}
           onChange={e => setText(e.target.value)} onKeyDown={onKey}
           onPaste={e => {
             const fs = Array.from(e.clipboardData?.files ?? []).filter(f => f.type.startsWith('image/') || f.type === 'application/pdf')

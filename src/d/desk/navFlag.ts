@@ -58,8 +58,3 @@ export function markDeskFlagsFailed(): void {
 
 /** Tests: forget the in-memory state so the next read starts from localStorage again. */
 export function resetDeskFlagStore(): void { state = null; listeners.clear() }
-
-/** The Claude place's nav slot: in the main nav only while nav_visible is on (read live, never captured). */
-export function claudeNav(): 'main' | 'hidden' {
-  return deskFlagState().nav_visible ? 'main' : 'hidden'
-}

@@ -237,3 +237,5 @@ button.dcl-step:hover{background:var(--p1)}
 .dcl-table th,.dcl-table td{padding:5px 9px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line);white-space:nowrap}
 .dcl-table th{font-weight:600;background:var(--p2)}
 .dcl-table tr:last-child td{border-bottom:0}
+
+.dcl-content-artifact{display:grid;gap:8px;margin-block:8px;background:transparent}.dcl-content-artifact:empty{display:none}

@@ -1,4 +1,3 @@
-import { useDeskNav } from '../desk/useDeskNav'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { dmNumbers, contentNumbers, opsNumbers, seatFailed, useFrameCounts } from '../counts/useFrameCounts'
 import { PLACES, PLACE_ORDER } from '../places'
@@ -65,8 +64,8 @@ export function Dock() {
             )}
           </a>
         ))}
-        <button type="button" className={`d-ck${f.claudeOpen ? ' d-on' : ''}`} aria-label={f.claudeOpen ? 'Close Claude' : 'Ask Claude'} aria-pressed={f.claudeOpen}
-          onClick={() => f.setClaudeOpen(!f.claudeOpen)}>
+        <button type="button" className={`d-ck${f.claudeOpen ? ' d-on' : ''}`} aria-label={f.claudeOpen ? 'Close Assistant' : 'Open Assistant'} aria-pressed={f.claudeOpen || f.route.place === 'claude'}
+          onClick={() => { if (f.claudeOpen) f.setClaudeOpen(false); else f.navigate(dHash('claude')) }}>
           <DIcon name="claude" /><ClaudeKeyDot />
         </button>
       </nav>
@@ -75,7 +74,6 @@ export function Dock() {
 }
 
 export function PhonePanel({ onClose }: { onClose: () => void }) {
-  useDeskNav() // the Claude place's nav slot follows desk_config.nav_visible live
   const f = useFrame()
   const { items } = useNavModel()
   useEffect(() => {
@@ -241,8 +239,8 @@ export function PhoneTabs() {
             )
           })}
         </nav>
-        <button type="button" className={`d-ck po-ck${f.claudeOpen ? ' d-on' : ''}`} aria-label={f.claudeOpen ? 'Close Claude' : 'Ask Claude'} aria-pressed={f.claudeOpen}
-          onClick={() => f.setClaudeOpen(!f.claudeOpen)}>
+        <button type="button" className={`d-ck po-ck${f.claudeOpen ? ' d-on' : ''}`} aria-label={f.claudeOpen ? 'Close Assistant' : 'Open Assistant'} aria-pressed={f.claudeOpen || f.route.place === 'claude'}
+          onClick={() => { if (f.claudeOpen) f.setClaudeOpen(false); else f.navigate(dHash('claude')) }}>
           <DIcon name="claude" /><ClaudeKeyDot />
         </button>
       </div>

@@ -32,7 +32,10 @@ import {
   P16_OPERATOR_RULES,
   summaryDelta,
 } from './assembler.ts'
+import { persistedAnswer } from './persisted-answer.ts'
+import { answerContent, contentIntent } from './content-turn.ts'
 import { BOT_TOOLS, MAX_SYSTEM_APPEND_CHARS } from './bot-tools.ts'
+import { asksAboutScanEmail, answerScanEmail, scanDraftReference } from './scan-email.ts'
 import { DEPTH_BLOCK, DEPTH_BLOCK_CHARS } from './depth-block.ts'
 import { unfurl, UnfurlError } from './unfurl.ts'
 
@@ -446,6 +449,18 @@ Deno.serve(async (req) => {
     thread = t
   }
 
+  let editorial = turnOrigin === 'operator' ? contentIntent(prompt) : null
+  let previousContent: { id: string } | undefined
+  if (editorial === 'reference') {
+    const { data: prior, error } = await db.from('inbox_turns').select('origin,status,sources')
+      .eq('thread_id', thread.id).order('created_at', { ascending: false }).limit(1).maybeSingle()
+    if (error) return fail(503, 'context_assembly_failed', origin)
+    const source = prior?.status === 'done' && Array.isArray(prior.sources)
+      ? prior.sources.find((r: { kind?: string }) => r.kind === 'content_desk' || r.kind === 'content_choice') : null
+    if (source && typeof source.path === 'string') previousContent = { id: source.path }
+    else editorial = null
+  }
+
   // A session the container has demonstrably held. Set by inbox-turn-run on the
   // first turn that finishes; null means the envelope has to ride again.
   const resumed = thread.session_started_at != null
@@ -577,6 +592,14 @@ Deno.serve(async (req) => {
   })
   if (insErr) return fail(500, 'turn_create_failed', origin, insErr.message.slice(0, 200))
 
+  if (editorial) {
+    const intent = editorial
+    return persistedAnswer({ db, turnId, threadId: thread.id, headers: cors(origin),
+      run: () => answerContent({ db, threadId: thread.id, turnId, prompt, userId: user.id, intent, previousContent,
+        endpoint: SUPABASE_URL + '/functions/v1/content-desk', anonKey: SUPABASE_ANON_KEY, authorization: req.headers.get('Authorization')! }),
+    })
+  }
+
   /** Mark this turn failed before handing the caller the error it already returns. */
   async function markTurnError(code: string, detail?: string) {
     await db.from('inbox_turns').update({
@@ -585,6 +608,33 @@ Deno.serve(async (req) => {
       error_detail: detail?.slice(0, 2000) ?? null,
       finished_at: new Date().toISOString(),
     }).eq('id', turnId).is('finished_at', null)
+  }
+
+  let previousScanQuestion: string | undefined
+  let watchedInbound: string | undefined
+  if (turnOrigin === 'operator' && scanDraftReference.test(prompt.trim())) {
+    const { data: prior } = await db.from('inbox_turns').select('origin,status,sources,prompt')
+      .eq('thread_id', thread.id).neq('id', turnId).order('created_at', { ascending: false }).limit(1).maybeSingle()
+    if (prior?.status === 'done' && Array.isArray(prior.sources)) {
+      const previous = prior.sources.find((s: { kind?: string }) => s.kind === 'rise_scan_email' || s.kind === 'rise_scan_watch')
+      if (prior.origin === 'bot' && previous?.kind === 'rise_scan_watch' && UUID_RE.test(previous.path)) watchedInbound = previous.path
+      if (prior.origin === 'operator' && previous?.kind === 'rise_scan_email') previousScanQuestion = prior.prompt
+    }
+  }
+  if (turnOrigin === 'operator' && (watchedInbound || previousScanQuestion || asksAboutScanEmail(prompt))) {
+    return persistedAnswer({
+      db, turnId, threadId: thread.id, headers: cors(origin),
+      run: async () => ({
+        text: await answerScanEmail(prompt, {
+          cases: () => db.rpc('assistant_rise_scan_email').limit(51),
+          providerKey: async () => {
+            const { data } = await db.from('integration_config').select('value').eq('key', 'resend_api_key').maybeSingle()
+            return typeof data?.value === 'string' ? data.value : undefined
+          },
+        }, fetch, previousScanQuestion, watchedInbound),
+        source: { kind: 'rise_scan_email', path: 'RISE scan-email check' },
+      }),
+    })
   }
 
   // 🔴 PERMISSION MODE IS SENT EXPLICITLY, AND IT IS A DELIBERATE GRANT.

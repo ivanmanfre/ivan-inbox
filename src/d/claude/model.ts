@@ -131,6 +131,7 @@ export function sessionWords(g: { session: 'new' | 'resumed' } | null): string {
 export const QUICK_ASKS: { label: string; send?: string; insert?: string }[] = [
   { label: 'What needs me', send: 'What is waiting on me right now?' },
   { label: 'Failed today', send: 'What broke today?' },
+  { label: 'My post plan', send: "What's on my content plan this week?" },
   { label: 'Look first', send: 'What should I look at first?' },
   { label: 'Draft a reply', insert: 'Draft a reply to ' },
   { label: 'Run a scan', insert: 'Run a scan on ' },

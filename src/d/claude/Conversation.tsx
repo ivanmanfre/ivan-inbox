@@ -97,21 +97,23 @@ export function Conversation({ first, send }: { first: string | null; send: (t: 
   const lastUser = [...turns].reverse().find(t => t.role === 'user')
   const lastAnswer = turns[turns.length - 1]?.role === 'assistant' ? turns[turns.length - 1] : null
   let prevDay = ''
+  let request = ''
   const rows = turns.map((t: Turn) => {
     const day = t.role === 'user' && t.at ? warsawDay(t.at) : null
     const sep = day && day !== prevDay ? dayLine(t.at!) : null
     if (day) prevDay = day
     if (t.role === 'user') {
+      request = t.text
       return (
         <div key={t.id} data-turn={t.origin === 'bot' ? undefined : t.turnId}>
           {sep && <div className="dcl-day">{sep}</div>}
           {t.origin === 'bot' && t.turnId
-            ? <Bundle turnId={t.turnId} prompt={t.text} />
+            ? (t.text ? <Bundle turnId={t.turnId} prompt={t.text} /> : null)
             : <div className="dcl-me">{t.text}<small>you</small></div>}
         </div>
       )
     }
-    return <Answer key={t.id} turn={t} setText={setText} onRetry={chat.retry} last={t === lastAnswer} busy={chat.busy || chat.runningElsewhere} offline={!online} send={send} />
+    return <Answer key={t.id} request={request} turn={t} setText={setText} onRetry={chat.retry} last={t === lastAnswer} busy={chat.busy || chat.runningElsewhere} offline={!online} send={send} />
   })
 
   return (

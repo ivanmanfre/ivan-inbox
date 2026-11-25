@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 let subscribeCb: ((status: string) => void) | null = null
 let readRows: Array<Record<string, unknown>> = []
 const orCalls: string[] = []
+const isCalls: unknown[][] = []
 const pgHandlers: Array<(p: unknown) => void> = []
 let sessionHangs = false
 let sessionGate: Promise<void> | null = null
@@ -19,6 +20,7 @@ vi.mock('../../lib/supabase', () => ({
     from: () => {
       const b = {
         select: () => b,
+        is: (column: string, value: unknown) => { isCalls.push([column, value]); return b },
         or: (f: string) => { orCalls.push(f); return b },
         order: () => b,
         limit: async () => ({ data: readRows, error: null }),
@@ -149,17 +151,19 @@ describe('desk api', () => {
   })
 
   it('test rows (meta.test) are filtered out of the history read and realtime outside eval mode', async () => {
-    localStorage.removeItem('desk-eval'); orCalls.length = 0; pgHandlers.length = 0
+    localStorage.removeItem('desk-eval'); orCalls.length = 0; isCalls.length = 0; pgHandlers.length = 0
     readRows = [
       { id: 'm2', role: 'assistant', body: 'Made-up eval answer.', status: 'done', meta: { test: true }, created_at: '2026-11-18T12:00:02Z' },
       { id: 'm1', role: 'assistant', body: 'Made-up real answer.', status: 'done', meta: {}, created_at: '2026-11-18T12:00:01Z' },
     ]
     const rows = await api.readMessages()
+    expect(isCalls).toEqual([['meta->>main_thread', null]])
     expect(orCalls).toEqual(['meta->>test.is.null,meta->>test.neq.true'])
     expect(rows.map(r => r.id)).toEqual(['m1'])
     const message = vi.fn()
     const stop = api.subscribeDesk('desk:test', '00000000-0000-4000-8000-000000000001', { message, job: vi.fn(), resubscribed: vi.fn() })
     pgHandlers[0]({ new: { id: 'm3', role: 'assistant', body: 'x', status: 'done', meta: { test: true } } })
+    pgHandlers[0]({ new: { id: 'main-only', role: 'assistant', status: 'done', meta: { main_thread: 'private' } } })
     pgHandlers[0]({ new: { id: 'm4', role: 'assistant', body: 'y', status: 'done', meta: {} } })
     expect(message.mock.calls.map(c => c[0].id)).toEqual(['m4'])
     stop()

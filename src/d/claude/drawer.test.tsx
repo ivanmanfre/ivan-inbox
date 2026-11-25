@@ -54,7 +54,7 @@ const angel = () => threadSubject({
   messages: [{ direction: 'inbound', created_at: '2026-09-27T09:34:00Z', message_text: 'later' }],
 }, 'Davorin Smit')
 
-const field = () => screen.getByLabelText('Message to Claude') as HTMLTextAreaElement
+const field = () => screen.getByLabelText('Message the assistant') as HTMLTextAreaElement
 const verb = (v: string) => document.querySelector(`[data-verb="${v}"]`) as HTMLElement
 
 describe('Claude drawer verbs', () => {
