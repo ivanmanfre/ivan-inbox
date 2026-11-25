@@ -106,8 +106,10 @@ export function ClaudeProvider({ children }: { children: ReactNode }) {
     const q = new URLSearchParams(qs)
     const thread = uuidOrNull(q.get('thread'))
     if (thread) {
-      chat.openThread(thread)
-      setFocusTurn(uuidOrNull(q.get('turn')))
+      const target = uuidOrNull(q.get('turn'))
+      if (target) chat.openThread(thread, target)
+      else chat.openThread(thread)
+      setFocusTurn(target)
     }
     if (q.get('voice') === '1') setVoiceOpen(true)
     if (!workspaceRef.current) setClaudeOpen(true)

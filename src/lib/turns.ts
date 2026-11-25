@@ -233,19 +233,24 @@ export async function latestThread(): Promise<Thread | null> {
   return (data ?? null) as unknown as Thread | null
 }
 
-// Oldest first: this is a transcript, and it is rendered in the order it was
-// spoken. The cap is generous but real — an unbounded select on a year-old
-// thread is the same defect as the unbounded inbox page.
+// Limit the newest turns on the server, then display them chronologically.
+// A notification may point outside that window. Load its exact row through
+// the same owner-visible view and require it to belong to this thread.
 export const MAX_TURNS = 200
 
-export async function listTurns(threadId: string): Promise<TurnRow[]> {
+export async function listTurns(threadId: string, focusId?: string): Promise<TurnRow[]> {
   const { data, error } = await supabase.from(TURNS_VIEW)
     .select(TURN_COLS)
     .eq('thread_id', threadId)
-    .order('created_at', { ascending: true })
+    .order('created_at', { ascending: false })
     .limit(MAX_TURNS)
   if (error) throw error
-  return (data ?? []) as unknown as TurnRow[]
+  const rows = [...(data ?? [])].reverse() as unknown as TurnRow[]
+  if (focusId && isUuid(focusId) && !rows.some(row => row.id === focusId)) {
+    const older = await getTurn(focusId)
+    if (older?.thread_id === threadId) rows.unshift(older)
+  }
+  return rows
 }
 
 /**

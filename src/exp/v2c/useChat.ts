@@ -389,7 +389,7 @@ export function useChat() {
     land(row)
   }, [armPoll, land])
 
-  const hydrate = useCallback(async (id?: string) => {
+  const hydrate = useCallback(async (id?: string, focusId?: string) => {
     const gen = ++hydrateGen.current
     const stale = () => !alive.current || gen !== hydrateGen.current
     setTurnsLoading(true)
@@ -415,7 +415,7 @@ export function useChat() {
       setThreadId(t.id)
       setThread(t)
       writeThreadKey(t.id)
-      const rows = await listTurns(t.id)
+      const rows = focusId ? await listTurns(t.id, focusId) : await listTurns(t.id)
       if (stale()) return
       const fresh = turnsFromRows(rows)
       // N3b: zero rows under a thread the screen already holds turns for is a
@@ -678,8 +678,12 @@ export function useChat() {
     setStatus('idle')
   }, [stopPoll])
 
-  const openThread = useCallback((id: string) => {
-    if (!isUuid(id) || id === threadIdRef.current) return
+  const openThread = useCallback((id: string, focusId?: string) => {
+    if (!isUuid(id)) return
+    if (id === threadIdRef.current) {
+      if (focusId && !turnsRef.current.some(turn => turn.turnId === focusId)) void hydrate(id, focusId)
+      return
+    }
     abortRef.current?.abort()
     stopPoll()
     lastSent.current = null
@@ -695,7 +699,7 @@ export function useChat() {
     setRunningElsewhere(false)
     setThreadId(id)
     setThread(null)
-    void hydrate(id)
+    void hydrate(id, focusId)
   }, [hydrate, stopPoll])
 
   const reset = newThread

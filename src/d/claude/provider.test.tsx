@@ -32,7 +32,7 @@ describe('ClaudeProvider', () => {
   it('a push link #exp/d/claude?thread=&turn= opens that chat in the drawer', () => {
     const setClaudeOpen = vi.fn()
     renderInFrame(<ClaudeProvider><span /></ClaudeProvider>, { hash: `#exp/d/claude?thread=${T}&turn=${U}`, frame: { setClaudeOpen } })
-    expect(openThread).toHaveBeenCalledWith(T)
+    expect(openThread).toHaveBeenCalledWith(T, U)
     expect(setClaudeOpen).toHaveBeenCalledWith(true)
   })
   it('Brief 4 claude section, desktop: the workspace opens the chat in the page, the drawer flag stays put', async () => {

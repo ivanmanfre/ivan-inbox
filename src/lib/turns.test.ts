@@ -189,13 +189,21 @@ describe('reads go through the views, never the base tables', () => {
     expect(steps).toHaveLength(1)
   })
 
-  it('listTurns reads a transcript oldest first and bounded', async () => {
-    queue.push({ data: [], error: null })
-    await listTurns(U1)
+  it('listTurns reads the newest bounded page and displays it chronologically', async () => {
+    queue.push({ data: [{ id: 'new' }, { id: 'old' }], error: null })
+    expect((await listTurns(U1)).map(row => row.id)).toEqual(['old', 'new'])
     expect(steps[0].table).toBe(TURNS_VIEW)
     expect(steps[0].filters).toEqual([`eq:thread_id=${U1}`])
-    expect(steps[0].order).toBe('created_at:asc')
+    expect(steps[0].order).toBe('created_at:desc')
     expect(steps[0].limit).toBe(200)
+  })
+
+  it('includes an older linked turn only when it belongs to this chat', async () => {
+    for (const sameThread of [true, false]) {
+      queue.push({ data: [{ id: 'recent' }], error: null },
+        { data: { id: U1, thread_id: sameThread ? U1 : 'different-thread' }, error: null })
+      expect((await listTurns(U1, U1)).map(row => row.id)).toEqual(sameThread ? [U1, 'recent'] : ['recent'])
+    }
   })
 
   it('getTurn reads the ROW that is the truth after a stream is lost', async () => {
