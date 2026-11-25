@@ -5,11 +5,11 @@ import type { TurnRow } from '../../lib/turns'
 import type { ChatRequest } from './chat/events'
 import { useChat } from './useChat'
 
-const io = vi.hoisted(() => ({ latest: vi.fn(), page: vi.fn(), turn: vi.fn(), stream: vi.fn(), cache: vi.fn() }))
+const io = vi.hoisted(() => ({ bot: vi.fn(), latest: vi.fn(), page: vi.fn(), turn: vi.fn(), stream: vi.fn(), cache: vi.fn() }))
 vi.mock('../../lib/turns', async original => ({
   ...await original<typeof import('../../lib/turns')>(),
   latestThread: io.latest,
-  getBotThread: async () => null,
+  getBotThread: io.bot,
   getThread: async (id: string) => ({ id }),
   listTurnPage: io.page,
   getTurn: io.turn,
@@ -36,6 +36,7 @@ function deferred<T>() {
 }
 
 beforeEach(() => {
+  io.bot.mockResolvedValue(null)
   io.latest.mockResolvedValue(null)
   io.page.mockImplementation(async (thread: string) => page(row(thread, thread)))
   io.turn.mockResolvedValue(null)
@@ -151,4 +152,97 @@ it('refuses a turn frame and settlement that name another thread', async () => {
   expect(result.current.threadId).toBe(a)
   expect(result.current.turns.at(-1)?.error).toBeTruthy()
   expect(result.current.turns.map(t => t.text)).not.toContain('another chat')
+})
+
+it('retains a settled answer across a visibility read captured before the send', async () => {
+  Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' })
+  io.bot.mockResolvedValue({ id: a })
+  const delayed = deferred<ReturnType<typeof page>>()
+  let id = ''
+  io.stream.mockImplementationOnce(async function* (req: ChatRequest) {
+    id = req.turnId!
+    yield { type: 'text', delta: 'streaming content' }
+  })
+  io.turn.mockImplementation(async (key: string) => row(a, key, 'saved content artifact'))
+  const { result } = renderHook(() => useChat())
+  await act(async () => result.current.openThread(a))
+  io.page.mockReturnValueOnce(delayed.promise)
+  act(() => document.dispatchEvent(new Event('visibilitychange')))
+  expect(io.page).toHaveBeenCalledTimes(2)
+  await act(async () => result.current.send('What is on my content plan this week?'))
+  expect(result.current.turns.at(-1)?.text).toBe('saved content artifact')
+  await act(async () => delayed.resolve(page(row(a, a))))
+  expect(result.current.turns.some(t => t.turnId === id && t.text === 'saved content artifact')).toBe(true)
+})
+
+it('keeps one answer when a visibility read sees the settled row before the stream ends', async () => {
+  Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' })
+  io.bot.mockResolvedValue({ id: a })
+  const done = deferred<void>()
+  let id = ''
+  io.stream.mockImplementationOnce(async function* (req: ChatRequest) {
+    id = req.turnId!
+    yield { type: 'text', delta: 'partial plan' }
+    await done.promise
+  })
+  const { result } = renderHook(() => useChat())
+  await act(async () => result.current.openThread(a))
+  let send!: Promise<void>
+  act(() => { send = result.current.send('What is on my content plan this week?') })
+  await waitFor(() => expect(result.current.status).toBe('streaming'))
+  const saved = { ...row(a, id, 'weekly plan'), sources: [{ kind: 'content_desk', path: 'weekly-plan' }] }
+  io.page.mockResolvedValueOnce(page(row(a, a), saved))
+  await act(async () => document.dispatchEvent(new Event('visibilitychange')))
+  await act(async () => { done.resolve(); await send })
+  const replies = result.current.turns.filter(t => t.turnId === id && t.role === 'assistant')
+  expect(replies.map(t => t.text)).toEqual(['weekly plan'])
+  expect(replies[0].sources).toEqual(saved.sources)
+})
+
+it('keeps the terminal receipt when an overlapping read returns the same row as running', async () => {
+  io.bot.mockResolvedValue({ id: a })
+  const release = deferred<void>()
+  const delayed = deferred<ReturnType<typeof page>>()
+  let id = ''
+  io.stream.mockImplementationOnce(async function* (req: ChatRequest) {
+    id = req.turnId!
+    yield { type: 'text', delta: 'partial' }
+    await release.promise
+  })
+  io.turn.mockImplementationOnce(async (key: string) => ({ ...row(a, key, 'saved'), ran_on: 'worker' }))
+  const { result } = renderHook(() => useChat())
+  await act(async () => result.current.openThread(a))
+  let done!: Promise<void>
+  act(() => { done = result.current.send('question') })
+  await waitFor(() => expect(result.current.status).toBe('streaming'))
+  io.page.mockReturnValueOnce(delayed.promise)
+  act(() => result.current.openThread(a, b))
+  await act(async () => { release.resolve(); await done })
+  await act(async () => delayed.resolve(page(row(a, a), row(a, id, '', 'running'))))
+  expect(result.current.turns.at(-1)).toMatchObject({ turnId: id, role: 'assistant', text: 'saved', status: 'done' })
+  expect(result.current.runningElsewhere).toBe(false)
+  expect(io.turn).toHaveBeenCalledTimes(1)
+})
+
+it('acknowledges only a locally accepted send and distinguishes consecutive visits to one chat', async () => {
+  const release = deferred<void>()
+  io.stream.mockImplementationOnce(async function* () {
+    yield { type: 'text', delta: 'first' }
+    await release.promise
+  })
+  const { result } = renderHook(() => useChat())
+  await act(async () => result.current.openThread(a))
+  const visit = result.current.getThreadVisit()
+  const accepted = vi.fn(), rejected = vi.fn()
+  let done!: Promise<void>
+  act(() => {
+    done = result.current.send('first', undefined, undefined, undefined, accepted)
+    void result.current.send('second', undefined, undefined, undefined, rejected)
+    expect(accepted).toHaveBeenCalledOnce()
+    expect(rejected).not.toHaveBeenCalled()
+  })
+  await act(async () => result.current.openThread(b))
+  await act(async () => result.current.openThread(a))
+  expect(result.current.getThreadVisit()).not.toBe(visit)
+  await act(async () => { release.resolve(); await done })
 })

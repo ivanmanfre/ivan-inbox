@@ -70,7 +70,7 @@ function History({ onPicked }: { onPicked: () => void }) {
 }
 
 export default function ClaudeDrawer({ layout, route, onClose, variant = 'drawer' }: ClaudeDrawerProps) {
-  const { chat, text, setText, see, setVoiceOpen, online } = useClaude()
+  const { chat, text, see, setVoiceOpen, online } = useClaude()
   const frame = useFrame()
   const page = variant === 'page'
   const handoff = useClaudeHandoff()
@@ -108,10 +108,12 @@ export default function ClaudeDrawer({ layout, route, onClose, variant = 'drawer
     setView('chat')
   }, [sendChat, personName, context])
 
-  const sendComposer = useCallback((message: string) => {
-    setText('')
-    send(message)
-  }, [send, setText])
+  const sendComposer = useCallback((message: string, onAccepted: () => void) => {
+    void sendChat(message, personName, context, undefined, () => {
+      onAccepted()
+      setView('chat')
+    })
+  }, [sendChat, personName, context])
 
   const edge = useRef<{ x: number; y: number } | null>(null)
   const dismissStart = useRef<{ x: number; y: number } | null>(null)
@@ -204,7 +206,7 @@ export default function ClaudeDrawer({ layout, route, onClose, variant = 'drawer
           placeholder={person ? `Ask about ${person.first}…` : 'Message the assistant…'}
           onSend={sendComposer}
           top={v4 || page ? <Context subjects={attached} /> : undefined}
-          more={a => <More chat={chat} runner={runner} text={text} onSent={() => setText('')} onCommands={a.onCommands} onPaste={a.onPaste} phone={layout === 'phone'}
+          more={a => <More chat={chat} runner={runner} text={text} onSent={a.onPromptSent} onCommands={a.onCommands} onPaste={a.onPaste} phone={layout === 'phone'}
             onJobs={page ? () => setRunOpen(true) : undefined}
             onTalk={page && hasLiveVoice && online ? () => setVoiceOpen(true) : undefined} />}
         />

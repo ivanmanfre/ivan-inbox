@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
 // Verb wiring for the Claude drawer: each key calls TODAY'S chat handle / lib with today's
 // arguments. The network modules are mocked; the chat handle is a stub that records calls.
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { useState } from 'react'
 
+const uploadPhoto = vi.hoisted(() => vi.fn())
+vi.mock('../desk/api', () => ({ uploadDeskPhoto: uploadPhoto }))
 vi.mock('../../lib/turns', async orig => ({
   ...(await orig<typeof import('../../lib/turns')>()),
   listThreads: vi.fn(async () => [
@@ -36,7 +38,7 @@ function fakeChat(over: Partial<ChatHandle> = {}): ChatHandle {
     wanted: null, setWanted: vi.fn(), threadId: 't1', thread: null, turnsLoading: false, turnsStale: false, grounding: null,
     runningElsewhere: false, botThread: { id: 'b1', kind: 'bot', turn_count: 170, bot_push_muted: false } as ChatHandle['botThread'],
     botUnread: false, refreshBot: vi.fn(), openBot: vi.fn(), botPushMuted: false, setBotPushMuted: vi.fn(),
-    send: vi.fn(async () => {}), abort: vi.fn(), retry: vi.fn(), reset: vi.fn(), newThread: vi.fn(), openThread: vi.fn(),
+    send: vi.fn<ChatHandle['send']>(async (_message, _about, _context, _alert, accepted) => { accepted?.() }), abort: vi.fn(), retry: vi.fn(), reset: vi.fn(), newThread: vi.fn(), openThread: vi.fn(),
     ...over,
   } as unknown as ChatHandle
 }
@@ -151,6 +153,17 @@ describe('Claude drawer verbs', () => {
     fireEvent.click(verb('run-job'))
     await waitFor(() => expect(jobs.dispatchJob).toHaveBeenCalledWith({ kind: 'prompt', input: 'run this', cwd: null, model: null }))
   })
+  it('keeps new composer text when a background job accepts the previous prompt', async () => {
+    let finish!: (value: { id: string }) => void
+    vi.mocked(jobs.dispatchJob).mockImplementationOnce(() => new Promise(resolve => { finish = resolve }))
+    renderInFrame(<Host chat={fakeChat()} />)
+    fireEvent.change(field(), { target: { value: 'first request' } })
+    fireEvent.click(screen.getByLabelText('More: commands, model, runner'))
+    fireEvent.click(verb('run-job'))
+    fireEvent.change(field(), { target: { value: 'my next request' } })
+    await act(async () => finish({ id: 'accepted' }))
+    expect(field().value).toBe('my next request')
+  })
   it('a / command runs locally and never sends', () => {
     const chat = fakeChat({ turns: [{ id: 'a', role: 'user', text: 'x', tools: [], error: null }] as ChatHandle['turns'] })
     renderInFrame(<Host chat={chat} />)
@@ -200,4 +213,86 @@ it('a turn deep link closes Chats and shows the target conversation', async () =
     if (scroll) Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', scroll)
     else Reflect.deleteProperty(HTMLElement.prototype, 'scrollIntoView')
   }
+})
+
+describe('content photo handoff', () => {
+  const post = 'Content: Attach this photo to my post'
+  const photoUrl = 'https://fixture.example.test/post.png'
+  beforeEach(() => {
+    vi.stubGlobal('URL', class extends URL {
+      static createObjectURL = vi.fn(() => 'blob:photo')
+      static revokeObjectURL = vi.fn()
+    })
+    uploadPhoto.mockReset()
+  })
+  afterEach(() => vi.unstubAllGlobals())
+
+  function attach(name: string) {
+    const file = new File(['image'], name, { type: 'image/png' })
+    fireEvent.change(document.querySelector('input[type=file]')!, { target: { files: [file] } })
+  }
+
+  async function beginUpload() {
+    let finish!: (url: string) => void
+    uploadPhoto.mockImplementationOnce(() => new Promise<string>(resolve => { finish = resolve }))
+    fireEvent.change(field(), { target: { value: post } })
+    attach('post.png')
+    fireEvent.click(verb('send'))
+    await waitFor(() => expect(uploadPhoto).toHaveBeenCalledOnce())
+    return () => act(async () => finish(photoUrl))
+  }
+
+  it('retains text and photo when the inline email action wins the send lock, then reuses the upload', async () => {
+    let locked = false
+    const accepted: string[] = []
+    const alert = 'Mira Jones supplied mira@example.test after the scan offer. Mattan shared the report on LinkedIn. I checked the connected RISE sender and found no email to that address. Reply “draft the email” to prepare it here.'
+    const chat = fakeChat({
+      turns: [{ id: 'scan', turnId: 'source', role: 'assistant', tools: [], error: null, text: alert,
+        origin: 'bot', sources: [{ kind: 'rise_scan_watch', path: 'request', at: '' }] }],
+      send: async (message, _about, _context, _alert, onAccepted) => {
+        if (locked) return
+        locked = true
+        accepted.push(message)
+        onAccepted?.()
+      },
+    })
+    renderInFrame(<Host chat={chat} />)
+    const finish = await beginUpload()
+    fireEvent.click(screen.getByRole('button', { name: 'Draft email' }))
+    await finish()
+    expect(accepted).toEqual(['Draft the RISE scan email for Mira Jones.'])
+    expect(field().value).toBe(post)
+    expect(screen.getByRole('button', { name: 'Remove post.png' })).toBeTruthy()
+    locked = false
+    await act(async () => fireEvent.click(verb('send')))
+    expect(accepted[1]).toBe(post + '\n[Content photo](' + photoUrl + ')')
+    expect(uploadPhoto).toHaveBeenCalledOnce()
+    expect(field().value).toBe('')
+    expect(screen.queryByRole('button', { name: 'Remove post.png' })).toBeNull()
+  })
+
+  it('preserves edits and added photos while an upload is in flight', async () => {
+    const chat = fakeChat()
+    renderInFrame(<Host chat={chat} />)
+    const finish = await beginUpload()
+    fireEvent.change(field(), { target: { value: post + ' on Friday' } })
+    attach('second.png')
+    await finish()
+    expect(chat.send).not.toHaveBeenCalled()
+    expect(field().value).toBe(post + ' on Friday')
+    expect(screen.getByRole('button', { name: 'Remove post.png' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Remove second.png' })).toBeTruthy()
+  })
+
+  it('keeps the draft when the user visits another chat and comes back during upload', async () => {
+    let visit = 1
+    const chat = fakeChat({ getThreadVisit: () => visit })
+    renderInFrame(<Host chat={chat} />)
+    const finish = await beginUpload()
+    visit += 2
+    await finish()
+    expect(field().value).toBe(post)
+    expect(screen.getByRole('button', { name: 'Remove post.png' })).toBeTruthy()
+    expect(chat.send).not.toHaveBeenCalled()
+  })
 })

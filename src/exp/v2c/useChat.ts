@@ -185,29 +185,35 @@ export function turnsFromRows(rows: TurnRow[]): Turn[] {
  * the failure, which is the rule this file has held since it was written.
  */
 export function mergeRow(turns: Turn[], row: TurnRow): Turn[] {
-  const fresh = assistantFromRow(row)
-  const at = turns.findIndex(t => t.role === 'assistant' && t.turnId === row.id)
+  return putAnswer(turns, assistantFromRow(row), 'saved')
+}
+
+function putAnswer(turns: Turn[], answer: Turn, source: 'saved' | 'stream'): Turn[] {
+  const at = turns.findIndex(t => t.role === 'assistant' && t.turnId === answer.turnId)
   if (at >= 0) {
     const prev = turns[at]
+    // A completed database row can arrive on either side of the stream finalizer.
+    const saved = source === 'saved' ? answer : prev
+    const streamed = source === 'saved' ? prev : answer
     const out = [...turns]
     out[at] = {
-      ...fresh,
+      ...saved,
       id: prev.id,
-      text: fresh.text || prev.text,
-      tools: fresh.tools.length ? fresh.tools : prev.tools,
-      sources: fresh.sources?.length ? fresh.sources : prev.sources,
-      costUsd: fresh.costUsd ?? prev.costUsd ?? null,
-      durationMs: fresh.durationMs ?? prev.durationMs ?? null,
+      text: saved.text || streamed.text,
+      tools: saved.tools.length ? saved.tools : streamed.tools,
+      sources: saved.sources?.length ? saved.sources : streamed.sources,
+      costUsd: saved.costUsd ?? streamed.costUsd ?? null,
+      durationMs: saved.durationMs ?? streamed.durationMs ?? null,
     }
     return out
   }
-  const ask = turns.findIndex(t => t.role === 'user' && t.turnId === row.id)
+  const ask = turns.findIndex(t => t.role === 'user' && t.turnId === answer.turnId)
   if (ask >= 0) {
     const out = [...turns]
-    out.splice(ask + 1, 0, fresh)
+    out.splice(ask + 1, 0, answer)
     return out
   }
-  return [...turns, fresh]
+  return [...turns, answer]
 }
 
 const OPEN = (s: string): boolean => s === 'queued' || s === 'running'
@@ -285,6 +291,10 @@ export function useChat() {
   const threadRef = useRef<Thread | null>(null)
   const turnIdRef = useRef<string | null>(null)
   const threadVisit = useRef(0)
+  const getThreadVisit = useCallback(() => threadVisit.current, [])
+  // Mutations observed while the current page read is in flight. A saved row
+  // supersedes a stale page, and null marks a local turn without a receipt yet.
+  const writesDuringHydrate = useRef<Map<string, TurnRow | null> | null>(null)
   const pollRef = useRef<{ id: string; until: number; timer: number } | null>(null)
   // Hydration generation. A cold boot with a cached id that is not the deep-linked
   // one runs two hydrations at once, and `alive` cannot tell them apart: last to
@@ -337,6 +347,7 @@ export function useChat() {
   }, [])
 
   const land = useCallback((row: TurnRow) => {
+    writesDuringHydrate.current?.set(row.id, row)
     stopPoll()
     setTurns(t => mergeRow(t, row))
     setRunningElsewhere(false)
@@ -421,6 +432,13 @@ export function useChat() {
     if (focus?.reading) return
     if (focus) focus.reading = true
     const gen = ++hydrateGen.current
+    const writes = new Map<string, TurnRow | null>()
+    const localId = turnIdRef.current
+    if (localId && (abortRef.current || turnsRef.current.some(turn =>
+      turn.turnId === localId && turn.role === 'assistant' && !turn.status))) {
+      writes.set(localId, null)
+    }
+    writesDuringHydrate.current = writes
     const stale = () => !alive.current || gen !== hydrateGen.current
     olderRequest.current = null
     setEarlierState('idle')
@@ -454,10 +472,8 @@ export function useChat() {
       setThreadId(t.id)
       setThread(t)
       writeThreadKey(t.id)
-      const rows = page.rows
-      const fresh = turnsFromRows(rows)
       const previous = id && t.id !== id ? [] : turnsRef.current
-      if (emptyOverKnown(previous, fresh.length)) { setTurnsStale(true); return }
+      if (emptyOverKnown(previous, page.rows.length)) { setTurnsStale(true); return }
       const prior = historyRef.current?.threadId === t.id ? historyRef.current : null
       let older: Turn[] = []
       let before = page.before
@@ -490,16 +506,23 @@ export function useChat() {
           before = edge.before
         }
       }
-      setHistory({ threadId: t.id, headIds: rows.map(row => row.id), older, before,
+      const rows = page.rows.map(row => writes.get(row.id) ?? row)
+      const headIds = new Set(rows.map(row => row.id))
+      const fresh = turnsFromRows(rows)
+      setHistory({ threadId: t.id, headIds: [...headIds], older, before,
         linked: page.linked ? turnsFromRows([page.linked]) : (!focus ? prior?.linked ?? [] : []) })
       if (focus === pendingFocus.current) pendingFocus.current = null
       setTurns(prev => {
-        const liveId = abortRef.current && turnIdRef.current
-        const live = liveId && !rows.some(row => row.id === liveId) ? prev.filter(turn => turn.turnId === liveId) : []
-        return [...keepIds(prev, fresh), ...live]
+        let head = keepIds(prev, fresh)
+        for (const turn of prev) {
+          if (!turn.turnId || !writes.has(turn.turnId)) continue
+          if (!headIds.has(turn.turnId)) head.push(turn)
+          else if (turn.role === 'assistant') head = putAnswer(head, turn, 'stream')
+        }
+        return head
       })
       setTurnsStale(false)
-      const last = rows[rows.length - 1]
+      const last = writes.get(turnIdRef.current ?? '') ?? rows[rows.length - 1]
       if (last) setGrounding(groundingOf(last))
       // A row still open with no local stream attached IS the "phone was locked"
       // state. Say so, and go and get the answer.
@@ -518,6 +541,7 @@ export function useChat() {
       // precondition for talking.
       if (!stale() && turnsRef.current.length > 0) setTurnsStale(true)
     } finally {
+      if (writesDuringHydrate.current === writes) writesDuringHydrate.current = null
       if (focus) focus.reading = false
       if (!stale()) setTurnsLoading(false)
     }
@@ -581,7 +605,9 @@ export function useChat() {
     return () => document.removeEventListener('visibilitychange', onVisible)
   }, [hydrate, poll, refreshBot])
 
-  const send = useCallback(async (prompt: string, about?: string, see?: string, scanAlertTurnId?: string) => {
+  const send = useCallback(async (
+    prompt: string, about?: string, see?: string, scanAlertTurnId?: string, onAccepted?: () => void,
+  ) => {
     const text = prompt.trim()
     if (!text || abortRef.current) return
     lastSent.current = { prompt: text, about, see, scanAlertTurnId }
@@ -590,6 +616,8 @@ export function useChat() {
     abortRef.current = ctrl
     const turnId = mintTurnId()
     turnIdRef.current = turnId
+    writesDuringHydrate.current?.set(turnId, null)
+    onAccepted?.()
     const onThread = threadIdRef.current
     if (!onThread) {
       // A send from a fresh pane owns the thread the broker creates, even if a
@@ -687,7 +715,7 @@ export function useChat() {
         // Whatever streamed before a failure is kept. Discarding half an answer
         // to show a red box loses the useful part of the turn.
         if (acc || tools.length || failed || aborted) {
-          setTurns(t => [...t, {
+          setTurns(t => putAnswer(t, {
             id: nextId(), role: 'assistant', text: acc, tools,
             error: failed, aborted: aborted || undefined,
             // Telemetry lands ON the turn (v2a's graft), so a transcript scrolled
@@ -698,7 +726,7 @@ export function useChat() {
             // The instant the answer actually landed, which can be a real gap
             // after `sentAt` — this is what a day separator has to key on.
             at: new Date().toISOString(),
-          }])
+          }, 'stream'))
         }
         setStreamText('')
         setStreamTools([])
@@ -893,6 +921,6 @@ export function useChat() {
     wanted, setWanted,
     threadId, thread, turnsLoading, turnsStale, grounding, runningElsewhere,
     botThread, botUnread, refreshBot, openBot, botPushMuted, setBotPushMuted,
-    send, abort, retry, reset, newThread, openThread,
+    send, abort, retry, reset, newThread, openThread, getThreadVisit,
   }
 }

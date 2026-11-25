@@ -30,9 +30,9 @@ const isTouch = () => typeof window !== 'undefined' && !!window.matchMedia?.('(p
 
 export function Composer({ placeholder, onSend, more, top }: {
   placeholder: string
-  onSend: (message: string) => void
+  onSend: (message: string, onAccepted: () => void) => void
   /** The More key, built by the drawer (it owns the runner); handed the composer's own actions. */
-  more: (a: { onCommands: () => void; onPaste: () => void }) => ReactNode
+  more: (a: { onCommands: () => void; onPaste: () => void; onPromptSent: () => void }) => ReactNode
   /** Brief 4 (`claude` section): what travels (the context chips) drawn inside the well, above the field. */
   top?: ReactNode
 }) {
@@ -52,12 +52,12 @@ export function Composer({ placeholder, onSend, more, top }: {
   const [uploading, setUploading] = useState(false)
   const uploadLock = useRef(false)
   const uploaded = useRef(new WeakMap<File, string>())
-  const current = useRef({ thread: chat.threadId, text, atts })
-  current.current = { thread: chat.threadId, text, atts }
+  const running = chat.busy || chat.runningElsewhere
+  const current = useRef({ thread: chat.threadId, text, atts, online, running })
+  current.current = { thread: chat.threadId, text, atts, online, running }
   const mounted = useRef(true)
   useEffect(() => { mounted.current = true; return () => { mounted.current = false } }, [])
   const contentPhotos = atts.length > 0 && (/^content:/i.test(text.trim()) || /\b(?:attach|stage|use|add)\b/i.test(text) && /\b(?:post|draft)\b/i.test(text) && !/\b(?:email|dm|scan)\b/i.test(text))
-  const running = chat.busy || chat.runningElsewhere
   const canSend = text.trim().length > 0 && !running && !uploading && online
   const recording = stt.state === 'recording'
   const link = detectLinks(text)[0]?.url
@@ -124,34 +124,50 @@ export function Composer({ placeholder, onSend, more, top }: {
     } catch { setNote('Paste was blocked. Long-press the field and paste there.') }
   }
 
+  const started = current.current
+  const visit = chat.getThreadVisit?.()
+  const sameDraft = () => mounted.current && current.current.thread === started.thread &&
+    chat.getThreadVisit?.() === visit && current.current.text === started.text && current.current.atts === started.atts
+
   const pick = (c: Command) => runCommand(c, chat, setText)
   const send = async () => {
     // The palette gets first refusal: a highlighted command runs, it never goes out as text.
     if (cmds.length) { pick(cmds[Math.min(cursor, cmds.length - 1)]); return }
     if (!canSend || uploadLock.current) return
+    const clearAcceptedDraft = () => {
+      if (!sameDraft()) return
+      setText('')
+      for (const a of started.atts) URL.revokeObjectURL(a.url)
+      setAtts([])
+      setHeard(null)
+      stt.clearClip()
+      setNote(null)
+    }
     if (contentPhotos) {
       if (atts.length > 4 || atts.some(a => a.kind === 'pdf')) { setNote('For a content post, attach up to four images.'); return }
-      const started = current.current
       uploadLock.current = true
       setUploading(true)
       try {
         const { uploadDeskPhoto } = await import('../desk/api')
         const urls: string[] = []
         for (const a of atts) {
+          if (!sameDraft() || !current.current.online || current.current.running) break
           const url = uploaded.current.get(a.file) ?? await uploadDeskPhoto(a.file)
           uploaded.current.set(a.file, url)
           urls.push(url)
         }
-        if (!mounted.current || current.current.thread !== started.thread || current.current.text !== started.text || current.current.atts !== started.atts) {
+        if (!sameDraft()) {
           if (mounted.current) setNote('Your draft changed during upload. Review it before sending.')
           return
         }
-        onSend('Content: ' + text.trim().replace(/^content:\s*/i, '') + '\n' + urls.map(u => '[Content photo](' + u + ')').join('\n'))
-      } catch { setNote('The photo could not be uploaded. Your post request is still here.'); return }
+        if (!current.current.online || current.current.running) {
+          setNote('Your post is still here. Send it when you’re ready.')
+          return
+        }
+        onSend('Content: ' + text.trim().replace(/^content:\s*/i, '') + '\n' + urls.map(u => '[Content photo](' + u + ')').join('\n'), clearAcceptedDraft)
+      } catch { if (mounted.current) setNote('The photo could not be uploaded. Your post request is still here.'); return }
       finally { uploadLock.current = false; if (mounted.current) setUploading(false) }
-    } else onSend(outgoing(text, atts))
-    for (const a of atts) URL.revokeObjectURL(a.url)
-    setAtts([]); setHeard(null); stt.clearClip()
+    } else onSend(outgoing(text, atts), clearAcceptedDraft)
   }
   const onKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); send(); return }
@@ -201,7 +217,11 @@ export function Composer({ placeholder, onSend, more, top }: {
           <button type="button" className="dcl-ib" data-verb="attach" aria-label="Attach a photo or file" title="Attach a photo or file" onClick={() => files.current?.click()}><CIcon name="clip" /></button>
           <button type="button" className={`dcl-ib${recording ? ' dcl-rec-on' : ''}`} data-verb="dictate" aria-pressed={recording}
             aria-label={recording ? 'Stop dictating' : 'Dictate (⌘D)'} title="Dictate (⌘D)" disabled={!stt.supported || stt.state === 'transcribing'} onClick={stt.toggle}><CIcon name="mic" /></button>
-          {more({ onCommands: () => { setText('/'); field.current?.focus() }, onPaste: () => void pasteTile() })}
+          {more({
+            onCommands: () => { setText('/'); field.current?.focus() },
+            onPaste: () => void pasteTile(),
+            onPromptSent: () => { if (sameDraft()) setText('') },
+          })}
           <span className="assistant-compose-space" aria-hidden="true" />
           {running
             ? <button type="button" className="dcl-go dcl-stop" data-verb="stop" aria-label="Stop Claude" title="Stop" onClick={stop}><CIcon name="stop" /></button>

@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { describe, expect, it, vi } from 'vitest'
-import { answerScanEmail, asksAboutScanEmail, containsReport, readReceipts, readScanAlertInbound, type ScanCase } from './scan-email'
+import { answerScanEmail, asksAboutScanEmail, containsReport, readReceipts, readScanAlertInbound, scanAnswerSource, scanFollowupReference, type ScanCase } from './scan-email'
 
 const item: ScanCase = {
   inbound_id: 'req1',
@@ -121,7 +121,7 @@ describe('main assistant RISE scan evidence', () => {
     expect(context).not.toContain('fixture')
   })
   it('prepares only a private named draft for an unfulfilled request with a working approved report', async () => {
-    const reader = { cases: async () => ({ data: [item], error: null }), providerKey: async () => 'fixture' }
+    const reader = { cases: async () => ({ data: [item], error: null }), currentDraft: async () => ({ data: item, error: null }), providerKey: async () => 'fixture' }
     const read = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
       if (init?.method === 'HEAD') {
         expect(String(url)).toBe(item.report_url + '/')
@@ -136,6 +136,10 @@ describe('main assistant RISE scan evidence', () => {
     const draft = await answerScanEmail('Draft the email', reader, read, 'Did Test Person get the scan?')
     expect(draft).toContain('Private email draft for review')
     expect(draft).toContain('To: ' + item.address)
+    const fromQuestion = await answerScanEmail('Draft the email', reader, read, 'Did Test Person get her scan by email?')
+    expect(fromQuestion).toContain('To: ' + item.address)
+    const firstNameOnly = await answerScanEmail('Draft the email', reader, read, 'Did Test get her scan by email?')
+    expect(firstNameOnly).toContain('Which RISE prospect')
     expect(draft).toContain(item.report_url)
     expect(await answerScanEmail('Draft a scan email for Test Person', reader, provider())).not.toContain(
       'Private email draft for review',
@@ -146,7 +150,7 @@ describe('main assistant RISE scan evidence', () => {
   })
   it('binds a reply to the watched inbound and checks the current case before preparing the draft', async () => {
     const other = { ...item, inbound_id: 'another', address: 'other@example.test' }
-    const reader = { cases: async () => ({ data: [item, other], error: null }), providerKey: async () => 'fixture' }
+    const reader = { cases: async () => ({ data: [item, other], error: null }), currentDraft: async () => ({ data: item, error: null }), providerKey: async () => 'fixture' }
     const read = async (_url: RequestInfo | URL, init?: RequestInit) =>
       init?.method === 'HEAD'
         ? new Response(null, { headers: { 'content-type': 'text/html' } })
@@ -199,4 +203,46 @@ it('resolves a saved alert only for its owner, thread, origin and completed stat
   row.status = 'done'
   sources.push({ kind: 'rise_scan_watch', path: inboundId })
   expect(await read()).toBeUndefined()
+})
+
+it('preserves the original alert through repeated shorthand, including stale and failed results', () => {
+  const alert = '11aaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+  const turn = { id: alert, origin: 'bot', status: 'done', prompt: '', sources: [{ kind: 'rise_scan_watch', path: 'old-request' }] }
+  const ref = scanFollowupReference(turn)
+  expect(ref).toEqual({ kind: 'alert', path: alert })
+  for (const status of ['done', 'error']) {
+    const reply = { ...turn, id: 'new-turn', origin: 'operator', status, prompt: 'Draft email for Mira Jones.', sources: [scanAnswerSource(ref)] }
+    const next = scanFollowupReference(reply)
+    expect(next).toEqual(ref)
+    expect(scanFollowupReference({ ...reply, prompt: 'Draft the email', sources: [scanAnswerSource(next)] })).toEqual(ref)
+  }
+  const legacy = scanFollowupReference({ ...turn, origin: 'operator', prompt: 'Draft the scan email for Mira Jones.', sources: [scanAnswerSource(null)] })
+  expect(legacy).toEqual({ kind: 'unresolved' })
+  expect(scanFollowupReference({ ...turn, origin: 'operator', prompt: 'Draft the email', sources: [scanAnswerSource(legacy)] })).toEqual(legacy)
+})
+
+it('asks for the complete recipient when a longer name or unrelated wording contains a candidate name', async () => {
+  const reader = { cases: async () => ({ data: [{ ...item, person: 'Mira Jones' }], error: null }), providerKey: vi.fn(), currentDraft: vi.fn() }
+  for (const text of ['Draft the RISE scan email about Mira Jones Smith.', 'Draft a scan email about someone who introduced Mira Jones.', 'Draft something with Mira Jones and her scan email.']) {
+    expect(await answerScanEmail(text, reader)).toContain('Which RISE prospect')
+  }
+  expect(reader.currentDraft).not.toHaveBeenCalled()
+})
+
+it.each(['superseded', 'recipient', 'provider error'])('rechecks the same request after the report HEAD when state changes: %s', async reason => {
+  let headFinished = false
+  const currentDraft = vi.fn(async () => {
+    if (!headFinished) return { data: item, error: null }
+    return reason === 'recipient' ? { data: { ...item, address: 'changed@example.test' }, error: null }
+      : { data: null, error: reason === 'provider error' ? new Error('unavailable') : null }
+  })
+  const request = async (_uri: RequestInfo | URL, init?: RequestInit) => {
+    if (init?.method !== 'HEAD') return Response.json({ data: [], has_more: false })
+    headFinished = true
+    return new Response('', { headers: { 'content-type': 'text/html' } })
+  }
+  const draft = await answerScanEmail('Draft the email', { cases: async () => ({ data: [item], error: null }), currentDraft, providerKey: async () => 'fixture' }, request, undefined, item.inbound_id)
+  expect(headFinished).toBe(true)
+  expect(currentDraft.mock.calls).toEqual([[item.inbound_id], [item.inbound_id]])
+  expect(draft).not.toContain('Private email draft')
 })

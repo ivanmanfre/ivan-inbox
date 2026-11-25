@@ -35,7 +35,7 @@ import {
 import { persistedAnswer } from './persisted-answer.ts'
 import { answerContent, contentIntent } from './content-turn.ts'
 import { BOT_TOOLS, MAX_SYSTEM_APPEND_CHARS } from './bot-tools.ts'
-import { asksAboutScanEmail, answerScanEmail, readScanAlertInbound, scanDraftReference, staleScanAlert } from './scan-email.ts'
+import { asksAboutScanEmail, answerScanEmail, readScanAlertInbound, scanAnswerSource, scanDraftReference, scanFollowupReference, type ScanReference, staleScanAlert } from './scan-email.ts'
 import { DEPTH_BLOCK, DEPTH_BLOCK_CHARS } from './depth-block.ts'
 import { unfurl, UnfurlError } from './unfurl.ts'
 
@@ -608,40 +608,45 @@ Deno.serve(async (req) => {
     }).eq('id', turnId).is('finished_at', null)
   }
 
-  let previousScanQuestion: string | undefined
-  let watchedInbound: string | undefined
-  if (boundScanDraft) {
-    try {
-      watchedInbound = await readScanAlertInbound(db, user.id, thread.id, scanAlertTurnId)
-    } catch {
+  let scanReference: ScanReference | null = boundScanDraft ? { kind: 'alert', path: scanAlertTurnId } : null
+  if (!scanReference && turnOrigin === 'operator' && scanDraftReference.test(prompt.trim())) {
+    const { data: prior, error } = await db.from('inbox_turns').select('id,origin,status,sources,prompt')
+      .eq('user_id', user.id).eq('thread_id', thread.id).neq('id', turnId)
+      .order('created_at', { ascending: false }).limit(1).maybeSingle()
+    if (error) {
       await markTurnError('scan_alert_lookup_failed')
       return fail(503, 'scan_alert_lookup_failed', origin)
     }
-  } else if (turnOrigin === 'operator' && scanDraftReference.test(prompt.trim())) {
-    const { data: prior } = await db.from('inbox_turns').select('origin,status,sources,prompt')
-      .eq('thread_id', thread.id).neq('id', turnId).order('created_at', { ascending: false }).limit(1).maybeSingle()
-    if (prior?.status === 'done' && Array.isArray(prior.sources)) {
-      const previous = prior.sources.find((s: { kind?: string }) => s.kind === 'rise_scan_email' || s.kind === 'rise_scan_watch')
-      if (prior.origin === 'bot' && previous?.kind === 'rise_scan_watch' && UUID_RE.test(previous.path)) watchedInbound = previous.path
-      if (prior.origin === 'operator' && previous?.kind === 'rise_scan_email') previousScanQuestion = prior.prompt
-    }
+    scanReference = scanFollowupReference(prior)
   }
-  if (turnOrigin === 'operator' && (boundScanDraft || watchedInbound || previousScanQuestion || asksAboutScanEmail(prompt))) {
+  if (turnOrigin === 'operator' && (scanReference || asksAboutScanEmail(prompt))) {
+    const ref = scanReference
     return persistedAnswer({
       db, turnId, threadId: thread.id, headers: cors(origin),
-      run: async () => ({
-        text: boundScanDraft && !watchedInbound ? staleScanAlert : await answerScanEmail(boundScanDraft ? 'Draft the email' : prompt, {
+      run: async () => {
+        const source = scanAnswerSource(ref)
+        let watchedInbound: string | undefined
+        if (ref?.kind === 'alert') {
+          try {
+            watchedInbound = await readScanAlertInbound(db, user.id, thread.id, ref.path)
+          } catch {
+            return { text: 'I couldn’t check this scan alert. Try this draft again.', failed: true, source }
+          }
+        }
+        if (ref?.kind === 'unresolved' || (ref?.kind === 'alert' && !watchedInbound)) return { text: staleScanAlert, source }
+        const text = await answerScanEmail(ref?.kind === 'alert' ? 'Draft the email' : prompt, {
           cases: () => {
             const cases = db.rpc('assistant_rise_scan_email')
             return watchedInbound ? cases.eq('inbound_id', watchedInbound).limit(2) : cases.limit(51)
           },
+          currentDraft: (id) => db.rpc('assistant_rise_scan_draft_current', { p_inbound_id: id }),
           providerKey: async () => {
             const { data } = await db.from('integration_config').select('value').eq('key', 'resend_api_key').maybeSingle()
             return typeof data?.value === 'string' ? data.value : undefined
           },
-        }, fetch, previousScanQuestion, watchedInbound),
-        source: { kind: 'rise_scan_email', path: 'RISE scan-email check' },
-      }),
+        }, fetch, ref?.kind === 'question' ? ref.path : undefined, watchedInbound)
+        return { text, source }
+      },
     })
   }
 

@@ -28,10 +28,33 @@ export async function readScanAlertInbound(db: SupabaseClient, owner: string, th
     ? data.sources.filter((s: { kind?: string } | null) => s?.kind === 'rise_scan_watch') : []
   if (sources.length !== 1) return
   const path = sources[0].path
-  if (typeof path === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-9a-f][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(path)) return path
+  if (typeof path === 'string' && uuid.test(path)) return path
 }
 
 const draftRequest = /^(?:(?:can|could|would) you\s+)?(?:please\s+)?(?:draft|write|prepare)\b/i
+const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-9a-f][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+export type ScanReference = { kind: 'alert' | 'question'; path: string } | { kind: 'unresolved' }
+export function scanAnswerSource(ref: ScanReference | null) {
+  if (ref?.kind === 'alert' || ref?.kind === 'unresolved') {
+    return { kind: 'rise_scan_email_alert', path: ref.kind === 'alert' ? ref.path : 'unresolved' }
+  }
+  return { kind: 'rise_scan_email', path: 'RISE scan-email check' }
+}
+
+export function scanFollowupReference(prior: { id: string; status: string; origin: string; prompt: string; sources: unknown } | null): ScanReference | null {
+  if (!prior || !Array.isArray(prior.sources)) return null
+  const saved = prior.sources.find(s => s?.kind === 'rise_scan_email_alert')
+  if (prior.origin === 'operator' && saved) {
+    return typeof saved.path === 'string' && uuid.test(saved.path) ? { kind: 'alert', path: saved.path } : { kind: 'unresolved' }
+  }
+  if (prior.status !== 'done') return null
+  if (prior.origin === 'bot' && prior.sources.some(s => s?.kind === 'rise_scan_watch')) return { kind: 'alert', path: prior.id }
+  if (prior.origin === 'operator' && prior.sources.some(s => s?.kind === 'rise_scan_email')) {
+    // Older private drafts did not save the alert that produced them.
+    return draftRequest.test(prior.prompt) ? { kind: 'unresolved' } : { kind: 'question', path: prior.prompt }
+  }
+  return null
+}
 export const scanDraftReference =
   /^(?:(?:can|could|would) you\s+)?(?:please\s+)?(?:draft|write|prepare) (?:it|the email|that email|the scan email)(?: please)?[.!?]?$/i
 export function asksAboutScanEmail(prompt: string): boolean {
@@ -92,14 +115,14 @@ function namedCases(prompt: string, rows: ScanCase[]): ScanCase[] {
 }
 
 function draftCases(prompt: string, rows: ScanCase[]): ScanCase[] {
-  const words = (text: string) => (text.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? []).join(' ')
-  const specified = /\b(?:for|to)\s+(.+?)\s*[.!?]?$/i.exec(prompt)?.[1]
-  const question = ' ' + words(prompt) + ' '
-  return rows.filter((r) => [r.person, r.company].some((name) => {
-    if (!name) return false
-    const identity = words(name)
-    return !!identity && (specified ? words(specified) === identity : question.includes(' ' + identity + ' '))
-  }))
+  const question = prompt.trim().replace(/[.!?]+$/, '')
+  const name = [
+    /^(?:(?:can|could|would) you\s+)?(?:please\s+)?(?:draft|write|prepare)\s+(?:(?:the|an?)\s+)?(?:RISE\s+)?(?:growth\s+)?scan e-?mail\s+(?:for|about|to)\s+(.+)$/i,
+    /^(?:did|has)\s+(.+?)\s+(?:get|got|received?|been sent)\s+(?:(?:the|their|its|his|her|our)\s+)?(?:growth\s+)?scan(?:\s+by\s+e-?mail)?$/i,
+  ].map(pattern => pattern.exec(question)?.[1]).find(Boolean)
+  if (!name) return []
+  const normalized = (value: string) => value.normalize('NFKC').trim().toLowerCase().replace(/\s+/g, ' ')
+  return rows.filter(r => [r.person, r.company].some(value => value && normalized(value) === normalized(name)))
 }
 
 // Read one account listing and fetch bodies only for the requested sender and
@@ -208,8 +231,18 @@ export async function readReceipts(
 }
 
 type Reader = {
+  currentDraft?: (inboundId: string) => PromiseLike<{ data: ScanCase | null; error: unknown }>
   cases: () => PromiseLike<{ data: ScanCase[] | null; error: unknown }>
   providerKey: () => Promise<string | undefined>
+}
+async function draftStillCurrent(reader: Reader, row: ScanCase): Promise<boolean> {
+  if (!reader.currentDraft) return false
+  const { data, error } = await reader.currentDraft(row.inbound_id)
+  if (error) throw new Error('current scan request unavailable')
+  return !!data && !data.disposition && !data.email_at && !data.email_report_at && data.address_count === 1 &&
+    data.inbound_id === row.inbound_id && data.prospect_id === row.prospect_id && Date.parse(data.asked_at) === Date.parse(row.asked_at) &&
+    data.address === row.address && data.sender === row.sender && data.report_url === row.report_url &&
+    data.person === row.person && data.company === row.company
 }
 const checkedOn = (stamp: string) =>
   new Intl.DateTimeFormat('en-GB', {
@@ -289,7 +322,7 @@ export async function answerScanEmail(
       : draft ? draftCases(previousScanQuestion ?? prompt, cohort) : namedCases(prompt, cohort)
     if (watchedInbound && named.length !== 1) return staleScanAlert
     if (draft && named.length !== 1) {
-      return 'Which RISE prospect should the scan email be for? Include the person’s name and “scan email” so I can check the recipient and report.'
+      return 'Which RISE prospect should the scan email be for? Include their full name or company and “scan email” so I can check the recipient and report.'
     }
     const group =
       /\b(who|anyone|anybody|any|which (?:prospects|customers|brands|leads|scans)|everyone|people|list|show (?:me )?(?:all|missing|outstanding)|outstanding scans|missing scans|pending scans)\b/i
@@ -300,6 +333,7 @@ export async function answerScanEmail(
     const selected = (named.length ? named : cohort).sort((a, b) =>
       Number(!!a.email_report_at) - Number(!!b.email_report_at)
     )
+    if (draft && !await draftStillCurrent(reader, selected[0])) return staleScanAlert
     const receiptMap = await readReceipts(
       selected,
       selected.length ? await reader.providerKey().catch(() => undefined) : undefined,
@@ -333,6 +367,7 @@ export async function answerScanEmail(
       if (!live?.ok || !live.headers.get('content-type')?.includes('text/html')) {
         return 'I couldn’t verify the public RISE scan page. The draft needs a working report first.'
       }
+      if (!await draftStillCurrent(reader, r)) return staleScanAlert
       const first = safeName(r.person).split(/\s+/)[0]
       const brand = safeName(r.company ?? 'your store')
       return 'Private email draft for review.\n\nFrom: ' + mailbox(r.sender) + '\nTo: ' + r.address +
