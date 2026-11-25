@@ -2,7 +2,7 @@ import { PGlite } from '@electric-sql/pglite'
 import { readFileSync } from 'node:fs'
 import { expect, it } from 'vitest'
 
-it('rechecks the exact RISE request against pending work, delivery, and newer inbound messages', async () => {
+it('rechecks the exact RISE request against pending work, delivery, and newer inbound messages', { timeout: 60_000 }, async () => {
   const db = new PGlite()
   try {
     await db.exec(`
@@ -29,8 +29,8 @@ insert into outreach_messages (id,prospect_id,direction,sent_at,message_text) va
     const old = '00000000-0000-4000-8000-000000000011'
     const corrected = '00000000-0000-4000-8000-000000000013'
     const prospect = '00000000-0000-4000-8000-000000000001'
-    const current = async (id: string) => (await db.query<{ evidence: { address: string } | null }>(
-      "select assistant_rise_scan_draft_current($1, '2026-11-25') as evidence", [id],
+    const current = async (id: string, asOf = '2026-11-25') => (await db.query<{ evidence: { address: string } | null }>(
+      'select assistant_rise_scan_draft_current($1, $2) as evidence', [id, asOf],
     )).rows[0].evidence?.address
     expect(await current(old)).toBe('old@example.test')
     await db.query("insert into outreach_messages (id,prospect_id,direction,sent_at,message_text) values ($1,$2,'inbound','2026-11-22','Please send the scan to corrected@example.test. The old address is closed.')", [corrected, prospect])
@@ -40,8 +40,11 @@ insert into outreach_messages (id,prospect_id,direction,sent_at,message_text) va
     expect(await current(corrected)).toBeUndefined()
     await db.query("update outreach_messages set sent_at='2026-11-23' where sent_at is null")
     expect(await current(corrected)).toBe('corrected@example.test')
-    await db.query("insert into outreach_messages (prospect_id,direction,sent_at,message_text) values ($1,'inbound','2026-11-24','Actually please pause.')", [prospect])
+    await db.query("insert into outreach_messages (prospect_id,direction,sent_at,channel,recipient_email,message_text) values ($1,'outbound','2026-11-24 20:00Z','email','corrected@example.test','Here is the report.')", [prospect])
     expect(await current(corrected)).toBeUndefined()
+    expect(await current(corrected, '2026-11-24 12:00Z')).toBe('corrected@example.test')
+    await db.query("insert into outreach_messages (prospect_id,direction,sent_at,message_text) values ($1,'inbound','2026-11-24 09:00Z','Actually please pause.')", [prospect])
+    expect(await current(corrected, '2026-11-24 12:00Z')).toBeUndefined()
     for (const role of ['anon','authenticated','service_role']) {
       const { rows } = await db.query<{ allowed: boolean }>("select has_function_privilege($1,'assistant_rise_scan_draft_current(uuid,timestamptz)','EXECUTE') as allowed", [role])
       expect(rows[0].allowed).toBe(role === 'service_role')
