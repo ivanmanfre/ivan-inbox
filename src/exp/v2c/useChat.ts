@@ -617,7 +617,7 @@ export function useChat() {
     const turnId = mintTurnId()
     turnIdRef.current = turnId
     writesDuringHydrate.current?.set(turnId, null)
-    onAccepted?.()
+    let acknowledge = onAccepted
     const onThread = threadIdRef.current
     if (!onThread) {
       // A send from a fresh pane owns the thread the broker creates, even if a
@@ -671,6 +671,8 @@ export function useChat() {
             if (ev.turnId !== turnId || (onThread && ev.threadId !== onThread)) {
               throw new Error('The reply could not be matched to this conversation.')
             }
+            acknowledge?.()
+            acknowledge = undefined
             setGrounding({ session: ev.session, groundedOn: ev.groundedOn })
             if (ev.threadId !== threadIdRef.current) {
               // The broker minted a thread for the first turn. Read its title and session.

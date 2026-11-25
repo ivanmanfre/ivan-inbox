@@ -117,11 +117,11 @@ function namedCases(prompt: string, rows: ScanCase[]): ScanCase[] {
 function draftCases(prompt: string, rows: ScanCase[]): ScanCase[] {
   const question = prompt.trim().replace(/[.!?]+$/, '')
   const name = [
-    /^(?:(?:can|could|would) you\s+)?(?:please\s+)?(?:draft|write|prepare)\s+(?:(?:the|an?)\s+)?(?:RISE\s+)?(?:growth\s+)?scan e-?mail\s+(?:for|about|to)\s+(.+)$/i,
+    /^(?:(?:can|could|would) you\s+)?(?:please\s+)?(?:draft|write|prepare)\s+(?:(?:the|an?)\s+)?(?:RISE\s+)?(?:growth\s+)?scan e-?mail\s+(?:addressed\s+to|for|about|to)\s+(.+)$/i,
     /^(?:did|has)\s+(.+?)\s+(?:get|got|received?|been sent)\s+(?:(?:the|their|its|his|her|our)\s+)?(?:growth\s+)?scan(?:\s+by\s+e-?mail)?$/i,
   ].map(pattern => pattern.exec(question)?.[1]).find(Boolean)
   if (!name) return []
-  const normalized = (value: string) => value.normalize('NFKC').trim().toLowerCase().replace(/\s+/g, ' ')
+  const normalized = (value: string) => value.normalize('NFKC').trim().replace(/[.!?]+$/, '').trimEnd().toLowerCase().replace(/\s+/g, ' ')
   return rows.filter(r => [r.person, r.company].some(value => value && normalized(value) === normalized(name)))
 }
 

@@ -224,9 +224,10 @@ it('keeps the terminal receipt when an overlapping read returns the same row as 
   expect(io.turn).toHaveBeenCalledTimes(1)
 })
 
-it('acknowledges only a locally accepted send and distinguishes consecutive visits to one chat', async () => {
+it('acknowledges only a broker-confirmed send and distinguishes consecutive visits to one chat', async () => {
   const release = deferred<void>()
-  io.stream.mockImplementationOnce(async function* () {
+  io.stream.mockImplementationOnce(async function* (request: ChatRequest) {
+    yield { type: 'turn', turnId: request.turnId, threadId: a, session: 'new', groundedOn: null }
     yield { type: 'text', delta: 'first' }
     await release.promise
   })
@@ -238,11 +239,24 @@ it('acknowledges only a locally accepted send and distinguishes consecutive visi
   act(() => {
     done = result.current.send('first', undefined, undefined, undefined, accepted)
     void result.current.send('second', undefined, undefined, undefined, rejected)
-    expect(accepted).toHaveBeenCalledOnce()
+    expect(accepted).not.toHaveBeenCalled()
     expect(rejected).not.toHaveBeenCalled()
   })
+  await waitFor(() => expect(accepted).toHaveBeenCalledOnce())
   await act(async () => result.current.openThread(b))
   await act(async () => result.current.openThread(a))
   expect(result.current.getThreadVisit()).not.toBe(visit)
   await act(async () => { release.resolve(); await done })
+})
+
+it('keeps the composer draft when the broker refuses the turn before acknowledgement', async () => {
+  io.stream.mockImplementationOnce(async function* () {
+    yield { type: 'error', message: 'thread_busy', retryable: false }
+  })
+  const { result } = renderHook(() => useChat())
+  await act(async () => result.current.openThread(a))
+  const clear = vi.fn()
+  await act(async () => result.current.send('Content: keep this photo', undefined, undefined, undefined, clear))
+  expect(clear).not.toHaveBeenCalled()
+  expect(result.current.turns.at(-1)?.error).toBeTruthy()
 })

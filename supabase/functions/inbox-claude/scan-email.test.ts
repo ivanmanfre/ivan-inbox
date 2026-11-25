@@ -131,6 +131,11 @@ describe('main assistant RISE scan evidence', () => {
       expect(init?.method).toBe('GET')
       return Response.json({ data: [], has_more: false })
     })
+    const mira = { ...item, person: 'Mira Jones', company: 'Mira Shop, Inc.' }
+    const namedReader = { ...reader, cases: async () => ({ data: [mira], error: null }), currentDraft: async () => ({ data: mira, error: null }) }
+    for (const prompt of ['Draft the scan email for Mira Shop, Inc.', 'Draft a scan email addressed to Mira Jones.']) {
+      expect(await answerScanEmail(prompt, namedReader, read)).toContain('To: ' + mira.address)
+    }
     expect(asksAboutScanEmail('Draft the scan email for Test Person')).toBe(true)
     expect(asksAboutScanEmail('Draft and send the scan email for Test Person')).toBe(false)
     const draft = await answerScanEmail('Draft the email', reader, read, 'Did Test Person get the scan?')

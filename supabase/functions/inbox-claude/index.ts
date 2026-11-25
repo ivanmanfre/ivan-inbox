@@ -564,6 +564,19 @@ Deno.serve(async (req) => {
     turnSources.push({ kind: 'block', path: b.id, at: null })
   }
 
+  // Read shorthand context before this turn becomes the newest message.
+  let scanReference: ScanReference | null = boundScanDraft ? { kind: 'alert', path: scanAlertTurnId } : null
+  if (!scanReference && turnOrigin === 'operator' && !editorial && scanDraftReference.test(prompt.trim())) {
+    const { data: prior, error } = await db.from('inbox_turns').select('id,origin,status,sources,prompt')
+      .eq('user_id', user.id).eq('thread_id', thread.id)
+      .order('created_at', { ascending: false }).limit(1).maybeSingle()
+    if (error) return fail(503, 'scan_alert_lookup_failed', origin)
+    scanReference = scanFollowupReference(prior)
+  }
+  if (scanReference?.kind === 'alert' || scanReference?.kind === 'unresolved') {
+    turnSources.push(scanAnswerSource(scanReference))
+  }
+
   const { error: insErr } = await db.from('inbox_turns').insert({
     id: turnId,
     thread_id: thread.id,
@@ -608,17 +621,6 @@ Deno.serve(async (req) => {
     }).eq('id', turnId).is('finished_at', null)
   }
 
-  let scanReference: ScanReference | null = boundScanDraft ? { kind: 'alert', path: scanAlertTurnId } : null
-  if (!scanReference && turnOrigin === 'operator' && scanDraftReference.test(prompt.trim())) {
-    const { data: prior, error } = await db.from('inbox_turns').select('id,origin,status,sources,prompt')
-      .eq('user_id', user.id).eq('thread_id', thread.id).neq('id', turnId)
-      .order('created_at', { ascending: false }).limit(1).maybeSingle()
-    if (error) {
-      await markTurnError('scan_alert_lookup_failed')
-      return fail(503, 'scan_alert_lookup_failed', origin)
-    }
-    scanReference = scanFollowupReference(prior)
-  }
   if (turnOrigin === 'operator' && (scanReference || asksAboutScanEmail(prompt))) {
     const ref = scanReference
     return persistedAnswer({
