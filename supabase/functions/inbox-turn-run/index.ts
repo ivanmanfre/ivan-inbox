@@ -171,8 +171,14 @@ Deno.serve(async (req) => {
     patch.error_detail = [errorText, stderrTail].filter(Boolean).join('\n').slice(0, 2000) || null
   }
 
-  const { error: updErr } = await db.from('inbox_turns').update(patch).eq('id', turnId)
+  // Only the first live bot completion owns its feed fold and notification.
+  // Recheck in the UPDATE: a tick can expire the turn while this callback
+  // is reading it. A late callback must leave the next bundle alone.
+  let update = db.from('inbox_turns').update(patch).eq('id', turnId)
+  if (row.origin === 'bot') update = update.in('status', ['queued', 'running'])
+  const { data: updated, error: updErr } = await update.select('id').maybeSingle()
   if (updErr) return err(500, 'turn_update_failed', updErr.message)
+  if (!updated) return Response.json({ id: turnId, ignored: 'already_closed', pushed: false, bot_push: false })
 
   // Read the thread BEFORE the plan: bot_push_muted (db/065) is what decides
   // whether an actionable bot message reaches the phone, and the same row is

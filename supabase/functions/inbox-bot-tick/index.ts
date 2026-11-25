@@ -200,6 +200,20 @@ Deno.serve(async (req) => {
   }
 
   // ---- 3. busy: never stamp rows for a turn that will not start ----------
+  // Railway caps a run at 15 minutes. Allow another 15 for slot acquisition,
+  // a session restart and callback retries. Only this scheduled bot's work
+  // can expire here. Its unread inputs stay eligible for the next bundle.
+  const now = Date.now()
+  const { error: recoveryErr } = await db.from('inbox_turns').update({
+    status: 'error',
+    error_code: 'bot_completion_lost',
+    error_detail: 'The worker did not report completion within 30 minutes.',
+    finished_at: new Date(now).toISOString(),
+  }).eq('origin', 'bot').eq('thread_id', threadId)
+    .in('status', ['queued', 'running'])
+    .lt('created_at', new Date(now - 30 * 60_000).toISOString())
+  if (recoveryErr) return say({ bot_tick: 'recovery_failed', error: recoveryErr.message.slice(0, 200) }, 500)
+
   // The broker answers 409 thread_busy anyway; checking here is what keeps the
   // rows untouched when it would.
   const { data: openTurns, error: busyErr } = await db
