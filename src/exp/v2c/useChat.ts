@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { getTransport, isRetryable } from './chat/transport'
 import { createPacer } from './chat/pacer'
 import type { ChatStatus, ToolCall, Turn } from './chat/events'
 import { CLAUDE_ERROR_COPY, type ClaudeErrorCode } from '../../lib/claude'
 import {
-  abortTurn, getBotThread, getThread, getTurn, isUuid, latestThread, listTurns, markBotSeen,
+  abortTurn, getBotThread, getThread, getTurn, isUuid, latestThread, listTurnPage, markBotSeen, TURN_PAGE_SIZE, type TurnCursor,
   setBotPushMuted as writeBotPushMuted,
   type Thread, type TurnRow,
 } from '../../lib/turns'
@@ -228,11 +228,16 @@ function bootThreadId(): string | null {
   const m = typeof location === 'undefined' ? null : location.hash.match(/\/ask\?(?:.*&)?thread=([0-9a-f-]{36})/i)
   return m && isUuid(m[1]) ? m[1] : readThreadKey()
 }
-const cachedTurns = (id: string | null): Turn[] => readThreadCache(id, turnsFromRows)?.turns ?? []
+const cachedTurns = (id: string | null): Turn[] => readThreadCache(id, turnsFromRows)?.turns.slice(-2 * TURN_PAGE_SIZE) ?? []
+
+type History = { threadId: string; before: TurnCursor | null; older: Turn[]; linked: Turn[] }
 
 export function useChat() {
   const [turns, setTurns] = useState<Turn[]>(() => cachedTurns(bootThreadId()))
   // The turns on screen are the saved copy and the last read of the rows failed.
+  const [history, setHistory] = useState<History | null>(null)
+  const [earlierState, setEarlierState] = useState<'idle' | 'loading' | 'error'>('idle')
+  const olderRequest = useRef<symbol | null>(null)
   const [turnsStale, setTurnsStale] = useState(false)
   const [status, setStatus] = useState<ChatStatus>('idle')
   const [streamText, setStreamText] = useState('')
@@ -312,13 +317,16 @@ export function useChat() {
   // whether or not this tab is looking, so the unread dot is only as honest as
   // the last time this was read. Never throws — an offline phone keeps the dot
   // it had rather than dropping the pin.
+  const botRead = useRef<ReturnType<typeof getBotThread> | null>(null)
   const refreshBot = useCallback(async () => {
+    const read = botRead.current ??= getBotThread()
     try {
-      const b = await getBotThread()
+      const b = await read
       if (!alive.current) return
       botRef.current = b
       setBotThread(b)
     } catch { /* offline: the chip keeps whatever it last knew */ }
+    finally { if (botRead.current === read) botRead.current = null }
   }, [])
 
   const land = useCallback((row: TurnRow) => {
@@ -392,12 +400,17 @@ export function useChat() {
   const hydrate = useCallback(async (id?: string, focusId?: string) => {
     const gen = ++hydrateGen.current
     const stale = () => !alive.current || gen !== hydrateGen.current
+    olderRequest.current = null
+    setEarlierState('idle')
     setTurnsLoading(true)
     // Every hydrate re-reads the pin. The tick can have written a bot turn since
     // the last one, and the dot is the only thing on the shelf that says so.
     void refreshBot()
     try {
-      const t = (id ? await getThread(id) : null) ?? await latestThread()
+      const [known, firstPage] = id
+        ? await Promise.all([getThread(id), listTurnPage(id, undefined, focusId)])
+        : [null, null]
+      const t = known ?? await latestThread()
       if (stale()) return
       if (!t) {
         // The cached id points at nothing any more (a thread deleted, another
@@ -415,13 +428,27 @@ export function useChat() {
       setThreadId(t.id)
       setThread(t)
       writeThreadKey(t.id)
-      const rows = focusId ? await listTurns(t.id, focusId) : await listTurns(t.id)
+      const page = known && firstPage ? firstPage : await listTurnPage(t.id, undefined, focusId)
       if (stale()) return
+      const rows = page.rows
       const fresh = turnsFromRows(rows)
-      // N3b: zero rows under a thread the screen already holds turns for is a
-      // failed read (an expired session reads empty through RLS), never a truth.
-      if (emptyOverKnown(turnsRef.current, fresh.length)) setTurnsStale(true)
-      else { setTurns(prev => keepIds(prev, fresh)); setTurnsStale(false) }
+      const previous = turnsRef.current
+      if (emptyOverKnown(previous, fresh.length)) { setTurnsStale(true); return }
+      setHistory(h => {
+        // Keep already opened pages when a focus/visibility refresh overlaps.
+        const overlap = h?.threadId === t.id && h.older.length && rows.length
+          ? previous.findIndex(turn => turn.turnId === rows[0].id) : -1
+        const retain = overlap >= 0 && h?.threadId === t.id && h.older.length > 0
+        return { threadId: t.id, older: retain ? [...h.older, ...previous.slice(0, overlap)] : [],
+          before: retain ? h.before : page.before,
+          linked: page.linked ? turnsFromRows([page.linked]) : (!focusId && h?.threadId === t.id ? h.linked : []) }
+      })
+      setTurns(prev => {
+        const liveId = abortRef.current && turnIdRef.current
+        const live = liveId && !rows.some(row => row.id === liveId) ? prev.filter(turn => turn.turnId === liveId) : []
+        return [...keepIds(prev, fresh), ...live]
+      })
+      setTurnsStale(false)
       const last = rows[rows.length - 1]
       if (last) setGrounding(groundingOf(last))
       // A row still open with no local stream attached IS the "phone was locked"
@@ -658,6 +685,11 @@ export function useChat() {
   // Note what this does NOT do: it does not delete anything. The old thread and
   // its turns stay in the database, reachable with openThread().
   const newThread = useCallback(() => {
+    hydrateGen.current++
+    olderRequest.current = null
+    setTurnsLoading(false)
+    setEarlierState('idle')
+    setHistory(null)
     abortRef.current?.abort()
     stopPoll()
     lastSent.current = null
@@ -701,6 +733,29 @@ export function useChat() {
     setThread(null)
     void hydrate(id, focusId)
   }, [hydrate, stopPoll])
+
+  const loadEarlier = useCallback(async () => {
+    if (!history?.before || history.threadId !== threadIdRef.current || turnsLoading || olderRequest.current) return
+    const key = Symbol()
+    olderRequest.current = key
+    setEarlierState('loading')
+    try {
+      const page = await listTurnPage(history.threadId, history.before)
+      if (!alive.current || olderRequest.current !== key || history.threadId !== threadIdRef.current) return
+      const prefix = turnsFromRows(page.rows)
+      setHistory(h => h !== history ? h : { ...h, before: page.before, older: [...prefix, ...h.older] })
+      setEarlierState('idle')
+    } catch {
+      if (alive.current && olderRequest.current === key) setEarlierState('error')
+    } finally { if (olderRequest.current === key) olderRequest.current = null }
+  }, [history, turnsLoading])
+
+  const transcript = useMemo(() => {
+    if (history?.threadId !== threadId || !history) return turns
+    if (!history.linked.length) return history.older.length ? [...history.older, ...turns] : turns
+    const joined = [...history.older, ...turns]
+    return joined.some(turn => turn.turnId === history.linked[0].turnId) ? joined : [...history.linked, ...joined]
+  }, [turns, history, threadId])
 
   const reset = newThread
 
@@ -761,7 +816,8 @@ export function useChat() {
   const busy = status !== 'idle'
 
   return {
-    turns, status, busy, streamText, streamTools, sessionId, model, slow,
+    turns: transcript, status, busy, streamText, streamTools, sessionId, model, slow,
+    hasEarlier: !!history?.before && history.threadId === threadId, loadEarlier, earlierState,
     wanted, setWanted,
     threadId, thread, turnsLoading, turnsStale, grounding, runningElsewhere,
     botThread, botUnread, refreshBot, openBot, botPushMuted, setBotPushMuted,

@@ -127,14 +127,9 @@ export function sessionWords(g: { session: 'new' | 'resumed' } | null): string {
   return g.session === 'resumed' ? 'Continuing this thread' : 'Fresh session'
 }
 
-/** Today's empty-chat starters (send word for word) and quick asks (insert only), AskThread QUICK_ASKS. */
-export const QUICK_ASKS: { label: string; send?: string; insert?: string }[] = [
-  { label: 'What needs me', send: 'What is waiting on me right now?' },
-  { label: 'Failed today', send: 'What broke today?' },
+export const QUICK_ASKS = [
   { label: 'My post plan', send: "What's on my content plan this week?" },
-  { label: 'Look first', send: 'What should I look at first?' },
-  { label: 'Draft a reply', insert: 'Draft a reply to ' },
-  { label: 'Run a scan', insert: 'Run a scan on ' },
+  { label: 'Check promised scans', send: 'Who is still owed a RISE scan by email?' },
 ]
 
 /** The tick runs every 30 min, so 2 hours without a turn is four missed ticks. */

@@ -29,7 +29,7 @@ export function modelNote(chat: Pick<ChatHandle, 'model' | 'wanted'>): string {
   return chat.model ? `The last turn ran on ${modelLabel(chat.model)}.` : chat.wanted ? `${modelLabel(chat.wanted)} on the next turn.` : 'Claude default.'
 }
 
-export function More({ chat, runner, text, onSent, onCommands, onPaste, phone }: {
+export function More({ chat, runner, text, onSent, onCommands, onPaste, phone, onJobs, onTalk }: {
   chat: ChatHandle
   runner: DRunner
   text: string
@@ -37,6 +37,8 @@ export function More({ chat, runner, text, onSent, onCommands, onPaste, phone }:
   onCommands: () => void
   onPaste?: () => void
   phone: boolean
+  onJobs?: () => void
+  onTalk?: () => void
 }) {
   const [open, setOpen] = useState(false)
   const [specs, setSpecs] = useState<GoalSpec[] | null>(null)
@@ -67,6 +69,8 @@ export function More({ chat, runner, text, onSent, onCommands, onPaste, phone }:
       </button>
       {open && (
         <div className="dcl-menu" role="menu">
+          {onTalk && <button type="button" role="menuitem" onClick={() => { close(); onTalk() }}>Talk live</button>}
+          {onJobs && <button type="button" role="menuitem" onClick={() => { close(); onJobs() }}>Background work</button>}
           <button type="button" role="menuitem" onClick={() => { close(); onCommands() }}>Commands <small>/</small></button>
           {phone && onPaste && <button type="button" role="menuitem" data-verb="paste" onClick={() => { close(); onPaste() }}>Paste</button>}
           <div className="dcl-menu-h">Model</div>

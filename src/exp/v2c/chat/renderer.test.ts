@@ -22,6 +22,13 @@ describe('parseInline', () => {
     expect(parseInline('half `code')).toEqual([{ t: 'text', v: 'half `code' }])
   })
 
+  it('renders a named web link and leaves non-web targets and inline code literal', () => {
+    const url = 'https://example.test/#inbox?thread=my_thread'
+    expect(parseInline(`[Open conversation](${url})`)).toEqual([{ t: 'link', v: 'Open conversation', href: url }])
+    expect(parseInline('[No](data:text/plain,hi)')).toEqual([{ t: 'text', v: '[No](data:text/plain,hi)' }])
+    expect(parseInline('`[Open](https://example.test)`')).toEqual([{ t: 'code', v: '[Open](https://example.test)' }])
+  })
+
   it('autolinks bare urls but not urls inside code', () => {
     expect(parseInline('see https://x.dev/a, ok')).toEqual([
       { t: 'text', v: 'see ' },

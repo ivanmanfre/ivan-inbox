@@ -233,24 +233,35 @@ export async function latestThread(): Promise<Thread | null> {
   return (data ?? null) as unknown as Thread | null
 }
 
-// Limit the newest turns on the server, then display them chronologically.
-// A notification may point outside that window. Load its exact row through
-// the same owner-visible view and require it to belong to this thread.
-export const MAX_TURNS = 200
+// Fetch one extra row to decide whether to show Earlier messages. Use both
+// sort keys so concurrent inserts and rows with equal timestamps cannot skip
+// or duplicate an exchange at a page boundary.
+export const TURN_PAGE_SIZE = 12
+export type TurnCursor = Pick<TurnRow, 'id' | 'created_at'>
+const HISTORY_COLS = TURN_COLS.split(', ').filter(name => name !== 'context' && name !== 'error_detail').join(', ')
+
+export async function listTurnPage(threadId: string, before?: TurnCursor, focusId?: string) {
+  let query = supabase.from(TURNS_VIEW).select(HISTORY_COLS).eq('thread_id', threadId)
+  if (before) query = query.or(`created_at.lt.${before.created_at},and(created_at.eq.${before.created_at},id.lt.${before.id})`)
+  const { data, error } = await query.order('created_at', { ascending: false })
+    .order('id', { ascending: false }).limit(TURN_PAGE_SIZE + 1)
+  if (error) throw error
+  const raw = (data ?? []) as unknown as TurnRow[]
+  const rows = raw.slice(0, TURN_PAGE_SIZE).reverse().map(row => ({ ...row, context: null, error_detail: null }))
+  let linked: TurnRow | null = null
+  if (focusId && isUuid(focusId) && !rows.some(row => row.id === focusId)) {
+    const target = await supabase.from(TURNS_VIEW).select(HISTORY_COLS)
+      .eq('thread_id', threadId).eq('id', focusId).maybeSingle()
+    if (target.error) throw target.error
+    const row = target.data as unknown as TurnRow | null
+    if (row?.thread_id === threadId) linked = { ...row, context: null, error_detail: null }
+  }
+  return { rows, linked, before: raw.length > TURN_PAGE_SIZE ? { id: rows[0].id, created_at: rows[0].created_at } : null }
+}
 
 export async function listTurns(threadId: string, focusId?: string): Promise<TurnRow[]> {
-  const { data, error } = await supabase.from(TURNS_VIEW)
-    .select(TURN_COLS)
-    .eq('thread_id', threadId)
-    .order('created_at', { ascending: false })
-    .limit(MAX_TURNS)
-  if (error) throw error
-  const rows = [...(data ?? [])].reverse() as unknown as TurnRow[]
-  if (focusId && isUuid(focusId) && !rows.some(row => row.id === focusId)) {
-    const older = await getTurn(focusId)
-    if (older?.thread_id === threadId) rows.unshift(older)
-  }
-  return rows
+  const { rows, linked } = await listTurnPage(threadId, undefined, focusId)
+  return linked ? [linked, ...rows] : rows
 }
 
 /**

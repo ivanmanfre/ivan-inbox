@@ -27,6 +27,7 @@ import { ClaudeValueProvider, type ClaudeCtx } from './ClaudeProvider'
 import ClaudeDrawer from './Drawer'
 import { ClaudeWorkspace } from './v4/ClaudeWorkspace'
 import * as jobs from '../../wb/ask/jobs'
+import { listThreads } from '../../lib/turns'
 
 afterEach(() => { cleanup(); clearClaudeHandoff(); __resetSkinForTests(new Set()) })
 
@@ -64,15 +65,19 @@ describe('Claude drawer under the claude section', () => {
     fireEvent.click(document.querySelector('.dcl-runpop [data-verb="stop-job"]')!)
     await waitFor(() => expect(jobs.cancelJob).toHaveBeenCalledWith('j1'))
   })
-  it('workspace (page variant): rail + conversation, no chats toggle, no close key', async () => {
+  it('workspace opens directly into the chat and loads the history on demand', async () => {
     __resetSkinForTests(new Set(['claude', 'tokens', 'type', 'motion', 'shell']))
-    renderInFrame(<Value><ClaudeWorkspace layout="desktop" route={{ place: 'claude', sub: null, query: new URLSearchParams() }} title="Assistant" onNew={() => {}} /></Value>, { hash: '#exp/d/claude' })
+    vi.mocked(listThreads).mockClear()
+    renderInFrame(<Value><ClaudeWorkspace layout="desktop" route={{ place: 'claude', sub: null, query: new URLSearchParams() }} /></Value>, { hash: '#exp/d/claude' })
     expect(document.querySelector('.dcl-rail')).toBeNull()
+    expect(listThreads).not.toHaveBeenCalled()
+    expect(screen.queryByText('What travels')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Chats' }))
     expect(document.querySelector('.dcl-ws [data-chats]')).not.toBeNull()
+    expect(listThreads).toHaveBeenCalledTimes(1)
     fireEvent.click(screen.getByRole('button', { name: 'Back to the chat' }))
     expect(document.querySelector('.dcl-ws[data-claude-drawer]')).not.toBeNull()
-    expect(document.querySelector('.dcl-ws [data-verb="chats"]')).not.toBeNull()
+    expect(document.querySelector('.dcl-ws .dcl-head')).toBeNull()
     expect(document.querySelector('.dcl-ws button[aria-label^="Close Claude"]')).toBeNull()
     expect(document.querySelector('.dcl-ws textarea[aria-label="Message the assistant"]')).not.toBeNull()
   })

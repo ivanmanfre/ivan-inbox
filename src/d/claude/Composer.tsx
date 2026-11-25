@@ -202,7 +202,7 @@ export function Composer({ placeholder, onSend, more, top }: {
           <button type="button" className={`dcl-ib${recording ? ' dcl-rec-on' : ''}`} data-verb="dictate" aria-pressed={recording}
             aria-label={recording ? 'Stop dictating' : 'Dictate (⌘D)'} title="Dictate (⌘D)" disabled={!stt.supported || stt.state === 'transcribing'} onClick={stt.toggle}><CIcon name="mic" /></button>
           {more({ onCommands: () => { setText('/'); field.current?.focus() }, onPaste: () => void pasteTile() })}
-          <span className="dcl-hint"><span className="dcl-hint-k">⌘↩ send · / commands</span><span className="dcl-hint-p">asking never sends a DM</span></span>
+          <span className="assistant-compose-space" aria-hidden="true" />
           {running
             ? <button type="button" className="dcl-go dcl-stop" data-verb="stop" aria-label="Stop Claude" title="Stop" onClick={stop}><CIcon name="stop" /></button>
             : <button type="button" className="dcl-go" data-verb="send" aria-label="Send to Claude" title="Send (⌘↩)" disabled={!canSend && !cmds.length} onClick={send}><CIcon name="up" /></button>}

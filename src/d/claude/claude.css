@@ -239,3 +239,44 @@ button.dcl-step:hover{background:var(--p1)}
 .dcl-table tr:last-child td{border-bottom:0}
 
 .dcl-content-artifact{display:grid;gap:8px;margin-block:8px;background:transparent}.dcl-content-artifact:empty{display:none}
+
+/* Give the words the column. Operational detail opens from the message. */
+.dcl .dcl-conv .dcl-ans{position:relative;min-width:0;margin:18px 0 26px;padding-left:32px}
+.dcl .dcl-author-mark{position:absolute;inset-inline-start:0;top:.24em;width:22px;height:22px;display:grid;place-items:center;color:var(--t2)}
+.dcl .dcl-author-mark svg{width:19px;height:19px}
+.dcl .dcl-conv .dcl-md,.dcl .dcl-conv .dcl-me{font:400 17px/1.55 var(--f);letter-spacing:-.012em;overflow-wrap:anywhere}
+.dcl .dcl-conv .dcl-me{width:fit-content;max-width:85%;margin:22px 0 18px auto;padding:10px 16px;border:0;border-radius:20px 20px 5px 20px;color:var(--t1);background:var(--p2)}
+.dcl .dcl-conv .dcl-day{margin:22px 0 18px;text-align:center;font:500 12px/1.4 var(--f);letter-spacing:0;text-transform:none;color:var(--t3)}
+.dcl .dcl-conv .dcl-md p+p,.dcl .dcl-conv .dcl-md ul+p,.dcl .dcl-conv .dcl-md p+ul{margin-top:10px}
+.dcl .dcl-message-options{display:inline-grid;place-items:center;vertical-align:middle;min-width:36px;height:32px;border-radius:12px;color:var(--t3)}
+.dcl .dcl-message-options:hover,.dcl .dcl-message-options:focus-visible,.dcl .dcl-message-options[aria-expanded=true]{color:var(--t1);background:var(--p2)}
+@media (hover:hover) and (pointer:fine){
+  .dcl .dcl-message-options:not([aria-expanded=true]){opacity:0}
+  .dcl .dcl-ans:hover>.dcl-message-options,.dcl .dcl-ans:focus-within>.dcl-message-options{opacity:1}
+}
+.dcl .dcl-message-details{padding:8px 14px;border-inline-start:2px solid var(--line2);margin-bottom:12px}
+.dcl .dcl-message-details>*+*{margin-top:8px}
+.dcl .dcl-read-update,.dcl .dcl-live-work summary,.dcl .dcl-older-updates summary{cursor:pointer;font:500 14px/1.5 var(--f);color:var(--t2)}
+.dcl .dcl-read-update{min-height:36px;padding-inline:0 10px}
+.dcl .dcl-read-update:hover,.dcl .dcl-older-updates summary:hover{color:var(--t1);text-decoration:underline;text-underline-offset:3px}
+.dcl .dcl-older-updates{margin:10px 0 16px 32px}
+.dcl .dcl-older-updates summary,.dcl .dcl-live-work summary{padding:8px 0;width:fit-content}
+.dcl .dcl-older-updates[open]>.dcl-ans{margin-left:-32px}
+.dcl .dcl-live-work{margin-bottom:6px}
+.dcl .dcl-conv .dcl-welcome{display:grid;align-content:center;min-height:76%;text-align:left;padding:12px 0}
+.dcl .dcl-welcome h2{font:600 clamp(28px,4.2vw,44px)/1.1 var(--f);letter-spacing:-.045em;color:var(--t1);text-wrap:balance;max-width:18ch}
+.dcl .dcl-welcome .dcl-quick{gap:8px;margin:22px 0 0}
+.dcl .dcl-welcome .dcl-quick button{height:auto;min-height:42px;padding:8px 14px;border-radius:999px;font:500 14px/1.35 var(--f)}
+@media (min-width:800px){
+  .dcl-ws .dcl-conv .dcl-md,.dcl-ws .dcl-conv .dcl-me{font-size:18px}
+}
+@media (pointer:coarse){
+  .dcl .dcl-message-options,.dcl .dcl-read-update,.dcl .dcl-older-updates summary{min-height:44px;min-width:44px}
+}
+.dcl .dcl-history-more{display:block;margin:0 auto 14px;padding:10px 18px;min-height:40px;border-radius:999px;font:500 13px/1.4 var(--f);color:var(--t3)}
+.dcl .dcl-history-more:hover{color:var(--t1);background:var(--p2)}
+.dcl-ws .dcl-conv .dcl-acts{margin:12px 0 3px}
+.dcl-ws .dcl-conv .dcl-acts button{padding:8px 14px;min-height:38px;border-radius:16px;background:var(--p2);border:1px solid var(--line2);color:var(--t1);font:550 14px/1.35 var(--f)}
+.dcl-ws .dcl-conv .dcl-acts button:hover{background:var(--p3)}
+.dcl .dcl-author-mark{border-radius:7px;background:var(--t1);color:var(--p1);font:500 16px/1 system-ui}
+.dcl .dcl-acts .d-btn{display:inline-flex;align-items:center;gap:7px}

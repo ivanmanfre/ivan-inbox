@@ -54,9 +54,20 @@ export function parseInline(src: string): InlineNode[] {
     if (last < buf.length) out.push({ t: 'text', v: buf.slice(last) })
     buf = ''
   }
+  const namedLink = /\[([^\]\n]+)\]\((https?:\/\/[^\s<>()]+)\)/iy
   let i = 0
   while (i < src.length) {
     const c = src[i]
+    if (c === '[') {
+      namedLink.lastIndex = i
+      const link = namedLink.exec(src)
+      if (link) {
+        flush()
+        out.push({ t: 'link', v: link[1], href: link[2] })
+        i = namedLink.lastIndex
+        continue
+      }
+    }
     if (c === '`') {
       const end = src.indexOf('`', i + 1)
       if (end > i + 1) {

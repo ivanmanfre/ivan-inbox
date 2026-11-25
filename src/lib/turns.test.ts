@@ -63,7 +63,7 @@ const {
   THREADS_TABLE, TURNS_TABLE, TURNS_VIEW, abortTurn, dismissGroup, dismissNotification,
   getActiveNotification, getBotThread, getThread, getTurn, groupNotifications, isActiveNotification,
   isUuid, latestThread, listGroupRows, nextNotificationExpiry,
-  listNotificationHeads, listNotifications, listThreads, listTurns, markBotSeen, markNotificationsRead, mergeBackRows,
+  listNotificationHeads, listNotifications, listThreads, listTurnPage, listTurns, markBotSeen, markNotificationsRead, mergeBackRows,
   notificationDeepLink, setBotPushMuted,
 } = await import('./turns')
 
@@ -194,8 +194,22 @@ describe('reads go through the views, never the base tables', () => {
     expect((await listTurns(U1)).map(row => row.id)).toEqual(['old', 'new'])
     expect(steps[0].table).toBe(TURNS_VIEW)
     expect(steps[0].filters).toEqual([`eq:thread_id=${U1}`])
-    expect(steps[0].order).toBe('created_at:desc')
-    expect(steps[0].limit).toBe(200)
+    expect(steps[0].order).toBe('id:desc')
+    expect(steps[0].limit).toBe(13)
+    expect(steps[0].cols?.split(', ')).not.toContain('context')
+    expect(steps[0].cols?.split(', ')).not.toContain('error_detail')
+  })
+
+  it('pages before the oldest visible (timestamp, id), with one extra row for continuation', async () => {
+    const stamp = '2026-11-25T15:00:00.000123+00:00'
+    const data = Array.from({ length: 13 }, (_, n) => ({ id: String(13 - n), created_at: stamp }))
+    queue.push({ data, error: null }, { data: [{ id: '1', created_at: stamp }], error: null })
+    const page = await listTurnPage(U1)
+    expect(page.before).toEqual({ created_at: stamp, id: '2' })
+    expect(page.rows.map(row => row.id)).toEqual(data.slice(0, 12).reverse().map(row => row.id))
+    const last = await listTurnPage(U1, page.before!)
+    expect(last.before).toBeNull()
+    expect(steps[1].filters).toContain(`or:created_at.lt.${stamp},and(created_at.eq.${stamp},id.lt.2)`)
   })
 
   it('includes an older linked turn only when it belongs to this chat', async () => {

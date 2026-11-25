@@ -27,8 +27,8 @@ export function refusal(e: unknown): string {
   }
 }
 
-export function useDRunner(model: string | null) {
-  const jobs = useRunnerJobs()
+export function useDRunner(model: string | null, readJobs = true) {
+  const jobs = useRunnerJobs(readJobs)
   const link = useJobDeepLink()
   const [note, setNote] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)

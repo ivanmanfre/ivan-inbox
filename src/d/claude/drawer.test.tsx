@@ -88,8 +88,8 @@ describe('Claude drawer verbs', () => {
   it('a starter on an empty chat sends today\'s words', () => {
     const chat = fakeChat()
     renderInFrame(<Host chat={chat} />)
-    fireEvent.click(screen.getByText('What needs me'))
-    expect((chat.send as ReturnType<typeof vi.fn>).mock.calls[0][0]).toBe('What is waiting on me right now?')
+    fireEvent.click(screen.getByText('My post plan'))
+    expect((chat.send as ReturnType<typeof vi.fn>).mock.calls[0][0]).toBe("What's on my content plan this week?")
   })
   it('send carries the DMs hand-off: about = the name, see = names-only block; remove-subject drops it', async () => {
     const chat = fakeChat()

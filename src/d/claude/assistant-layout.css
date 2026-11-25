@@ -1,0 +1,193 @@
+/* The conversation lives in the page. Its title and navigation use the shell’s
+   existing header so the transcript starts immediately beneath it. */
+.d-app[data-place='claude'] .dcl-wsp {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+}
+
+.dcl-wsp > .dcl-ws[data-assistant-page] {
+  position: relative;
+  width: 100%;
+  background: var(--ds-canvas, var(--p1));
+}
+
+.assistant-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.d-app .assistant-head-actions .dcl-ib {
+  position: relative;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--t2);
+}
+.d-app .assistant-head-actions .dcl-ib:hover,
+.d-app .assistant-head-actions .dcl-ib[aria-pressed='true'] {
+  color: var(--t1);
+  background: var(--p3);
+}
+.assistant-head-actions .dcl-ico { width: 20px; height: 20px; }
+
+.assistant-local-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 52px;
+  padding-inline: 16px;
+}
+.assistant-compose-space { flex: 1; }
+
+.d-app .dcl-wsp .dcl-ws .dcl-foot {
+  width: min(100%, 800px);
+  align-self: center;
+  padding: 8px 22px 20px;
+  border: 0;
+  box-sizing: border-box;
+}
+.d-app .dcl-wsp .dcl-ws .dcl-cmp { padding: 0; }
+.d-app .dcl-wsp .dcl-ws .dcl-box {
+  padding: 12px 11px 8px;
+  border: 1px solid var(--line2);
+  border-radius: 22px;
+  background: var(--p1);
+  box-shadow: 0 2px 10px rgb(25 24 22 / 4%);
+  transition: border-color 100ms ease;
+}
+.d-app .dcl-wsp .dcl-ws .dcl-box:focus-within {
+  border-color: var(--t3);
+  background: var(--p1);
+  box-shadow: 0 2px 10px rgb(25 24 22 / 4%);
+}
+.d-app .dcl-wsp .dcl-ws .dcl-box textarea {
+  box-sizing: border-box;
+  min-height: 39px;
+  padding: 2px 7px 6px;
+  font: 400 17px/1.45 var(--f);
+}
+.d-app .dcl-wsp .dcl-ws .dcl-row { gap: 2px; margin: 0; }
+.d-app .dcl-wsp .dcl-ws .dcl-row .dcl-ib,
+.d-app .dcl-wsp .dcl-ws .dcl-go {
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 50%;
+}
+.d-app .dcl-wsp .dcl-ws .dcl-row .dcl-ib { background: transparent; }
+.d-app .dcl-wsp .dcl-ws .dcl-row .dcl-ib:hover:not(:disabled),
+.d-app .dcl-wsp .dcl-ws .dcl-row .dcl-ib[aria-expanded='true'] { background: var(--p3); }
+.d-app .dcl-wsp .dcl-ws .dcl-row .dcl-ico { width: 21px; height: 21px; }
+.d-app .dcl-wsp .dcl-ws .dcl-go {
+  color: var(--p1);
+  background: var(--t1);
+  box-shadow: none;
+}
+.d-app .dcl-wsp .dcl-ws .dcl-go:disabled { color: var(--t3); background: var(--p3); }
+.d-app .dcl-wsp .dcl-ws .dcl-runpop {
+  position: absolute;
+  inset: 10px 12px auto auto;
+  width: min(420px, calc(100% - 24px));
+  z-index: 6;
+  max-height: 65%;
+  overflow: auto;
+  padding: 12px;
+  border-radius: 14px;
+  background: var(--p1);
+  border: 1px solid var(--line2);
+  box-shadow: 0 8px 24px rgb(25 24 22 / 12%);
+}
+.d-app .dcl-wsp .dcl-ws .dcl-runpop > p { margin: 8px 0; font-size: 15px; }
+
+.d-app.d-phone[data-place='claude'] {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  min-height: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+.d-phone[data-place='claude'] > :is(.d-ptop, .d-health, .d-offline) { flex: none; }
+.d-phone[data-place='claude'] > .d-fade { display: none; }
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off])
+.d-app.d-phone[data-place='claude'] {
+  padding-bottom: calc(var(--po-tab-h) + var(--po-tab-bottom) + 5px);
+}
+.d-phone[data-place='claude'] > .d-pbody,
+.d-phone[data-place='claude'] .po-view {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off])
+.d-app[data-place='claude'] :is(.po-view, .po-view > * > *) {
+  animation: none;
+}
+.d-phone[data-place='claude'] .d-ptop:has(.assistant-page-title) :is(.po-bar-t, .d-pl) {
+  display: none;
+}
+.d-phone[data-place='claude'] .d-ptools:has(.assistant-page-title) {
+  flex: 1;
+  min-width: 0;
+}
+.d-phone[data-place='claude'] .assistant-page-title {
+  flex: 1;
+  min-width: 0;
+  padding-inline: 6px;
+}
+.d-phone[data-place='claude'] .assistant-page-title h1 {
+  margin: 0;
+  overflow: hidden;
+  color: var(--t1);
+  font: 600 19px/1.2 var(--f);
+  letter-spacing: -.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.d-phone[data-place='claude'] .dcl-wsp > .dcl-phone {
+  margin: 0;
+  padding: 0;
+  min-height: 0;
+}
+.d-phone[data-place='claude'] .assistant-head-actions .dcl-ib { width: 44px; height: 44px; }
+.d-phone[data-place='claude'] .dcl-wsp .dcl-ws .dcl-foot {
+  padding: 6px 12px 8px;
+}
+.d-phone[data-place='claude'] .dcl-wsp .dcl-ws .dcl-box {
+  padding: 8px 6px 4px;
+  border-radius: 20px;
+}
+.d-phone[data-place='claude'] .dcl-wsp .dcl-ws textarea { padding-inline: 9px; }
+.d-phone[data-place='claude'] .dcl-wsp .dcl-ws .dcl-row .dcl-ib,
+.d-phone[data-place='claude'] .dcl-wsp .dcl-ws .dcl-go { width: 44px; height: 44px; }
+
+/* iOS can keep the layout viewport tall while covering it with the keyboard.
+   The same visual-viewport inset as the content editor keeps Send in reach. */
+.d-phone[data-place='claude'] .dcl-wsp[data-kb] {
+  padding-bottom: max(0px, calc(var(--dk-kb, 0px) - var(--dock-h) - var(--dock-bottom) - 12px));
+}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off])
+.d-phone[data-place='claude'] .dcl-wsp[data-kb] {
+  padding-bottom: max(0px, calc(var(--dk-kb, 0px) - var(--po-tab-h) - var(--po-tab-bottom) - 5px));
+}
+.d-phone[data-place='claude']:has(.dcl-wsp[data-kb]) :is(.po-tabbar, .d-dock, .d-ck) {
+  visibility: hidden;
+}
+
+.d-phone[data-place='claude'] .dcl-ws .dcl-menuw { position: static; }
+.d-phone[data-place='claude'] .dcl-ws .dcl-menu {
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 6px);
+  width: auto;
+  max-height: min(42dvh, 360px);
+  border-radius: 16px;
+}
+.d-phone[data-place='claude'] .dcl-ws .dcl-menu button { min-height: 44px; }

@@ -241,6 +241,7 @@ function PhoneFrame({ setToolsSlot, panelOpen, setPanelOpen }: {
   const [rev, setRev] = useState(0)
   const { refresh } = c
   const onDms = f.route.place === 'dms'
+  const onAssistant = f.route.place === 'claude'
   // Re-made when the place changes, so the pull re-binds (off on DMs, whose list has its own).
   const inboxRefresh = inbox.refresh
   const onPull = useCallback(() => { refresh(); inboxRefresh(); setRev(r => r + 1) }, [refresh, inboxRefresh, onDms]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -252,9 +253,9 @@ function PhoneFrame({ setToolsSlot, panelOpen, setPanelOpen }: {
       {ox ? <PhoneBar onPanel={() => setPanelOpen(true)} setToolsSlot={setToolsSlot} /> : <PhoneTop onPanel={() => setPanelOpen(true)} setToolsSlot={setToolsSlot} />}
       <SeatHealthBanner />
       <OfflineLine />
-      <div className="d-pbody" ref={onDms ? undefined : body}>
+      <div className="d-pbody" ref={onDms || onAssistant ? undefined : body}>
         {ptr.pull > 0 && <div className="d-ptr" style={{ height: ptr.pull }} aria-live="polite">{ptr.refreshing ? 'Reading…' : ptr.pull >= ptr.trigger ? 'Release to refresh' : 'Pull to refresh'}</div>}
-        {ox && <LargeTitle />}
+        {ox && !onAssistant && <LargeTitle />}
         {ox ? <div className="po-view" key={f.route.place}><Page rev={rev} /></div> : <Page rev={rev} />}
       </div>
       {ox ? <PhoneTabs /> : <Dock />}
@@ -266,7 +267,7 @@ function PhoneFrame({ setToolsSlot, panelOpen, setPanelOpen }: {
           <BellFeed />
         </>
       )}
-      {f.claudeOpen && <div className="d-psheet" role="dialog" aria-label="Claude"><ClaudeSlot /></div>}
+      {f.claudeOpen && !onAssistant && <div className="d-psheet" role="dialog" aria-label="Claude"><ClaudeSlot /></div>}
     </>
   )
 }
@@ -284,10 +285,7 @@ export default function DShell() {
   const [toolsSlot, setToolsSlot] = useState<HTMLElement | null>(null)
   const appRef = useRef<HTMLDivElement>(null)
   const shell = useSkin('shell')
-  // Brief 4 `claude` section: on the Claude place the page is the workspace, so no drawer column there
-  // (a render condition only; the provider's open state is untouched and returns on other places).
-  const claudeV4 = useSkin('claude')
-  const claudeHere = layout === 'desktop' && claudeV4 && route.place === 'claude'
+  const claudeHere = route.place === 'claude'
   const claudeShown = claudeOpen && !claudeHere
   // The skin follows React's layout (html[data-layout]), never its own media query.
   useLayoutEffect(() => { applySkin(layout) }, [layout])

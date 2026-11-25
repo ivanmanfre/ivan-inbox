@@ -259,7 +259,7 @@ export function jobTitle(j: RunnerJob): string {
  * running job updates its log every 10 s and a refetch per append would be 20
  * rows pulled down for one changed column.
  */
-export function useRunnerJobs() {
+export function useRunnerJobs(enabled = true) {
   const [jobs, setJobs] = useState<RunnerJob[]>([])
   const [loaded, setLoaded] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -280,6 +280,7 @@ export function useRunnerJobs() {
   }, [])
 
   useEffect(() => {
+    if (!enabled) return
     alive.current = true
     void refresh()
     const ch = supabase.channel(topic)
@@ -302,7 +303,7 @@ export function useRunnerJobs() {
       supabase.removeChannel(ch)
       window.removeEventListener('focus', onFocus)
     }
-  }, [refresh, topic])
+  }, [enabled, refresh, topic])
 
   /** Put a just-dispatched job on screen before realtime catches up. The
    * optimistic row is replaced by the real one on the first payload. */

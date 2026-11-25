@@ -29,11 +29,11 @@ const T = '941ef84c-7d86-4d27-bad2-895df2820bbc'
 const U = '33b27e4d-5460-42e7-a429-55a794b7d808'
 
 describe('ClaudeProvider', () => {
-  it('a push link #exp/d/claude?thread=&turn= opens that chat in the drawer', () => {
+  it('a push link #exp/d/claude?thread=&turn= opens that chat on the assistant page', () => {
     const setClaudeOpen = vi.fn()
     renderInFrame(<ClaudeProvider><span /></ClaudeProvider>, { hash: `#exp/d/claude?thread=${T}&turn=${U}`, frame: { setClaudeOpen } })
     expect(openThread).toHaveBeenCalledWith(T, U)
-    expect(setClaudeOpen).toHaveBeenCalledWith(true)
+    expect(setClaudeOpen).not.toHaveBeenCalled()
   })
   it('Brief 4 claude section, desktop: the workspace opens the chat in the page, the drawer flag stays put', async () => {
     const { __resetSkinForTests } = await import('../../ds/skin')

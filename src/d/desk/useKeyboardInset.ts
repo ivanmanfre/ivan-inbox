@@ -17,11 +17,11 @@ export function keyboardOpen(innerHeight: number, vvHeight: number): boolean {
   return innerHeight - vvHeight > 40
 }
 
-export function useKeyboardInset(ref: RefObject<HTMLElement | null>): void {
+export function useKeyboardInset(ref: RefObject<HTMLElement | null>, enabled = true): void {
   useEffect(() => {
     const vv = typeof window !== 'undefined' ? window.visualViewport : null
     const el = ref.current
-    if (!vv || !el) return
+    if (!enabled || !vv || !el) return
     let raf = 0
     const sync = () => {
       cancelAnimationFrame(raf)
@@ -43,5 +43,5 @@ export function useKeyboardInset(ref: RefObject<HTMLElement | null>): void {
     vv.addEventListener('resize', sync)
     vv.addEventListener('scroll', sync)
     return () => { cancelAnimationFrame(raf); vv.removeEventListener('resize', sync); vv.removeEventListener('scroll', sync) }
-  }, [ref])
+  }, [ref, enabled])
 }

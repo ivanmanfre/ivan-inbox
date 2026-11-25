@@ -65,7 +65,7 @@ export function Dock() {
           </a>
         ))}
         <button type="button" className={`d-ck${f.claudeOpen ? ' d-on' : ''}`} aria-label={f.claudeOpen ? 'Close Assistant' : 'Open Assistant'} aria-pressed={f.claudeOpen || f.route.place === 'claude'}
-          onClick={() => { if (f.claudeOpen) f.setClaudeOpen(false); else f.navigate(dHash('claude')) }}>
+          onClick={() => { if (f.route.place === 'claude') f.toggleClaude(); else if (f.claudeOpen) f.setClaudeOpen(false); else f.navigate(dHash('claude')) }}>
           <DIcon name="claude" /><ClaudeKeyDot />
         </button>
       </nav>
@@ -240,7 +240,7 @@ export function PhoneTabs() {
           })}
         </nav>
         <button type="button" className={`d-ck po-ck${f.claudeOpen ? ' d-on' : ''}`} aria-label={f.claudeOpen ? 'Close Assistant' : 'Open Assistant'} aria-pressed={f.claudeOpen || f.route.place === 'claude'}
-          onClick={() => { if (f.claudeOpen) f.setClaudeOpen(false); else f.navigate(dHash('claude')) }}>
+          onClick={() => { if (f.route.place === 'claude') f.toggleClaude(); else if (f.claudeOpen) f.setClaudeOpen(false); else f.navigate(dHash('claude')) }}>
           <DIcon name="claude" /><ClaudeKeyDot />
         </button>
       </div>

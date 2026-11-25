@@ -6,7 +6,6 @@ import { useClaudeKeys } from './useClaudeKeys'
 import { VoiceLayer } from './VoiceLayer'
 import { EMPTY_SEE, type SeeState } from '../../exp/v2c/chat/paneContext'
 import { useFrame } from '../shell/frame'
-import { useSkin } from '../../ds/useSkin'
 import { useOnline } from '../ui/useOnline'
 import { useClaudeHandoff } from '../ui/claudeHandoff'
 import { draftStarter, firstLine, subjectMeta, uuidOrNull } from './model'
@@ -81,15 +80,7 @@ export function ClaudeProvider({ children }: { children: ReactNode }) {
   const steps = useRef(new Map<string, number>())
   const wasBusy = useRef(chat.busy)
   const { setClaudeOpen, claudeOpen, route } = f
-  // Brief 4 `claude` section: on desktop the Claude place IS the workspace, so arriving there opens the
-  // chat in the page and leaves the drawer flag alone (else the drawer would pop open on the next place).
-  const workspace = useSkin('claude') && f.layout === 'desktop'
-  const workspaceRef = useRef(workspace)
-  workspaceRef.current = workspace
-
-  // Push landing and the Claude place: `#exp/d/claude?thread=<id>&turn=<id>`
-  // (today's `#exp/brain-b/ask?thread=…` maps here) opens that chat in the
-  // drawer and scrolls to the turn. Keyed on the address, so it runs once per arrival.
+  // Notification links select the thread and focus the turn in the chat page.
   const qs = route.place === 'claude' ? route.query.toString() : null
   // An ordinary visit opens the private conversation that receives proactive
   // messages. A deep link, a composed message or a turn in progress wins.
@@ -112,10 +103,9 @@ export function ClaudeProvider({ children }: { children: ReactNode }) {
       setFocusTurn(target)
     }
     if (q.get('voice') === '1') setVoiceOpen(true)
-    if (!workspaceRef.current) setClaudeOpen(true)
     // chat.openThread is stable (useCallback); only the address decides this.
     // oxlint-disable-next-line react-hooks/exhaustive-deps
-  }, [qs, setClaudeOpen])
+  }, [qs])
 
   // Phone: the tab bar stays reachable while the sheet is open (phone-ox.css, claude/phone-ox.css), so
   // a tap on another place closes the sheet instead of leaving it over the new page.
