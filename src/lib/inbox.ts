@@ -37,6 +37,7 @@ export type InboxMessage = {
   // "Replied": "a small likely-spam folder ... so I don't miss anything ... but no push").
   // Optional because the stock screens' fixtures predate the column.
   prospect_skip_reason?: string | null;
+  deferred_checkback_at?: string | null;
   // outreach_messages.reply_intent (the reply detector's verdict on an inbound:
   // negative / neutral / positive / info_ask / soft_yes) and
   // outreach_prospects.blacklisted, both denormalised into inbox_messages_v on
@@ -1265,6 +1266,7 @@ function unansweredSince(t: Thread): string | null {
     return lastInbound !== null && Date.parse(lastInbound) > Date.parse(heldAt) ? lastInbound : heldAt
   }
   if (lastInbound === null) return null
+  if (deferredCheckbackAt(t)) return null
   // MARK AS SOLVED (2026-09-27) is the same kind of ruling, made by hand with no draft needed.
   if (isSettledBySolve(t.solvedAt, lastInbound)) return null
   // DISCARDING A DRAFT IS AN ANSWER TO THE QUESTION "does this need a reply".
@@ -1296,6 +1298,18 @@ function unansweredSince(t: Thread): string | null {
     // As instants: a just-approved local patch ('Z') and PostgREST ('+00:00') do not sort alike as text.
     .reduce<string | null>((max, x) => (max === null || Date.parse(x) > Date.parse(max) ? x : max), null)
   return (lastSent === null || Date.parse(lastSent) <= Date.parse(lastInbound)) ? lastInbound : null
+}
+
+export function deferredCheckbackAt(t: Thread): string | null {
+  const parked = t.messages.find(m => m.direction === 'inbound' && m.deferred_checkback_at)
+  const at = parked?.deferred_checkback_at
+  if (!parked || !at || !Number.isFinite(Date.parse(at))) return null
+  const inboundAt = Date.parse(eventTime(parked))
+  if (!Number.isFinite(inboundAt)) return null
+  const movedOn = t.messages.some(m => m.id !== parked.id && m.message_type !== 'connection_note'
+    && (m.direction === 'inbound' || m.sent_at)
+    && Date.parse(eventTime(m)) >= inboundAt)
+  return movedOn ? null : at
 }
 
 /** solved_at settles the thread while it is not older than the last owed inbound. Compared as

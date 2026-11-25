@@ -1,7 +1,7 @@
 // The pane's banners (mock `.df-ban`): owner question, dated follow-up + one-tap suggestion,
 // owed with no draft, waiting on them, pushed to later, context gap (+ Ask Mattan/Davorin).
 import { useEffect, useState } from 'react'
-import { clientOwner, eventTime, isReplyRetryExhausted, isReplyRetryPending, type Thread } from '../../lib/inbox'
+import { clientOwner, deferredCheckbackAt, eventTime, isReplyRetryExhausted, isReplyRetryPending, type Thread } from '../../lib/inbox'
 import { fetchFollowUp, followUpSuggestion, type FollowUp } from '../../lib/followUp'
 import { fetchCheckState, readCheckWait, type CheckState } from '../../lib/checkWait'
 import { fetchScanHold, type ScanHold } from '../../lib/scanHold'
@@ -175,6 +175,13 @@ export function hasSentCamebackFollowup(t: Pick<Thread, 'messages'>): boolean {
 }
 
 export function WaitingBanner({ t }: { t: Thread }) {
+  const checkbackAt = deferredCheckbackAt(t)
+  if (checkbackAt) return (
+    <div className="dm-ban" role="note">
+      <b><DIcon name="time" />Check back {warsawDow(checkbackAt)} {warsawDm(checkbackAt)}</b>
+      <p>A follow-up is due for drafting on this date. If {firstOf(t)} writes first, the new reply takes priority.</p>
+    </div>
+  )
   const lo = t.messages.filter(m => m.direction === 'outbound' && m.sent_at).at(-1)
   const dated = seatOf(t.client_id) !== 'ivan'
   const cbDone = !dated && hasSentCamebackFollowup(t)

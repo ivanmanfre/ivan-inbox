@@ -2,12 +2,14 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import type { InboxMessage } from '../../lib/inbox'
 import { fetchManualReplyIds } from '../../lib/inbox'
+import { fetchDeferredCheckbacks } from '../../lib/deferredCheckbacks'
 import { fetchSolvedAt } from './solved'
 import { countDmSeatFromRows, fetchDmSeatCount } from './dmDrafts'
 
 const h = vi.hoisted(() => ({ rpc: vi.fn(), from: vi.fn() }))
 vi.mock('../../lib/supabase', () => ({ supabase: h }))
 vi.mock('../../lib/inbox', async orig => ({ ...await orig<typeof import('../../lib/inbox')>(), fetchManualReplyIds: vi.fn() }))
+vi.mock('../../lib/deferredCheckbacks', async orig => ({ ...await orig<typeof import('../../lib/deferredCheckbacks')>(), fetchDeferredCheckbacks: vi.fn() }))
 vi.mock('./solved', async orig => ({ ...await orig<typeof import('./solved')>(), fetchSolvedAt: vi.fn() }))
 
 const NOW = Date.parse('2026-10-09T18:00:00Z')
@@ -48,6 +50,7 @@ beforeEach(() => {
   vi.spyOn(Date, 'now').mockReturnValue(NOW)
   h.rpc.mockReset(); h.from.mockReset()
   vi.mocked(fetchManualReplyIds).mockReset().mockResolvedValue(new Set())
+  vi.mocked(fetchDeferredCheckbacks).mockReset().mockResolvedValue(new Map())
   vi.mocked(fetchSolvedAt).mockReset().mockResolvedValue(new Map())
 })
 afterEach(() => { vi.restoreAllMocks(); localStorage.clear() })
@@ -109,4 +112,11 @@ it('keeps manual-reply and solved probes as required reads', async () => {
   vi.mocked(fetchSolvedAt).mockRejectedValueOnce(new Error('solves failed'))
   await expect(fetchDmSeatCount('ivan')).rejects.toThrow('solves failed')
   expect(h.from).not.toHaveBeenCalled()
+})
+
+it('omits a dated check-back from the waiting reply count', async () => {
+  const [sent, inbound] = thread('i', 'ivan')
+  h.rpc.mockResolvedValue({ data: [sent, inbound], error: null })
+  vi.mocked(fetchDeferredCheckbacks).mockResolvedValue(new Map([['i', { id: 'i', inbound_id: inbound.id, next_touch_after: at(-72) }]]))
+  expect(await fetchDmSeatCount('ivan')).toEqual({ drafts: 0, needs: 0 })
 })

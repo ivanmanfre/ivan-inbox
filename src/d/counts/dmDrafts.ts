@@ -1,4 +1,5 @@
 import { withReactionQueues } from '../../lib/swishdmReactionQueue'
+import { fetchDeferredCheckbacks, withDeferredCheckbacks } from '../../lib/deferredCheckbacks'
 import { supabase } from '../../lib/supabase'
 import {
   dedupeMessages, fetchManualReplyIds, groupThreads, isConversation, threadBucket,
@@ -127,17 +128,18 @@ export async function fetchDmSeatCount(seat: Seat, now?: number): Promise<DmSeat
   // returns before it (no candidates) never waits on it.
   const manual = fetchManualReplyIds()
   manual.catch(() => {})
+  const parks = fetchDeferredCheckbacks().catch(() => new Map())
   // Explicit historical-time reads keep the original date-window path. The
   // quick RPC is a live snapshot and must not classify a past instant.
   const quick = now === undefined ? await firstRows() : null
   const ids = quick === null ? await candidateIds(seat, at) : []
   if ((quick === null && ids.length === 0) || (quick !== null && quick.length === 0)) return { drafts: 0, needs: 0 }
-  const [rows, manualReplyIds] = await Promise.all([quick ?? threadRows(ids), manual])
+  const [rows, manualReplyIds, checkbacks] = await Promise.all([quick ?? threadRows(ids), manual, parks])
   // "Mark as solved" (outreach_prospects.solved_at) is not in the view: one small read for the
   // owed threads only, then TODAY'S rule (unansweredSince honours solvedAt). A failed read throws
   // like any other: the count says it could not be read, never a guess.
   const visible = seat === 'swishdm' ? await withReactionQueues(rows).catch(() => rows) : rows
-  const threads = groupThreads(dedupeMessages(visible), manualReplyIds, at)
+  const threads = groupThreads(withDeferredCheckbacks(dedupeMessages(visible), checkbacks), manualReplyIds, at)
   const solved = await fetchSolvedAt(owedIds(threads.filter(t => seatOf(t.client_id) === seat)))
   return countDmSeat(withSolved(threads, solved), seat, at)
 }

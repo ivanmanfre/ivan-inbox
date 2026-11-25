@@ -1,4 +1,5 @@
 import { withReactionQueues } from './swishdmReactionQueue'
+import { fetchDeferredCheckbacks, withDeferredCheckbacks } from './deferredCheckbacks'
 import { withTimeout } from '../d/ui/timeout'
 import { readFirstRows } from './firstRows'
 import { scheduleHeld } from './dmSchedule'
@@ -48,14 +49,15 @@ export async function loadPriority(): Promise<{ viewRows: InboxMessage[]; rows: 
   return { viewRows, ...(await assembleInbox(viewRows)) }
 }
 
-type Probes = [Set<string>, Map<string, DraftEmailStamp> | null, Map<string, { recipient_email: string; email_cc: string[] }>]
+type Probes = [Set<string>, Map<string, DraftEmailStamp> | null, Map<string, { recipient_email: string; email_cc: string[] }>, Awaited<ReturnType<typeof fetchDeferredCheckbacks>>]
 
-/** The three row-independent side probes, each degrading on its own (see assembleInbox). */
+/** Row-independent side probes, each degrading on its own (see assembleInbox). */
 function sideProbes(): Promise<Probes> {
   return Promise.all([
     fetchManualReplyIds().catch(() => new Set<string>()),
     fetchDraftEmailStamps().catch(() => null),
     fetchEmailRecipients().catch(() => new Map<string, { recipient_email: string; email_cc: string[] }>()),
+    fetchDeferredCheckbacks().catch(() => new Map()),
   ])
 }
 
@@ -74,9 +76,10 @@ export async function assembleInbox(viewRows: readonly InboxMessage[], probes?: 
   // never take the inbox down. But it is no longer SILENT: null marks every
   // pending draft below, and the card says it cannot tell whether an email
   // rides along, because approving still mails it (check3-drafts E1.5).
-  const [[manualReplyIds, emailStamps, emailTo], rows] = await Promise.all([
+  const [[manualReplyIds, emailStamps, emailTo, parks], history] = await Promise.all([
     probes ?? sideProbes(), withReactionQueues(copies).catch(() => copies),
   ])
+  const rows = withDeferredCheckbacks(history, parks)
   const draftIds = groupThreads(rows, manualReplyIds).flatMap(t =>
     [t.draft, t.companionDraft, t.ownerConfirmation].flatMap(m => m ? [m.id] : []))
   // Scheduled messages are held, not drafts, but their exact send time belongs in the list.

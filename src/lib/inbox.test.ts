@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { withDeferredCheckbacks } from './deferredCheckbacks'
 import { offersReplyMyself, isReplyRetryPending, internalHoldSummary, isOwnerConfirmation, isInternalConfirmation, isDraft, isFollowUp, snoozeActive, snoozeTarget, SNOOZE_PRESETS, SNOOZE_HOUR, eventTime, groupThreads, filterThreads, dedupeMessages, searchThreads, threadChatId, needsAnswer, inboxBreakdown, inboxWaitingCount, isLeadMagnet, threadBucket, filterByStatus, browseOrder, messageChannel, isMixedChannel, channelFamilies, canRestore, isDiscarded, applyDraftGuard, DISCARD_GUARD, RESTORE_GUARD, DISMISS_HOLD_GUARD, DISCARD_REASON, RACE_HOLD_PREFIX, ladderSteps, sendFailed, isHeldSend, heldSend, heldReasonText, canScheduleHeld, isUnreachableRecipient, isUnreachableSend, unreachableLabel, timelineTime, operatorSentAt, operatorWords, missingManualGuardMeansPreMigration, isEngineRetired, isHiddenRetired, retiredLabel, holdReason, isSenderMirrorEmail, draftLegs, isOwedInbound, threadOrder, DELETED_REASON, type InboxMessage, type Status, type DraftGuard } from './inbox'
 
 // inbox.ts:191 gates needsAnswer on a 14-day wall-clock staleness window
@@ -32,6 +33,16 @@ const base: InboxMessage = {
   prospect_linkedin_url: 'https://www.linkedin.com/in/a', chat_provider_id: null,
   snoozed_until: null, snoozed_at: null,
 }
+
+it('keeps the dated check-back out of Needs you until the prospect writes again', () => {
+  const defer = { ...base, id: 'defer', direction: 'inbound' as const, message_text: 'Check back in a week or so',
+    sent_at: '2026-07-22T10:00:00Z' }
+  const fresh = { ...base, id: 'fresh', direction: 'inbound' as const, message_text: 'Actually, can you send it now?',
+    sent_at: '2026-07-22T11:00:00Z', created_at: '2026-07-22T11:00:00Z' }
+  const parks = new Map([[defer.prospect_id, { id: defer.prospect_id, inbound_id: defer.id, next_touch_after: '2026-07-29T00:00:00Z' }]])
+  expect(threadBucket(groupThreads(withDeferredCheckbacks([defer], parks))[0])).toBe('waiting')
+  expect(threadBucket(groupThreads(withDeferredCheckbacks([defer, fresh], parks))[0])).toBe('answer')
+})
 
 describe('isDraft', () => {
   it('unsent unapproved unblocked outbound is a draft', () => {
