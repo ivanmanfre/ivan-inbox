@@ -278,7 +278,7 @@ export function useChat() {
   botRef.current = botThread
 
   const abortRef = useRef<AbortController | null>(null)
-  const lastSent = useRef<{ prompt: string; about?: string; see?: string; scanAlertTurnId?: string } | null>(null)
+  const lastSent = useRef<{ prompt: string; about?: string; see?: string; scanAlertTurnId?: string; onAccepted?: () => void } | null>(null)
   const alive = useRef(true)
   // `send` is memoised on sessionId, so it cannot close over the current turns.
   // A ref keeps the context block reading the live transcript instead of the one
@@ -610,14 +610,14 @@ export function useChat() {
   ) => {
     const text = prompt.trim()
     if (!text || abortRef.current) return
-    lastSent.current = { prompt: text, about, see, scanAlertTurnId }
+    const submission = { prompt: text, about, see, scanAlertTurnId, onAccepted }
+    lastSent.current = submission
     stopPoll()
     const ctrl = new AbortController()
     abortRef.current = ctrl
     const turnId = mintTurnId()
     turnIdRef.current = turnId
     writesDuringHydrate.current?.set(turnId, null)
-    let acknowledge = onAccepted
     const onThread = threadIdRef.current
     if (!onThread) {
       // A send from a fresh pane owns the thread the broker creates, even if a
@@ -671,8 +671,11 @@ export function useChat() {
             if (ev.turnId !== turnId || (onThread && ev.threadId !== onThread)) {
               throw new Error('The reply could not be matched to this conversation.')
             }
-            acknowledge?.()
-            acknowledge = undefined
+            if (submission.onAccepted) {
+              const acknowledge = submission.onAccepted
+              submission.onAccepted = undefined
+              acknowledge()
+            }
             setGrounding({ session: ev.session, groundedOn: ev.groundedOn })
             if (ev.threadId !== threadIdRef.current) {
               // The broker minted a thread for the first turn. Read its title and session.
@@ -765,7 +768,7 @@ export function useChat() {
     // A retry re-sends the context the ORIGINAL turn carried, not whatever is
     // attached now. Re-asking the same question against a different screen
     // would be a different question wearing the first one's words.
-    void send(last.prompt, last.about, last.see, last.scanAlertTurnId)
+    void send(last.prompt, last.about, last.see, last.scanAlertTurnId, last.onAccepted)
   }, [send])
 
   // The clean reset /clear needs: abort anything in flight, empty the

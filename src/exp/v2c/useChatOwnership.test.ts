@@ -260,3 +260,22 @@ it('keeps the composer draft when the broker refuses the turn before acknowledge
   expect(clear).not.toHaveBeenCalled()
   expect(result.current.turns.at(-1)?.error).toBeTruthy()
 })
+
+it('acknowledges a refused submission once across retries', async () => {
+  io.stream.mockImplementationOnce(async function* () {
+    yield { type: 'error', message: 'Temporary failure', retryable: true }
+  }).mockImplementation(async function* (request: ChatRequest) {
+    yield { type: 'turn', turnId: request.turnId, threadId: a, session: 'new', groundedOn: null }
+    yield { type: 'text', delta: 'Received' }
+  })
+  const { result } = renderHook(() => useChat())
+  await act(async () => result.current.openThread(a))
+  const clear = vi.fn()
+  await act(async () => result.current.send('Content: photo', undefined, undefined, undefined, clear))
+  expect(clear).not.toHaveBeenCalled()
+  await act(async () => result.current.retry())
+  expect(clear).toHaveBeenCalledOnce()
+  await act(async () => result.current.retry())
+  expect(io.stream).toHaveBeenCalledTimes(3)
+  expect(clear).toHaveBeenCalledOnce()
+})
