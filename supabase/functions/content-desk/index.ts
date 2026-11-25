@@ -268,7 +268,9 @@ async function recentMessages(svc: any, userId: string, evalMode = false, mainTh
   // Eval items are independent questions: they carry no history. Real turns never see eval rows.
   if (evalMode) return []
   let q = svc.from('desk_messages').select('id, role, origin, body, created_at, meta').eq('user_id', userId)
-  q = mainThread ? q.eq('meta->>main_thread', mainThread) : q.is('meta->>main_thread', null)
+  q = mainThread
+    ? q.or(`meta->>main_thread.eq.${mainThread},meta->>mirrored_main_thread.eq.${mainThread}`)
+    : q.is('meta->>main_thread', null)
   const { data } = await q.order('created_at', { ascending: false }).limit(30)
   return (data ?? []).filter((m: { meta?: { test?: boolean } }) => m.meta?.test !== true).slice(0, 11).reverse()
 }
