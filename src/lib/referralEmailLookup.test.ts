@@ -40,7 +40,7 @@ describe('referral both lanes (Ivan 2026-11-26)', () => {
     return calls
   }
   const dm = () => claude(JSON.stringify({ paragraphs: ['Hey Dana', 'Sam pointed me to you for influencer campaigns at Brewco UK.', "I'm Davorin, founder of ARCH. We run creator campaigns for subscription brands.", 'Would you be open to a quick chat about it?'] }))
-  const mail = () => claude(JSON.stringify({ subject: 'Sam suggested I reach out', paragraphs: ['Hi Dana', "I'm Davorin, founder of ARCH, and Sam suggested I reach out to you about creator campaigns.", 'We run creator campaigns for subscription brands.', 'Would you be open to a quick chat about it?'] }))
+  const mail = () => claude(JSON.stringify({ subject: 'ARCH x Brewco UK', paragraphs: ['Hi Dana', "I'm Davorin, founder of ARCH, and Sam suggested I reach out to you about creator campaigns.", 'We run creator campaigns for subscription brands.', 'Would you be open to a quick chat about it?'] }))
 
   it('finds the verified work email when the handoff gives none, and drafts the email too', async () => {
     const calls = run([() => claude(JSON.stringify({ name: 'Dana Fictional' })), () => apify([item('Dana', 'Fictional', 'dana-fictional-1', [['Brewco UK', 'Marketing Director', true]])]),
@@ -49,7 +49,7 @@ describe('referral both lanes (Ivan 2026-11-26)', () => {
     expect(r.status).toBe('verified')
     expect(calls[3].url).toBe('https://api.apollo.io/api/v1/people/match')
     expect(calls[3].body).toMatchObject({ linkedin_url: URL_, reveal_personal_emails: false })
-    expect(r.email).toMatchObject({ to: 'dana.fictional@brewco.example', cc: [], subject: 'Sam suggested I reach out', found_by: 'apollo' })
+    expect(r.email).toMatchObject({ to: 'dana.fictional@brewco.example', cc: [], subject: 'ARCH x Brewco UK', found_by: 'apollo' })
     expect(r.email_lookup).toMatchObject({ status: 'found', email: 'dana.fictional@brewco.example', linkedin_url: URL_ })
     // The DM introduces the company instead of asking how they measure their work.
     const prompt = String((calls[2].body.messages as { content: string }[])[0].content)
@@ -118,7 +118,7 @@ describe('referral email asks for one free time (Ivan 2026-11-26)', () => {
     email: { to: 'dana.fictional@brewco.example', cc: [], subject: 's', body: 'b', found_by: 'apollo' } }
   const slots = [{ start: '2026-11-30T12:45:00.000Z', label: 'next Monday at 1:45pm CET', day: 'next Monday' }]
   const dm = () => claude(JSON.stringify({ paragraphs: ['Hey Dana', 'Sam pointed me to you.', "I'm Davorin, founder of ARCH.", 'Would you be open to a quick chat about it?'] }))
-  const email = (ask: string) => () => claude(JSON.stringify({ subject: 'Sam suggested I reach out', paragraphs: ['Hi Dana', "I'm Davorin, founder of ARCH.", ask] }))
+  const email = (ask: string) => () => claude(JSON.stringify({ subject: 'ARCH x Brewco UK', paragraphs: ['Hi Dana', "I'm Davorin, founder of ARCH.", ask] }))
   const go = async (ask: string) => {
     const calls: { body: Record<string, unknown> }[] = []
     const answers = [dm, email(ask)]

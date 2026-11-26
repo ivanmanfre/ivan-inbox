@@ -32,6 +32,8 @@ export type ReferralDraft = {
   /** The conversation the DM was drafted from (later replies and discarded drafts); a change redrafts it. */
   story_key?: string
   lead_message_id?: string
+  /** The free calendar day the invite note asks for (Ivan 2026-11-26). */
+  slot?: { start: string; label: string; day: string } | null
 }
 export type ReferralEmail = { to: string; cc: string[]; subject: string; body: string
   /** The handoff gave no address; Apollo found their verified work email (Ivan 2026-11-26: both lanes on a referral). */

@@ -56,7 +56,7 @@ describe('referral researcher', () => {
     vi.stubGlobal('fetch', async (url: string, init: RequestInit) => {
       calls.push({ url, body: JSON.parse(String(init.body)) })
       if (calls.length === 1) return claude(JSON.stringify({ name: 'Guillaume', company: 'Gambit' }))
-      if (calls.length === 3) return claude(JSON.stringify({ subject: 'Éléa from Panache pointed me your way', paragraphs: ['Hi Guillaume', 'Éléa said you handle creator work for Panache.', 'How do you usually set up creator campaigns for the studios you work with?'], reason: null }))
+      if (calls.length === 3) return claude(JSON.stringify({ subject: 'ARCH x Gambit Digital', paragraphs: ['Hi Guillaume', 'Éléa said you handle creator work for Panache.', 'How do you usually set up creator campaigns for the studios you work with?'], reason: null }))
       return apify([item('Guillaume', 'Mesnage', 'guillaumemesnage', [['Gambit Guru', 'Founder', true]]), item('Guillaume', 'Dupont', 'gdupont', [['Gambit Digital Guru', 'Founder', true]])])
     })
     const text = "Yes, it's handled by the Gambit team. You can contact Guillaume or Laurène for any inquiries. :) guillaume@gambitdigital.ca laurene@gambitdigital.ca"
@@ -66,7 +66,7 @@ describe('referral researcher', () => {
     expect(result.candidate).toBeUndefined()
     // No LinkedIn match, but the handoff gave the address: the first email is drafted (Ivan 2026-11-05).
     expect(calls).toHaveLength(3)
-    expect(result.email).toEqual({ to: 'guillaume@gambitdigital.ca', cc: ['laurene@gambitdigital.ca'], subject: 'Éléa from Panache pointed me your way',
+    expect(result.email).toEqual({ to: 'guillaume@gambitdigital.ca', cc: ['laurene@gambitdigital.ca'], subject: 'ARCH x Gambit Digital',
       body: 'Hi Guillaume\n\nÉléa said you handle creator work for Panache.\n\nHow do you usually set up creator campaigns for the studios you work with?\n\nDavorin' })
     expect(result.email_reason).toBeNull()
   })
@@ -75,7 +75,7 @@ describe('referral researcher', () => {
     vi.stubGlobal('fetch', async (url: string, init: RequestInit) => {
       calls.push({ url, body: JSON.parse(String(init.body)) })
       if (calls.length === 1) return claude(JSON.stringify({ name: 'Mia', company: null, email: 'MiaD@fitness22.com' }))
-      if (calls.length === 3) return claude(JSON.stringify({ subject: 'Yossi from Fitness22 pointed me your way', paragraphs: ['Hi Mia', 'Yossi said you lead the influencer programs at Fitness22.', 'Do you run creator campaigns in-house or with an agency?'], reason: null }))
+      if (calls.length === 3) return claude(JSON.stringify({ subject: 'ARCH x Fitness22', paragraphs: ['Hi Mia', 'Yossi said you lead the influencer programs at Fitness22.', 'Do you run creator campaigns in-house or with an agency?'], reason: null }))
       return apify([])
     })
     const text = 'hi Davorin\nNice to meet you. \n\nplease connect with Mia who leads our influencer programs miad@fitness22.com'
@@ -83,7 +83,7 @@ describe('referral researcher', () => {
     expect(String((calls[0].body.messages as { content: string }[])[0].content)).toMatch(/"email"/)
     expect(result.status).toBe('unresolved')
     expect(result.reason).toContain('miad@fitness22.com')
-    expect(result.email).toMatchObject({ to: 'miad@fitness22.com', cc: [], subject: 'Yossi from Fitness22 pointed me your way' })
+    expect(result.email).toMatchObject({ to: 'miad@fitness22.com', cc: [], subject: 'ARCH x Fitness22' })
     expect(result.email_reason).toBeNull()
   })
   it('never emails an address the message does not contain', async () => {
