@@ -177,6 +177,7 @@ describe('the ARCH first touch as an InMail', () => {
     ['a generational suffix', 'Tomas Weller', 'Tomas', 'Weller Jr.'],
     ['the whole name in the given-name field', 'Tomas Weller', 'Tomas Weller', ''],
     ['a surname that is also a credential', 'Tomas Mba', 'Tomas', 'Weller Jr.'],
+    ['a compound surname ending in a credential-looking word', 'Tomas Weller', 'Tomas', 'Weller-Mba'],
   ])('an unpinned referral whose profile shows another person (%s) gets no lead staged (Sol r7/r8/r9)', async (_case, name, firstName, lastName) => {
     const legacy = { ...verified, name, revision: REFERRAL_REVISION, story_key: keyAfter(youToo), later: checked('later-1'), member_id: undefined }
     const other = [{ id: 'ACoAA-test-other', publicIdentifier: 'tomas-weller-test', firstName, lastName, openProfile: true }]
