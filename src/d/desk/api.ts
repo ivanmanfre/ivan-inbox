@@ -202,8 +202,9 @@ export function subscribeDesk(topic: string, userId: string, on: { message: (m: 
       if (row && row.id && !row.meta?.main_thread && (evalOn() || !isTestRow(row))) on.message(asMessage(row))
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'desk_t3_jobs', filter: `user_id=eq.${userId}` }, p => {
-      const row = (p as unknown as { new?: T3Job }).new
-      if (row && row.id) on.job(row)
+      const row = (p as unknown as { new?: T3Job & { origin?: string } }).new
+      // cloud jobs from the inbox (db/20261126p) share the table; the desk shows only its own
+      if (row && row.id && (row.origin ?? 'desk') === 'desk') on.job(row)
     })
     .subscribe(status => {
       // Every SUBSCRIBED re-reads, the first one too: anything settled between the history read
