@@ -55,19 +55,31 @@ end $$;
 revoke all on function public.inbox_calendar_release(uuid) from public,anon,authenticated;
 grant execute on function public.inbox_calendar_release(uuid) to service_role;
 
--- Remove waits for authorize's lock; while that card's booking is pending (in flight, at most 10 minutes) it is refused.
-create or replace function public.inbox_booking_card_delete_guard() returns trigger
-language plpgsql set search_path=public as $$
-begin
-  if old.kind = 'task' and old.context->>'action' = 'book_link' and old.context->>'kind_detail' = 'book_offered_slot'
+-- Remove (sets send_blocked_reason), Clear All and a delete wait for authorize's row lock. While that card's booking claim
+-- is pending (in flight, at most 10 minutes) the card stays open: the discard is ignored for that one row (never an
+-- error, so a Clear All batch still clears every other card). SECURITY DEFINER: the app's role cannot read the ledger.
+create or replace function public.inbox_booking_card_inflight(c jsonb) returns boolean
+language sql stable security definer set search_path=public as $$
+  select coalesce(c->>'action','') = 'book_link' and coalesce(c->>'kind_detail','') = 'book_offered_slot'
      and exists (select 1 from inbox_calendar_bookings b
-                  where b.prospect_id::text = old.context->>'prospect_id' and b.client_id = old.context->>'client_id'
-                    and b.status = 'pending' and b.start_at = (old.context->'booking'->>'start')::timestamptz
-                    and b.updated_at > now() - interval '10 minutes') then
-    raise exception 'This card is booking the call right now. Try again in a minute.';
+                  where b.prospect_id::text = c->>'prospect_id' and b.client_id = c->>'client_id'
+                    and b.status = 'pending' and b.start_at = (c->'booking'->>'start')::timestamptz
+                    and b.updated_at > now() - interval '10 minutes')
+$$;
+revoke all on function public.inbox_booking_card_inflight(jsonb) from public,anon,authenticated;
+create or replace function public.inbox_booking_card_discard_guard() returns trigger
+language plpgsql security definer set search_path=public as $$
+begin
+  if tg_op = 'DELETE' then
+    if old.kind = 'task' and inbox_booking_card_inflight(old.context) then return null; end if;   -- this row's delete is skipped
+    return old;
   end if;
-  return old;
+  if old.kind = 'task' and old.send_blocked_reason is null and new.send_blocked_reason is not null
+     and old.sent_at is null and new.sent_at is null and inbox_booking_card_inflight(old.context) then
+    new.send_blocked_reason := null;   -- kept open while the invite is in flight
+  end if;
+  return new;
 end $$;
-drop trigger if exists inbox_booking_card_delete_guard on public.ops_drafts;
-create trigger inbox_booking_card_delete_guard before delete on public.ops_drafts
-  for each row when (old.kind = 'task') execute function public.inbox_booking_card_delete_guard();
+revoke all on function public.inbox_booking_card_discard_guard() from public,anon,authenticated;
+create or replace trigger inbox_booking_card_discard_guard before update of send_blocked_reason or delete on public.ops_drafts
+  for each row when (old.kind = 'task') execute function public.inbox_booking_card_discard_guard();

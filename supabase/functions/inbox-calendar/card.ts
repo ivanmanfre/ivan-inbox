@@ -146,7 +146,7 @@ export async function handleBookCard(input: Record<string, unknown>, store: Card
     if (!open.open) throw Error('That time is no longer free on the calendar. Offer a new time in the thread.')
     const missing = open.fields.filter(f => !(f === 'website' && p.company_domain))
     if (missing.length) throw Error('The booking page needs ' + missing.join(', ') + '. Book by hand.')
-  } catch (e) { await store.commit(key, card.id, null, null, null); throw e }
+  } catch (e) { await store.release(key); throw e }   // Sol r5: by request id (works when the card is gone)
   // Sol r4: the last check is one database step that Remove waits on; a gone or changed card frees the claim by request id
   let auth
   try { auth = await store.authorize(key, card.id) } catch (e) { await store.release(key); throw e }
@@ -155,7 +155,7 @@ export async function handleBookCard(input: Record<string, unknown>, store: Card
   let receipt
   try { receipt = await provider.bookSlot(o, secret, slot, { name: p.name, email: to, website: p.company_domain }, tz, typeId) }
   catch (e) {
-    if (e instanceof Rejected) { await store.commit(key, card.id, null, null, null); throw e }
+    if (e instanceof Rejected) { await store.release(key); throw e }
     // Anything after the POST started is ambiguous: the ledger stays pending, so a retry can never book twice.
     throw Error('Booking could not be confirmed. Check the owner calendar before trying again; another booking is blocked.')
   }

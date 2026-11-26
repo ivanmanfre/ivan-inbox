@@ -54,7 +54,7 @@ describe('Book key on an accepted-time card', () => {
   it('a time that is no longer free marks the claim failed and never POSTs', async () => {
     const { store, provider } = make(); provider.slotOpen.mockResolvedValue({ open: false, fields: [] })
     await expect(handleBookCard(input, store, provider as never, now)).rejects.toThrow(/no longer free/)
-    expect(provider.bookSlot).not.toHaveBeenCalled(); expect(store.commit).toHaveBeenCalledWith(input.request_id, input.card_id, null, null, null)
+    expect(provider.bookSlot).not.toHaveBeenCalled(); expect(store.release).toHaveBeenCalledWith(input.request_id)
   })
   it('a required field we cannot fill (no website on file) books nothing', async () => {
     const { store, provider } = make({ prospect: vi.fn(async () => ({ id: 'b162a8cd-0399-4364-9058-5c5d03f255ed', name: 'Zech Strauser', client_id: 'risedtc', call_booked_at: null, closed: false, company_domain: null })) } as never)
@@ -62,7 +62,7 @@ describe('Book key on an accepted-time card', () => {
   })
   it('a 4xx refusal frees the claim; an ambiguous failure keeps it locked', async () => {
     const a = make(); a.provider.bookSlot.mockRejectedValue(new Rejected('refused (400)'))
-    await expect(handleBookCard(input, a.store, a.provider as never, now)).rejects.toThrow(/refused/); expect(a.store.commit).toHaveBeenCalledWith(input.request_id, input.card_id, null, null, null)
+    await expect(handleBookCard(input, a.store, a.provider as never, now)).rejects.toThrow(/refused/); expect(a.store.release).toHaveBeenCalledWith(input.request_id)
     const b = make(); b.provider.bookSlot.mockRejectedValue(Error('timeout'))
     await expect(handleBookCard(input, b.store, b.provider as never, now)).rejects.toThrow(/Check the owner calendar/); expect(b.store.commit).not.toHaveBeenCalled()
   })

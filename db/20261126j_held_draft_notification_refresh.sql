@@ -20,7 +20,10 @@ begin
        and strpos(x.body, E'\n\n') > 0
        and substr(x.body, strpos(x.body, E'\n\n') + 2, length(old.message_text)) = old.message_text
        and (length(x.body) = strpos(x.body, E'\n\n') + 1 + length(old.message_text)
-            or substr(x.body, strpos(x.body, E'\n\n') + 2 + length(old.message_text), 7) = E'\n\nWhy: ');
+            or substr(x.body, strpos(x.body, E'\n\n') + 2 + length(old.message_text), 7) = E'\n\nWhy: ')
+       -- Sol r5: never when another unsent draft of theirs starts with the same text (its notice could look identical)
+       and not exists (select 1 from outreach_messages o where o.prospect_id = new.prospect_id and o.id <> new.id
+                         and o.direction = 'outbound' and o.sent_at is null and strpos(o.message_text, old.message_text) = 1);
     if v_n = 1 then
       update inbox_notifications n
          set body = left(substr(n.body, 1, strpos(n.body, E'\n\n') + 1) || coalesce(new.message_text, '') || substr(n.body, strpos(n.body, E'\n\n') + 2 + length(old.message_text)), 4000)
@@ -30,7 +33,6 @@ begin
   return null;
 end $$;
 
-drop trigger if exists inbox_refresh_held_draft_notification on public.outreach_messages;
-create trigger inbox_refresh_held_draft_notification
+create or replace trigger inbox_refresh_held_draft_notification
   after update of message_text on public.outreach_messages
   for each row execute function public.inbox_refresh_held_draft_notification();

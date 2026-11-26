@@ -79,6 +79,13 @@ Deno.serve(async req => {
         if (!canceled(r.meeting_outcome)) rows.push({ start: r.meeting_start, prospect_id: r.prospect_id, name: r.booker_name })
       }
       const inbox = await pageAll<{ start_at: string; prospect_id: string | null; meeting_id: string | null; calendar_event_id: string | null; email: string | null }>((lo, hi) => sb.from('inbox_calendar_bookings').select('start_at,prospect_id,meeting_id,calendar_event_id,email').eq('client_id', client).eq('status', 'confirmed').gte('start_at', since).lt('start_at', to).order('start_at').order('request_id').range(lo, hi))
+      // Sol r5: a receipt's meeting id that moved outside this range (rescheduled or canceled) is still attributed
+      const unseen = [...new Set(inbox.map(r => r.meeting_id).filter((x): x is string => !!x && !attributed.has(String(x))))]
+      for (let i = 0; i < unseen.length; i += 50) {
+        const { data, error } = await sb.from('booking_attributions').select('meeting_id').eq('client_id', client).in('meeting_id', unseen.slice(i, i + 50))
+        if (error) throw Error('booked')
+        for (const x of data ?? []) if (x.meeting_id) attributed.add(String(x.meeting_id))
+      }
       for (const r of inbox) {
         // attributed (or canceled) already: same meeting id, same prospect + start, or same invite email + start (a cancel
         // can clear the attribution's prospect before the receipt has its meeting id)
