@@ -27,7 +27,7 @@ const checked = (...ids: string[]) => ({ through_message_id: ids.at(-1) ?? HANDO
 const redrafted = 'Hey Tomas\n\nPriya said you are the person for creator campaigns at Northwind.\n\nWhat do you measure that work on these days?'
 
 type Call = { fn: string; args: Record<string, unknown> }
-async function run(rows: Record<string, unknown>[], opts: { body?: Record<string, unknown>; server?: boolean; enrichment?: Record<string, unknown>; model?: (prompt: string) => unknown; apify?: unknown[]; rpc?: (fn: string, args: Record<string, unknown>) => unknown; credits?: number | null }) {
+async function run(rows: Record<string, unknown>[], opts: { body?: Record<string, unknown>; server?: boolean; enrichment?: Record<string, unknown>; model?: (prompt: string) => unknown; apify?: unknown[]; rpc?: (fn: string, args: Record<string, unknown>) => unknown; credits?: number | null; noSeat?: boolean }) {
   const calls: Call[] = []
   const upstream: string[] = []
   const apifyBodies: unknown[] = []
@@ -42,7 +42,7 @@ async function run(rows: Record<string, unknown>[], opts: { body?: Record<string
         select(value: string) { fields = value; return query },
         eq(field: string, value: unknown) { if (field === 'direction') direction = value; return query }, in() { return query },
         order() { return query }, limit() { return query }, not() { return query },
-        maybeSingle: async () => ({ data: table === 'integration_config' ? { value: 'config-value' } : null }),
+        maybeSingle: async () => ({ data: table === 'integration_config' && !opts.noSeat ? { value: 'config-value' } : null }),
         single: async () => ({ data: fields.startsWith('referral:') ? { referral: null } : { operator_note: null, enrichment_data: opts.enrichment ?? {}, linkedin_url: 'https://www.linkedin.com/in/priya-example-test' } }),
         then(resolve: (value: unknown) => unknown) {
           const data = table === 'content_prompts' ? slugs.map(slug => ({ slug, body: 'current verified rules', updated_at: '2026-11-20' }))
@@ -250,6 +250,27 @@ describe('create referred lead', () => {
     const none = await run([pitch, handoff, ack, youToo], { body: inmailBodyReq(), enrichment: { inbox_referral: unpinned }, apify: profile, rpc: created })
     expect(none.status).toBe(409)
     expect(none.calls.find(c => c.fn === 'inbox_referral_create_lead')).toBeUndefined()
+  })
+  it('a redraft after the URL moved to another member keeps the first pin, and Create refuses both channels (Sol r3)', async () => {
+    const rivera = [{ ...profile[0], id: 'ACoAA-test-rivera', lastName: 'Rivera' }]
+    const moved = await run([pitch, handoff, ack, youToo], { server: true, body: { mode: 'referral' }, enrichment: { inbox_referral: { ...inmailReady, revision: REFERRAL_REVISION - 1 } }, model: withInmail(), credits: 12, apify: rivera })
+    expect(moved.result.referral.inmail_route).toMatchObject({ channel: 'connection_note', member_id: 'ACoAA-test-tomas' })
+    expect(moved.result.referral.inmail ?? null).toBeNull()
+    const repinned = { ...ready, ...moved.result.referral }
+    for (const req of [body(), inmailBodyReq()]) {
+      const got = await run([pitch, handoff, ack, youToo], { body: req, enrichment: { inbox_referral: repinned }, apify: rivera, rpc: created, credits: 12 })
+      expect(got.status).toBe(409)
+      expect(got.calls.find(c => c.fn === 'inbox_referral_create_lead')).toBeUndefined()
+    }
+  })
+  it('an open profile with no sender seat: the note stages, with no InMail ping-pong (Sol r3)', async () => {
+    const open = [{ ...profile[0], openProfile: true }]
+    const inm = await run([pitch, handoff, ack, youToo], { body: inmailBodyReq(), enrichment: { inbox_referral: inmailReady }, apify: open, rpc: created, credits: 0, noSeat: true })
+    expect(inm.status).toBe(409)
+    expect(inm.result.inmail_unavailable).toContain('sender seat')
+    const note = await run([pitch, handoff, ack, youToo], { body: body(), enrichment: { inbox_referral: inmailReady }, apify: open, rpc: created, credits: 0, noSeat: true })
+    expect(note.status).toBe(200)
+    expect(note.calls.find(c => c.fn === 'inbox_referral_create_lead')!.args).toMatchObject({ p_channel: 'connection_note' })
   })
   it('a note Create when an InMail can go now stages nothing and says so (Sol r2), unless the drafter declined the InMail', async () => {
     const noteOnly = { ...ready, inmail_route: { channel: 'connection_note', credits: 0, open_profile: false, why: 'none', checked_at: at(31), member_id: 'ACoAA-test-tomas' } }

@@ -174,7 +174,7 @@ grant execute on function public.inbox_referral_create_lead(uuid, uuid, integer,
 -- Sol r2: the Send Messages final check for a referral lead row, read-only. It answers {ok:true} only when the row as
 -- stored now still carries this run's claim and an approval, has no block or delivery id, and the referral hold read
 -- (on the row's current evidence) is clear. Anything else, or no answer, stops the send.
-create or replace function public.inbox_referral_send_check(p_message_id uuid, p_claimed_at timestamp with time zone)
+create or replace function public.inbox_referral_send_check(p_message_id uuid, p_claimed_at timestamp with time zone, p_approved_at timestamp with time zone, p_text text)
  returns jsonb
  language plpgsql
  stable
@@ -185,13 +185,17 @@ begin
   select * into m from outreach_messages where id = p_message_id;
   if not found then return jsonb_build_object('ok', false, 'why', 'row_missing'); end if;
   if m.ai_model is distinct from 'inbox_referral_lead_v1' then return jsonb_build_object('ok', false, 'why', 'not_a_referral_lead'); end if;
-  if m.sent_at is distinct from p_claimed_at or m.approved_at is null or m.send_blocked_at is not null or m.unipile_message_id is not null then
+  -- Sol r3: the approval and the text this run is about to send are the ones stored now (a re-approval with edited copy
+  -- between the queue read and the claim stops it).
+  if p_claimed_at is null or p_approved_at is null or p_text is null
+     or m.sent_at is distinct from p_claimed_at or m.approved_at is distinct from p_approved_at or m.message_text is distinct from p_text
+     or m.send_blocked_at is not null or m.send_blocked_reason is not null or m.unipile_message_id is not null then
     return jsonb_build_object('ok', false, 'why', 'row_changed');
   end if;
   why := inbox_referral_hold_reason(m.ai_model, m.prospect_id, m.draft_evidence, m.recipient_email);
   if why is not null then return jsonb_build_object('ok', false, 'why', why); end if;
   return jsonb_build_object('ok', true);
 end $function$;
-revoke all on function public.inbox_referral_send_check(uuid, timestamp with time zone) from public, anon, authenticated;
-grant execute on function public.inbox_referral_send_check(uuid, timestamp with time zone) to service_role;
+revoke all on function public.inbox_referral_send_check(uuid, timestamp with time zone, timestamp with time zone, text) from public, anon, authenticated;
+grant execute on function public.inbox_referral_send_check(uuid, timestamp with time zone, timestamp with time zone, text) to service_role;
 commit;

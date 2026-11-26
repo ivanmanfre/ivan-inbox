@@ -201,9 +201,11 @@ Deno.serve(async req => {
         const first = (cached.name ?? profile.name).split(/\s+/)[0]
         // The InMail goes only when it can go now: credits on the seat, or their profile is open (read just above).
         // Otherwise the invite note the operator also saw goes instead, and the answer says why.
-        const route = leadInmail ? inmailRoute(await inmailCredits(sb, client), profile.open_profile, canon.author) : null
+        // One check for both branches (Sol r3): the route now, the seat it would go from, and a member id that takes an InMail.
+        const route = client === 'arch' ? inmailRoute(await inmailCredits(sb, client), profile.open_profile, canon.author) : null
         const sender = route?.channel === 'inmail' ? await seatAccount(sb, client) : null
-        const asInmail = Boolean(leadInmail && route?.channel === 'inmail' && sender && /^ACoAA/.test(profile.provider_id))
+        const canInmail = Boolean(route?.channel === 'inmail' && sender && /^ACoAA/.test(profile.provider_id))
+        const asInmail = Boolean(leadInmail && canInmail)
         // The card showed the InMail: when it cannot go now, nothing is staged; the card switches to the invite note so the
         // operator reviews the copy that would go (Sol r1: never stage a note the operator did not look at).
         if (leadInmail && !asInmail) {
@@ -212,10 +214,8 @@ Deno.serve(async req => {
         }
         // Sol r2: a note Create rechecks too. When an InMail can go now and the card showed the note, nothing is staged; the
         // card brings the InMail back (or redrafts it) for review. A drafter that declined the InMail keeps the note.
-        if (!leadInmail && client === 'arch' && !(cached.inmail_route?.channel === 'inmail' && !cached.inmail)) {
-          const nowRoute = inmailRoute(await inmailCredits(sb, client), profile.open_profile, canon.author)
-          if (nowRoute.channel === 'inmail' && /^ACoAA/.test(profile.provider_id)) return respond({ error: `An InMail can go now: ${nowRoute.why} Review it before creating the lead.`, inmail_available: nowRoute.why }, 409)
-        }
+        if (!leadInmail && canInmail && !(cached.inmail_route?.channel === 'inmail' && !cached.inmail))
+          return respond({ error: `An InMail can go now: ${route!.why} Review it before creating the lead.`, inmail_available: route!.why }, 409)
         const byHand = `Check whether Davorin already messaged ${first} by hand on LinkedIn: messages sent outside the system are not in this inbox.`
         const { data: made, error: makeError } = await sb.rpc('inbox_referral_create_lead', {
           p_referrer: id, p_input_message: actionMessage, p_revision: REFERRAL_REVISION, p_expected_url: leadUrl, p_later_ids: later.map(m => m.id), p_read_at: readAt, p_discarded_ids: nowDiscarded.map(m => m.id),
@@ -263,8 +263,13 @@ Deno.serve(async req => {
         const credits = await inmailCredits(sb, client)
         const slug = r.linkedin_url ? decodeURIComponent(new URL(r.linkedin_url).pathname.split('/').filter(Boolean)[1] ?? '') : ''
         const p = slug ? await apifyProfileDetails(sb, slug).catch(() => null) : null
+        // Sol r3: the member first pinned for this handoff stays pinned across redrafts. A profile that now shows another
+        // member keeps the first pin, so Create refuses both channels until the person is checked again.
+        const prior = cached?.input_message_id === r.input_message_id ? cached.inmail_route?.member_id ?? null : null
+        if (p && prior && p.provider_id !== prior)
+          return { credits, open_profile: null, channel: 'connection_note', why: 'Their LinkedIn profile now belongs to a different member than the one first checked. Check the person before contacting them.', checked_at: new Date().toISOString(), member_id: prior }
         if (!p || !/^ACoAA/.test(p.provider_id) || !sameFirstName(r.name, p.name))
-          return { credits, open_profile: null, channel: 'connection_note', why: 'Their LinkedIn profile could not be checked, so no InMail can go.', checked_at: new Date().toISOString() }
+          return { credits, open_profile: null, channel: 'connection_note', why: 'Their LinkedIn profile could not be checked, so no InMail can go.', checked_at: new Date().toISOString(), member_id: prior }
         return { ...inmailRoute(credits, p.open_profile, canon.author), member_id: p.provider_id }
       } : null
       // Seats that send email (davorin@, itsmattan@, im@) also get the referred person's verified work email.
