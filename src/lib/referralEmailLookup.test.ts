@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { apify, claude, item } from './referralTestEnv'
 import { linksOutsideRules, redraftReferral, researchReferral } from '../../supabase/functions/inbox-dm-draft/research'
 import { readMatch } from '../../supabase/functions/inbox-dm-draft/apollo'
+import { pickSlots } from '../../supabase/functions/inbox-dm-draft/slots'
 import type { ReferralDraft } from '../../supabase/functions/inbox-dm-draft/referral'
 
 // Invented people and companies only: this repo is public.
@@ -60,7 +61,7 @@ describe('referral both lanes (Ivan 2026-11-26)', () => {
     const emailPrompt = String((calls[4].body.messages as { content: string }[])[0].content)
     expect(emailPrompt).toMatch(/public deck link/)
     expect(emailPrompt).toMatch(/public case study/)
-    expect(emailPrompt).toMatch(/live booking link/)
+    expect(emailPrompt).toMatch(/no time and no link/)
     expect(emailPrompt).toMatch(/Under 150 words/)
   })
   it('reuses a stored lookup for the same profile (no second credit) and skips seats without email', async () => {
@@ -98,5 +99,39 @@ describe('referral both lanes (Ivan 2026-11-26)', () => {
     expect(linksOutsideRules('See https://arch.example/case-study/one/.', rules)).toBe(false)
     expect(linksOutsideRules('See https://arch.example/made-up/', rules)).toBe(true)
     expect(linksOutsideRules('No link here', rules)).toBe(false)
+  })
+})
+
+describe('referral email asks for one free time (Ivan 2026-11-26)', () => {
+  // Thu 26 Nov 2026 10:00 UTC.
+  const now = Date.parse('2026-11-26T10:00:00Z')
+  const at = (iso: string) => ({ start: iso, end: new Date(Date.parse(iso) + 1800000).toISOString() })
+  it('picks weekday times 36h+ out inside 09:00-17:00 in the seat zone, one per day', () => {
+    const picked = pickSlots([at('2026-11-27T09:00:00Z'), at('2026-11-28T10:00:00Z'), at('2026-11-30T12:45:00Z'), at('2026-11-30T15:15:00Z'),
+      at('2026-11-30T16:45:00Z'), at('2026-12-01T06:00:00Z'), at('2026-12-01T09:00:00Z')], 'arch', now)
+    expect(picked).toEqual([{ start: '2026-11-30T12:45:00.000Z', label: 'next Monday at 1:45pm CET' }, { start: '2026-12-01T09:00:00.000Z', label: 'next Tuesday at 10am CET' }])
+    expect(pickSlots([at('2026-11-30T12:45:00Z')], 'swishdm', now)).toEqual([])
+  })
+  const cached: ReferralDraft = { status: 'verified', input_message_id: 'in-1', name: 'Dana Fictional', company: 'Brewco UK', role: 'Marketing Director',
+    linkedin_url: 'https://www.linkedin.com/in/dana-fictional-1', summary: 's', draft: 'old', reason: null, sources: [], revision: 13,
+    email: { to: 'dana.fictional@brewco.example', cc: [], subject: 's', body: 'b', found_by: 'apollo' } }
+  const slots = [{ start: '2026-11-30T12:45:00.000Z', label: 'next Monday at 1:45pm CET' }]
+  const dm = () => claude(JSON.stringify({ paragraphs: ['Hey Dana', 'Sam pointed me to you.', "I'm Davorin, founder of ARCH.", 'Would you be open to a quick chat about it?'] }))
+  const email = (ask: string) => () => claude(JSON.stringify({ subject: 'Sam suggested I reach out', paragraphs: ['Hi Dana', "I'm Davorin, founder of ARCH.", ask] }))
+  const go = async (ask: string) => {
+    const calls: { body: Record<string, unknown> }[] = []
+    const answers = [dm, email(ask)]
+    vi.stubGlobal('fetch', async (_u: string, init: RequestInit) => { calls.push({ body: JSON.parse(String(init.body)) }); return answers[calls.length - 1]() })
+    return { r: await redraftReferral(cached, 'Davorin', [], {}, null, async () => slots), calls }
+  }
+  it('keeps an email that names one offered time and records it', async () => {
+    const { r, calls } = await go('Would you be against a quick chat next Monday at 1:45pm CET?')
+    expect(r.email?.slot).toEqual(slots[0])
+    expect(r.email?.body).toContain('next Monday at 1:45pm CET')
+    expect(String((calls[1].body.messages as { content: string }[])[0].content)).toContain('"free_times":["next Monday at 1:45pm CET"]')
+  })
+  it('refuses a booking link or a time that was not offered', async () => {
+    expect((await go('Pick a time here: https://is.gd/arch_intro')).r.email).toBeNull()
+    expect((await go('Would you be against a quick chat next Tuesday at 3pm CET?')).r.email).toBeNull()
   })
 })

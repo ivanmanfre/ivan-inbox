@@ -158,7 +158,7 @@ function ReferralEmailDraft({ t, inbound, email, referredName, referredCompany, 
   }
   return <>
     <h4>Email to {first}</h4>
-    <p className="dm-meta">From {from}. {email.found_by === 'apollo' ? `${referredName ?? 'Their'} gave no address, so this is their work email from Apollo (verified). ` : ''}Their reply comes back to this conversation.</p>
+    <p className="dm-meta">From {from}. {email.found_by === 'apollo' ? `${referredName ?? 'Their'} gave no address, so this is their work email from Apollo (verified). ` : ''}Their reply comes back to this conversation.{email.slot ? ` It asks for ${email.slot.label}, which was free on the calendar when drafted.` : ''}</p>
     <label className="dm-email-field"><span className="dm-email-field-name">To</span><input aria-label="Referral email To" value={to} onChange={e => setTo(e.target.value)} disabled={busy} /></label>
     <label className="dm-email-field"><span className="dm-email-field-name">Cc</span><input aria-label="Referral email Cc" value={cc} onChange={e => setCc(e.target.value)} disabled={busy} /></label>
     <label className="dm-email-field"><span className="dm-email-field-name">Subject</span><input aria-label="Referral email subject" value={subject} onChange={e => setSubject(e.target.value)} disabled={busy} /></label>
