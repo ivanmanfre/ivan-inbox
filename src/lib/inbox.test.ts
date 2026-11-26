@@ -1330,6 +1330,7 @@ describe('held sends', () => {
     expect(heldReasonText('send_failed_verified: hard error: Request failed with status code 422')).toBe('LinkedIn refused the send (error 422). Check LinkedIn before sending again.')
     expect(heldReasonText('inmail_failed_422: {"type":"errors/limit_exceeded"}')).toBe('The InMail limit for this period was reached.')
     expect(heldReasonText('wins_operator_review_required')).toBe('Needs your review before it sends.')
+    expect(heldReasonText('post_approval_race:text_changed_after_approval')).toBe('Came back: the text was changed after it was approved. Read the new text, then approve again.')
   })
   // Send audit 2: no raw code reaches Ivan under a held bubble.
   it('gives every live held code plain words, and humanises an unknown one', () => {

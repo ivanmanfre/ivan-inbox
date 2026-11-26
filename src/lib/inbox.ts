@@ -471,6 +471,7 @@ export function heldReasonText(reason: string | null | undefined): string {
   if (r === 'lint_email_cc_invalid') return 'The CC addresses need checking.'
   if (r === 'lint_scan_quality_hold') return 'The scan review found no supported recommendation.'
   if (r.startsWith(LINT_HOLD_PREFIX)) return 'The send check flagged a line.'
+  if (r === 'post_approval_race:text_changed_after_approval') return 'Came back: the text was changed after it was approved. Read the new text, then approve again.'
   if (r.startsWith(RACE_HOLD_PREFIX)) return 'The thread changed while it was queued.'
   // Send audit 2: codes that reached Ivan raw under a held bubble.
   if (r === 'wins_operator_review_required') return 'Needs your review before it sends.'
@@ -516,6 +517,8 @@ export function holdReason(m: InboxMessage): string | null {
   if (!isRecoverableHold(r)) return null
   if (r === 'lint_pdf_file_unavailable') return 'The attached PDF could not be read. Replace it before approving again.'
   if (r === 'lint_pdf_route_changed') return 'The LinkedIn conversation changed. Check the thread before approving the PDF again.'
+  // APPROVAL_TEXT_GUARD_V1 (DB trigger, 2026-11-26): the text was rewritten after approval, so the old approval was voided.
+  if (r === 'post_approval_race:text_changed_after_approval') return 'Came back: the text was changed after it was approved. Read the new text, then approve again.'
   if (r === 'post_approval_race:scheduled_pdf_requires_review') return 'PDFs need to be sent from the draft. Review the message and attachment before approving.'
   // The sender also writes unseen_outbound / turn_outbound: the side is the suffix.
   if (r && isRaceHold(r)) return r.endsWith('outbound')
