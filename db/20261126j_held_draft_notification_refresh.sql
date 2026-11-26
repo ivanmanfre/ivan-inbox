@@ -21,9 +21,11 @@ begin
        and substr(x.body, strpos(x.body, E'\n\n') + 2, length(old.message_text)) = old.message_text
        and (length(x.body) = strpos(x.body, E'\n\n') + 1 + length(old.message_text)
             or substr(x.body, strpos(x.body, E'\n\n') + 2 + length(old.message_text), 7) = E'\n\nWhy: ')
-       -- Sol r5: never when another unsent draft of theirs starts with the same text (its notice could look identical)
+       -- Sol r5+r6: never when another outbound message of theirs (unsent, or sent but created near this notice) starts
+       -- with the same text: its notice could look identical
        and not exists (select 1 from outreach_messages o where o.prospect_id = new.prospect_id and o.id <> new.id
-                         and o.direction = 'outbound' and o.sent_at is null and strpos(o.message_text, old.message_text) = 1);
+                         and o.direction = 'outbound' and strpos(o.message_text, old.message_text) = 1
+                         and (o.sent_at is null or o.created_at between x.created_at - interval '15 minutes' and x.created_at + interval '2 minutes'));
     if v_n = 1 then
       update inbox_notifications n
          set body = left(substr(n.body, 1, strpos(n.body, E'\n\n') + 1) || coalesce(new.message_text, '') || substr(n.body, strpos(n.body, E'\n\n') + 2 + length(old.message_text)), 4000)
