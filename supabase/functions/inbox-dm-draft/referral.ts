@@ -47,14 +47,22 @@ export type ReferralInmail = { subject: string; body: string; slot?: { start: st
 /** An InMail goes when the seat has Sales Navigator credits or the person's profile is open (free, no cap). */
 export type InmailRoute = { channel: 'inmail' | 'connection_note'; credits: number | null; open_profile: boolean | null; why: string; checked_at: string }
 /** The reviewed person's first name still appears on the profile the URL shows now. */
-/** Sol r7: the profile shows the person the handoff names. Their first name is among LinkedIn's given names and, for a
- * full name, their surname is among the family names. The two fields are compared apart, so a profile with the given
- * name "Tomas Weller" and the family name "Rivera" is not Tomas Weller. */
+// Sol r8: only these are dropped before the names are compared (a title before the given name, a suffix or credential
+// after the family name). Short surnames such as Ma or Ba are real names, so they are not on the list.
+const NAME_TITLES = new Set(['dr', 'mr', 'mrs', 'ms', 'prof'])
+const NAME_SUFFIXES = new Set(['jr', 'sr', 'ii', 'iii', 'iv', 'mba', 'phd', 'md', 'cpa', 'cfa', 'pmp', 'esq', 'msc'])
+
+/** Sol r7/r8: the profile shows the person the handoff names. A full name must equal LinkedIn's given names followed
+ * by its family names, word for word, once titles and suffixes are dropped. So "Tomas Weller" + "Rivera", "Tomas
+ * Lopez Rivera" for Tomas Garcia Rivera, and an extra middle name all fail. A first name alone must be the first
+ * given name. */
 export function profileShowsPerson(named: string | null | undefined, p: { first_name: string; last_name: string }): boolean {
   const tokens = (x: string) => x.toLowerCase().normalize('NFKD').replace(/\p{M}/gu, '').split(/[^\p{L}\p{N}]+/u).filter(Boolean)
-  const want = tokens(named ?? ''), given = tokens(p.first_name), family = tokens(p.last_name)
-  if (!want.length) return false
-  return given.includes(want[0]) && (want.length < 2 || family.includes(want.at(-1)!))
+  const want = tokens(named ?? ''), given = tokens(p.first_name).filter(t => !NAME_TITLES.has(t)), family = tokens(p.last_name)
+  while (family.length && NAME_SUFFIXES.has(family.at(-1)!)) family.pop()
+  if (!want.length || !given.length) return false
+  if (want.length === 1) return given[0] === want[0]
+  return want.join(' ') === [...given, ...family].join(' ')
 }
 
 export function sameFirstName(reviewed: string | null | undefined, shown: string): boolean {

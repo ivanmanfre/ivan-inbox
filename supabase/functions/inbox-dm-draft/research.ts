@@ -69,7 +69,7 @@ ${input.text}
     if (p) {
       suppliedRead = p
       if (!profileShowsPerson(name, p)) suppliedConflict = p.name
-      else if (/^ACoAA/.test(p.provider_id) && flat(p.name) === flat(name)) linkedIdentity.member_id = p.provider_id
+      else if (/^ACoAA/.test(p.provider_id)) linkedIdentity.member_id = p.provider_id
     }
   }
   // Acknowledging a named handoff needs no capability claim or verified destination profile.
