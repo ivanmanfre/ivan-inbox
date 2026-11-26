@@ -66,6 +66,12 @@ export function Chats({ onPicked, list }: { onPicked: () => void; list: ReturnTy
           <span><b>Content desk</b><small>Your week, drafts, calls and ideas</small></span>
         </a>
       )}
+      {!needle && (
+        <a className="dk-pin" href={dHash('claude', 'cloud')} data-verb="open-cloud">
+          <span className="dk-pin-m" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M4.5 12.5h7a3 3 0 0 0 .4-5.97A4 4 0 0 0 4.2 7.6 2.5 2.5 0 0 0 4.5 12.5z" /></svg></span>
+          <span><b>Cloud jobs</b><small>Send a job to T3 on Ivan Cloud</small></span>
+        </a>
+      )}
       {bot && !needle && (
         <div className="dcl-bot">
           <button type="button" className="dcl-bot-m" onClick={() => pick(() => chat.openBot())}>

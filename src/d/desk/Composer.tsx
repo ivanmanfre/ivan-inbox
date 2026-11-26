@@ -8,7 +8,7 @@ import { CIcon } from '../claude/icons'
 import { uploadDeskPhoto } from './api'
 import type { DeskAttachment } from './model'
 
-export function DeskComposer({ busy, onSend, prefill, suggest, autoFocus, onUploading, streaming, stopping, onStop }: {
+export function DeskComposer({ busy, onSend, prefill, suggest, autoFocus, onUploading, streaming, stopping, onStop, noPhoto, placeholder, label }: {
   busy: boolean
   /** An answer is being written: the send key becomes Stop (what is shown stays; nothing is changed). */
   streaming?: boolean
@@ -23,6 +23,10 @@ export function DeskComposer({ busy, onSend, prefill, suggest, autoFocus, onUplo
   onSend: (text: string, opts?: { attachments?: DeskAttachment[]; voice?: boolean }) => void
   /** "Edit and send": this text goes into the field (each new n once); Send stays Ivan's own tap. */
   prefill?: { text: string; n: number } | null
+  /** Text and voice only (the cloud jobs page: a job carries no photo). */
+  noPhoto?: boolean
+  placeholder?: string
+  label?: string
 }) {
   const [text, setText] = useState('')
   // Picked photos stay on the device (a local preview) until Send; nothing is uploaded before that.
@@ -146,13 +150,15 @@ export function DeskComposer({ busy, onSend, prefill, suggest, autoFocus, onUplo
         )}
         <textarea
           ref={field} rows={1} value={text} onChange={e => { const v = e.target.value; edit(() => v) }} onKeyDown={onKey}
-          placeholder="Ask about your posts" aria-label="Message the desk" enterKeyHint="send"
+          placeholder={placeholder ?? 'Ask about your posts'} aria-label={label ?? 'Message the desk'} enterKeyHint="send"
         />
         <div className="dk-comp-row">
-          <button type="button" className="dk-key" aria-label="Add a photo" disabled={uploading} onClick={() => file.current?.click()}>
-            {uploading ? <span className="dk-spin" aria-hidden="true" /> : <CIcon name="clip" />}
-          </button>
-          <input ref={file} type="file" accept="image/*" hidden onChange={e => pick(e.target.files?.[0])} data-desk-photo />
+          {!noPhoto && <>
+            <button type="button" className="dk-key" aria-label="Add a photo" disabled={uploading} onClick={() => file.current?.click()}>
+              {uploading ? <span className="dk-spin" aria-hidden="true" /> : <CIcon name="clip" />}
+            </button>
+            <input ref={file} type="file" accept="image/*" hidden onChange={e => pick(e.target.files?.[0])} data-desk-photo />
+          </>}
           {stt.supported && (
             <button type="button" className={`dk-key${recording ? ' dk-rec' : ''}`} aria-label={recording ? 'Stop and write it down' : 'Talk'}
               disabled={stt.state === 'transcribing'} onClick={stt.toggle}>
