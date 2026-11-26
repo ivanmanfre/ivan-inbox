@@ -1,6 +1,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { draftBreaksRules, emailEnvelope, INVITE_NOTE_LIMIT, laterChecked, laterInbound, openReferral, referralTarget, storyAfter, storyKey, type ReferralDraft } from './referral.ts'
 import { judgeLater, redraftReferral, researchReferral, REFERRAL_REVISION } from './research.ts'
+import { offerSlots } from './slots.ts'
 import { apifyProfileDetails } from './apify.ts'
 import { readMentions } from './mention.ts'
 import { generateText } from './llm.ts'
@@ -208,6 +209,8 @@ Deno.serve(async req => {
       const pick = referralTarget(conversation, cached, dismissedIds)
       // Seats that send email (davorin@, itsmattan@, im@) also get the referred person's verified work email.
       const emailLane = ['ivan', 'arch', 'risedtc'].includes(client), lookupDb = emailLane ? sb : null
+      // The email asks for one free time on the owner's live calendar; read only when an email is drafted.
+      const slots = emailLane ? () => offerSlots(sb, client) : null
       // The email recipients the hold read must cover: a staged referral email as the operator left it, else the drafted one.
       const { data: emailRows, error: emailError } = await sb.from('outreach_messages').select('recipient_email,draft_evidence,sent_at,send_blocked_at')
         .eq('prospect_id', id).eq('ai_model', 'inbox_referral_email_v1')
@@ -225,20 +228,22 @@ Deno.serve(async req => {
       // Current = this revision AND drafted from the conversation as it stands (a new reply or discard redrafts it).
       const current = (r: ReferralDraft | undefined, msgId: string) => r?.input_message_id === msgId && r.revision === REFERRAL_REVISION && offerFresh(r.offer_verified_at)
         && (r.status !== 'verified' || r.story_key === keyFor(msgId))
+        // The time the email offers must still be a day out; an older one is redrafted with a fresh calendar read.
+        && !(r.email?.slot && Date.parse(r.email.slot.start) < Date.now() + 24 * 3600000)
       const anchor = openReferral(cached) ? inboundRows.find(m => m.id === cached.input_message_id) : undefined
       if (!retryReferral && current(cached, target.id)) { referral = cached!; changed = false }
-      else if (cached?.input_message_id === target.id && openReferral(cached)) referral = { ...await redraftReferral(cached, canon.author, prompts, story(target.id), lookupDb), story_key: keyFor(target.id) }
+      else if (cached?.input_message_id === target.id && openReferral(cached)) referral = { ...await redraftReferral(cached, canon.author, prompts, story(target.id), lookupDb, slots), story_key: keyFor(target.id) }
       else {
         // No offer line in a referral first touch (Ivan 2026-11-04: the Preply list stacked on a pitch read
         // as a sell to someone who never heard of us). A short intro of the company and a soft ask close it (2026-11-26).
         referral = { ...await researchReferral(sb, { id: target.id, text: target.message_text, company: rows[0].prospect_company, referrer: rows[0].prospect_name, referrerUrl: prospect.linkedin_url }, canon.author, prompts, story(target.id), await readMentions(sb, target.id),
-          { emailLane, lookup: cached?.input_message_id === target.id ? cached.email_lookup ?? null : null }), story_key: keyFor(target.id) }
+          { emailLane, lookup: cached?.input_message_id === target.id ? cached.email_lookup ?? null : null, slots: slots ?? undefined }), story_key: keyFor(target.id) }
         // A newer reply that only looks like a handoff ("you can reach out to someone else there") names nobody
         // verifiable: the open referral stands and its card stays.
         if (referral.status !== 'verified' && anchor && anchor.id !== target.id) {
           const passedOver = [...(cached!.passed_over ?? []), target.id].slice(-20)
           target = anchor
-          referral = { ...(current(cached, anchor.id) ? cached! : { ...await redraftReferral(cached!, canon.author, prompts, story(anchor.id), lookupDb), story_key: keyFor(anchor.id) }), passed_over: passedOver }
+          referral = { ...(current(cached, anchor.id) ? cached! : { ...await redraftReferral(cached!, canon.author, prompts, story(anchor.id), lookupDb, slots), story_key: keyFor(anchor.id) }), passed_over: passedOver }
         }
       }
       // What the referrer wrote after the handoff: thanks or an emoji leave it standing; "hold off" pauses it.
