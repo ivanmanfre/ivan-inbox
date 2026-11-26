@@ -180,6 +180,11 @@ Deno.serve(async req => {
         try { profile = slug ? await apifyProfileDetails(sb, slug) : null }
         catch { return respond({ error: 'The LinkedIn profile lookup is unavailable. Try again.' }, 503) }
         if (!profile) return respond({ error: 'The LinkedIn profile could not be read. Try again.' }, 409)
+        // The profile behind the reviewed URL must still be the person the draft names (Sol r1: a slug that now resolves to
+        // someone else would otherwise get the reviewed copy).
+        const tokens = (x: string) => x.toLowerCase().normalize('NFKD').replace(/\p{M}/gu, '').split(/[^\p{L}\p{N}]+/u).filter(Boolean)
+        const reviewedFirst = tokens(cached.name ?? '')[0]
+        if (reviewedFirst && !tokens(profile.name).includes(reviewedFirst)) return respond({ error: `That LinkedIn profile now shows ${profile.name}. Check the person before creating the lead.` }, 409)
         // The lookup takes seconds: a message sent, a reply or a discard meanwhile means the note is no longer the one reviewed.
         const readAt = new Date().toISOString()
         const { data: nowRows, error: nowError } = await sb.from('inbox_messages_v').select('id,direction,message_text,sent_at,created_at,send_blocked_reason').eq('prospect_id', id).order('created_at').order('id')
@@ -197,7 +202,12 @@ Deno.serve(async req => {
         const route = leadInmail ? inmailRoute(await inmailCredits(sb, client), profile.open_profile, canon.author) : null
         const sender = route?.channel === 'inmail' ? await seatAccount(sb, client) : null
         const asInmail = Boolean(leadInmail && route?.channel === 'inmail' && sender && /^ACoAA/.test(profile.provider_id))
-        const fallback = leadInmail && !asInmail ? (route?.channel === 'inmail' ? 'The InMail sender seat could not be read.' : route?.why ?? null) : null
+        // The card showed the InMail: when it cannot go now, nothing is staged; the card switches to the invite note so the
+        // operator reviews the copy that would go (Sol r1: never stage a note the operator did not look at).
+        if (leadInmail && !asInmail) {
+          const why = route?.channel !== 'inmail' ? route!.why : !sender ? 'The InMail sender seat could not be read.' : 'Their LinkedIn member id cannot take an InMail.'
+          return respond({ error: `No InMail can go now: ${why} Review the invite note and create the lead again.`, inmail_unavailable: why }, 409)
+        }
         const byHand = `Check whether Davorin already messaged ${first} by hand on LinkedIn: messages sent outside the system are not in this inbox.`
         const { data: made, error: makeError } = await sb.rpc('inbox_referral_create_lead', {
           p_referrer: id, p_input_message: actionMessage, p_revision: REFERRAL_REVISION, p_expected_url: leadUrl, p_later_ids: later.map(m => m.id), p_read_at: readAt, p_discarded_ids: nowDiscarded.map(m => m.id),
@@ -215,12 +225,11 @@ Deno.serve(async req => {
               inmail_provider_id: profile.provider_id, sender_account_id: sender, inmail_route: route, no_sequence_enrollment: true,
               review_note: `${byHand} This goes out as a LinkedIn InMail (${route!.open_profile ? 'free: their profile is open' : 'one Sales Navigator credit'}). If Davorin already has a conversation with ${first}, the sender holds it for review; if he is connected to ${first}, discard it and message ${first} directly.` }
             : { referred_name: cached.name, referrer_name: rows[0].prospect_name, linkedin_url: cached.linkedin_url, drafted_text: cached.draft, sent_as: 'connection_note',
-              ...(fallback ? { inmail_fallback: fallback } : {}),
               review_note: `${byHand} This goes out as a connection invite with the note above; if Davorin is already connected to ${first}, discard it and message ${first} directly.` },
         })
         if (makeError) throw makeError
         return made?.status === 'created' || made?.status === 'linked_existing' || made?.status === 'exists'
-          ? respond({ lead: { ...made, ...(made.status === 'created' ? { channel: asInmail ? 'inmail' : 'connection_note' } : {}), ...(fallback && made.status === 'created' ? { inmail_fallback: fallback } : {}) } })
+          ? respond({ lead: { ...made, ...(made.status === 'created' ? { channel: asInmail ? 'inmail' : 'connection_note' } : {}) } })
           : respond({ error: made?.reason ?? 'The lead could not be created.' }, 409)
       }
       // A staged invite waits for Send: a reply that arrives meanwhile is read too, and a hold takes the invite

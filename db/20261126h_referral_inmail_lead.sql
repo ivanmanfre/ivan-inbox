@@ -63,8 +63,10 @@ begin
   -- 2026-11-26 (Ivan): the first touch goes as an InMail when one can go. The row carries what the Send Messages
   -- referral InMail lane checks: "Subject: ...", a blank line, the body; the ARCH seat; the one recipient.
   if p_channel = 'inmail' and (
-       btrim(p_text) !~ '^Subject: [^\r\n]{1,60}\n\n\S'
-       or length(regexp_replace(btrim(p_text), '^Subject: [^\r\n]*\n\n', '')) > 1900
+       p_text is null
+       or btrim(p_text) !~ '^Subject:[ \t]*[^[:space:]][^\r\n]{0,59}\n\n[ \t]*[^[:space:]]'
+       or length(btrim(substring(btrim(p_text) from '^Subject:([^\r\n]*)'))) > 60
+       or length(regexp_replace(btrim(p_text), '^Subject:[^\r\n]*\n\n', '')) > 1900
        or p_evidence ->> 'delivery_lane' is distinct from 'arch_referral_inmail'
        or p_evidence ->> 'inmail_api' is distinct from 'sales_navigator'
        or member is null or member !~ '^ACoAA'

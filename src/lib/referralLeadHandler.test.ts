@@ -218,13 +218,21 @@ describe('create referred lead', () => {
       p_evidence: { sent_as: 'inmail', delivery_lane: 'arch_referral_inmail', inmail_api: 'sales_navigator', inmail_provider_id: 'ACoAA-test-tomas', sender_account_id: 'config-value', fallback_note: verified.draft, no_sequence_enrollment: true } })
     expect((made.args.p_evidence as { review_note: string }).review_note).toContain('LinkedIn InMail (one Sales Navigator credit)')
   })
-  it('no credits and a closed profile at Create: the invite note goes instead, and the answer says why', async () => {
+  it('no credits and a closed profile at Create: nothing is staged, and the answer says why so the card shows the note', async () => {
     const closed = [{ ...profile[0], openProfile: false }]
-    const { result, calls } = await run([pitch, handoff, ack, youToo], { body: inmailBodyReq(), enrichment: { inbox_referral: inmailReady }, apify: closed, rpc: created, credits: 0 })
-    expect(result.lead).toMatchObject({ status: 'created', channel: 'connection_note' })
-    expect(result.lead.inmail_fallback).toContain('no InMail credits')
-    const made = calls.find(c => c.fn === 'inbox_referral_create_lead')!
-    expect(made.args).toMatchObject({ p_channel: 'connection_note', p_text: verified.draft, p_evidence: { sent_as: 'connection_note' } })
+    const { status, result, calls } = await run([pitch, handoff, ack, youToo], { body: inmailBodyReq(), enrichment: { inbox_referral: inmailReady }, apify: closed, rpc: created, credits: 0 })
+    expect(status).toBe(409)
+    expect(result.inmail_unavailable).toContain('no InMail credits')
+    expect(calls.find(c => c.fn === 'inbox_referral_create_lead')).toBeUndefined()
+  })
+  it('a reviewed URL that now shows another person is refused for both channels', async () => {
+    const other = [{ ...profile[0], firstName: 'Marta', lastName: 'Example' }]
+    for (const req of [body(), inmailBodyReq()]) {
+      const got = await run([pitch, handoff, ack, youToo], { body: req, enrichment: { inbox_referral: inmailReady }, apify: other, rpc: created })
+      expect(got.status).toBe(409)
+      expect(got.result.error).toContain('now shows Marta Example')
+      expect(got.calls.find(c => c.fn === 'inbox_referral_create_lead')).toBeUndefined()
+    }
   })
   it('an open profile goes free at Create even with no credits', async () => {
     const open = [{ ...profile[0], openProfile: true }]

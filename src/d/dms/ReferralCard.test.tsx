@@ -197,10 +197,17 @@ describe('verified referral stays open and becomes a lead', () => {
     cleanup(); vi.clearAllMocks()
     readLead.mockResolvedValue({ data: { referral: inmailStored }, error: null })
     fetch.mockResolvedValueOnce({ ok: true, json: async () => ({ referral: inmailStored }) })
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ lead: { status: 'created', channel: 'connection_note', inmail_fallback: 'Their profile is not open.', lead_prospect_id: '00000000-0000-4000-8000-0000000000aa' } }) })
+      .mockResolvedValueOnce({ ok: false, json: async () => ({ error: 'No InMail can go now: Their profile is not open.', inmail_unavailable: 'Their profile is not open.' }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ lead: { status: 'created', channel: 'connection_note', lead_prospect_id: '00000000-0000-4000-8000-0000000000aa' } }) })
     render(<ReferralCard t={rows()} />)
     fireEvent.click(await screen.findByRole('button', { name: 'Create referred lead' }))
-    expect(await screen.findByText(/The invite note is held in their conversation until Send. No InMail could go: Their profile is not open./)).toBeInTheDocument()
+    // Nothing was staged: the card now shows the invite note and why, for review.
+    expect(await screen.findByRole('textbox', { name: 'DM draft for Tomas Weller' })).toHaveValue(stored.draft)
+    expect(screen.getByText(/because no InMail can go: Their profile is not open/)).toBeInTheDocument()
+    expect(screen.queryByRole('textbox', { name: 'InMail draft for Tomas Weller' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Create referred lead' }))
+    expect(await screen.findByText(/The invite note is held in their conversation until Send/)).toBeInTheDocument()
+    expect(JSON.parse(fetch.mock.calls[2][1].body)).not.toHaveProperty('channel')
   })
   it('a "hold off" shows the card paused with the quote and no Create', async () => {
     const paused = { ...stored, later: { ...stored.later, verdict: 'hold', quote: 'please hold off until January' } }
