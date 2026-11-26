@@ -11,6 +11,7 @@ begin
        set body = left(replace(n.body, old.message_text, coalesce(new.message_text, '')), 4000)
      where n.family = 'reply_draft_pending'
        and n.media->>'prospect_id' = new.prospect_id::text
+       and n.dismissed_at is null
        and n.created_at between new.created_at - interval '2 minutes' and new.created_at + interval '15 minutes'
        and strpos(n.body, old.message_text) > 0;
   end if;

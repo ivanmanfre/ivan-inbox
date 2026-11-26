@@ -60,16 +60,28 @@ Deno.serve(async req => {
     // ledger plus inbox bookings confirmed but not yet attributed. Any read error throws (the handler marks it degraded).
     async booked(client, from, to) {
       const since = new Date(Date.parse(from) - 3600000).toISOString()
-      const rows: { start: string; prospect_id: string | null; name: string | null }[] = []
-      for (let page = 0; page < 5; page++) {
-        const { data, error } = await sb.from('booking_attributions').select('meeting_id,meeting_start,prospect_id,booker_name').eq('client_id', client).gte('meeting_start', since).lt('meeting_start', to).or('meeting_outcome.is.null,meeting_outcome.neq.CANCELED').order('meeting_start').order('meeting_id').range(page * 200, page * 200 + 199)
-        if (error) throw Error('booked')
-        for (const r of data ?? []) rows.push({ start: r.meeting_start, prospect_id: r.prospect_id, name: r.booker_name })
-        if ((data ?? []).length < 200) break
+      const rows: { start: string; prospect_id: string | null; name: string | null }[] = [], attributed = new Set<string>()
+      const pageAll = async <T,>(q: (lo: number, hi: number) => PromiseLike<{ data: T[] | null; error: unknown }>) => {
+        const out: T[] = []
+        for (let page = 0; ; page++) {
+          if (page >= 10) throw Error('booked')   // over 2,000 rows in a month: say the labels are incomplete
+          const { data, error } = await q(page * 200, page * 200 + 199)
+          if (error) throw Error('booked')
+          out.push(...(data ?? []))
+          if ((data ?? []).length < 200) return out
+        }
       }
-      const { data: inbox, error: ie } = await sb.from('inbox_calendar_bookings').select('start_at,prospect_id').eq('client_id', client).eq('status', 'confirmed').gte('start_at', since).lt('start_at', to)
-      if (ie) throw Error('booked')
-      for (const r of inbox ?? []) if (!rows.some(x => x.prospect_id === r.prospect_id && Date.parse(x.start) === Date.parse(r.start_at))) rows.push({ start: r.start_at, prospect_id: r.prospect_id, name: null })
+      // every attribution (canceled too): a canceled meeting is never shown again from the inbox ledger
+      const att = await pageAll<{ meeting_id: string | null; meeting_start: string; prospect_id: string | null; booker_name: string | null; meeting_outcome: string | null }>((lo, hi) => sb.from('booking_attributions').select('meeting_id,meeting_start,prospect_id,booker_name,meeting_outcome').eq('client_id', client).gte('meeting_start', since).lt('meeting_start', to).order('meeting_start').order('meeting_id').range(lo, hi))
+      for (const r of att) {
+        if (r.meeting_id) attributed.add(String(r.meeting_id))
+        if (r.meeting_outcome !== 'CANCELED') rows.push({ start: r.meeting_start, prospect_id: r.prospect_id, name: r.booker_name })
+      }
+      const inbox = await pageAll<{ start_at: string; prospect_id: string | null; meeting_id: string | null; calendar_event_id: string | null }>((lo, hi) => sb.from('inbox_calendar_bookings').select('start_at,prospect_id,meeting_id,calendar_event_id').eq('client_id', client).eq('status', 'confirmed').gte('start_at', since).lt('start_at', to).order('start_at').order('request_id').range(lo, hi))
+      for (const r of inbox) {
+        if ((r.meeting_id && attributed.has(String(r.meeting_id))) || att.some(x => x.prospect_id === r.prospect_id && Date.parse(x.meeting_start) === Date.parse(r.start_at))) continue   // attributed (or canceled) already
+        rows.push({ start: r.start_at, prospect_id: r.prospect_id, name: null })
+      }
       const ids = [...new Set(rows.map(r => r.prospect_id).filter((x): x is string => !!x))], byId = new Map<string, { name: string | null; company: string | null }>()
       for (let i = 0; i < ids.length; i += 50) {
         const { data: ps, error } = await sb.from('outreach_prospects').select('id,name,company').in('id', ids.slice(i, i + 50))
@@ -109,18 +121,20 @@ Deno.serve(async req => {
     claim: store.claim,
     async current(ctx, slot, email) {
       const draftId = typeof ctx.draft_message_id === 'string' ? ctx.draft_message_id : null, sourceId = typeof ctx.source_message_id === 'string' ? ctx.source_message_id : null
-      if (draftId) {
+      if (!draftId || !sourceId) return { ok: false, reason: 'This card does not name the reply and message it goes with. Book by hand. Nothing was booked.' }
+      {
         const { data: d, error } = await sb.from('outreach_messages').select('prospect_id,sent_at,send_blocked_reason,draft_evidence').eq('id', draftId).maybeSingle()
         if (error) throw Error('The staged reply could not be checked. Nothing was booked.')
         const cs = (d?.draft_evidence as { calendar_slots?: { hold_reason?: string; invite_email?: string; accepted_slot?: { start?: string; end?: string } } } | null)?.calendar_slots
         if (!d || d.prospect_id !== ctx.prospect_id || d.sent_at || !['', 'lint_calendar_booking_pending', 'awaiting_client_review'].includes(d.send_blocked_reason ?? '')) return { ok: false, reason: 'The reply this card goes with was sent, discarded or blocked. Nothing was booked.' }
         if (cs?.hold_reason !== 'calendar_booking_pending' || Date.parse(String(cs.accepted_slot?.start)) !== Date.parse(slot.start) || Date.parse(String(cs.accepted_slot?.end)) !== Date.parse(slot.end) || String(cs.invite_email ?? '').toLowerCase() !== email) return { ok: false, reason: 'The staged reply no longer names this time and email. Nothing was booked.' }
       }
-      if (sourceId) {
+      {
         const { data: src, error } = await sb.from('outreach_messages').select('prospect_id,sent_at,created_at').eq('id', sourceId).maybeSingle()
-        if (error || !src) throw Error('The message this card answers could not be checked. Nothing was booked.')
-        const since = src.sent_at ?? src.created_at
-        const { data: newer, error: ne } = await sb.from('outreach_messages').select('id').eq('prospect_id', ctx.prospect_id as string).eq('direction', 'inbound').or('is_reaction.is.null,is_reaction.eq.false').gt('sent_at', since).neq('id', sourceId).limit(1)
+        if (error || !src || src.prospect_id !== ctx.prospect_id) throw Error('The message this card answers could not be checked. Nothing was booked.')
+        // the drafter's own clock: sent_at, else created_at (an inbound row with no sent_at still counts)
+        const since = new Date(src.sent_at ?? src.created_at).toISOString()
+        const { data: newer, error: ne } = await sb.from('outreach_messages').select('id').eq('prospect_id', ctx.prospect_id as string).eq('direction', 'inbound').or(`sent_at.gt.${since},and(sent_at.is.null,created_at.gt.${since})`).or('is_reaction.is.null,is_reaction.eq.false').neq('id', sourceId).limit(1)
         if (ne) throw Error('New messages could not be checked. Nothing was booked.')
         if (newer?.length) return { ok: false, reason: 'They wrote again after this card was made. Read the thread before booking. Nothing was booked.' }
       }

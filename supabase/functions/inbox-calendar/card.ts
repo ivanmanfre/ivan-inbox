@@ -25,7 +25,7 @@ export type CardStore = {
   commit(requestId: string, cardId: string, event: string | null, meeting: string | null, booked: string | null): Promise<{ recorded?: boolean; released?: boolean; status?: string }>
   /** Is the card still the live next step? Its staged confirm unsent, not discarded, still held for this time and email,
    * and no newer message from them since the turn the card answers. */
-  current?(ctx: Record<string, unknown>, slot: Slot, email: string): Promise<{ ok: boolean; reason?: string }>
+  current(ctx: Record<string, unknown>, slot: Slot, email: string): Promise<{ ok: boolean; reason?: string }>
 }
 // A 4xx answer to the booking POST means nothing was created: the request may be retried. Anything else is ambiguous.
 export class Rejected extends Error {}
@@ -118,11 +118,11 @@ export async function handleBookCard(input: Record<string, unknown>, store: Card
     return { status: 'blocked', existing: existing.status, message: existing.status === 'confirmed' || existing.status === 'booked' ? 'A call is already booked for this person. Nothing new was booked.' : 'A booking for this person is in progress or unconfirmed. Check the owner calendar. Nothing new was booked.' }
   }
   if (p.call_booked_at) return { status: 'blocked', existing: 'booked', message: 'A call is already booked for this person. Nothing new was booked.' }
-  // Sol r1 (2026-11-26): a card whose reply was discarded, or whose prospect has written again (another time), never books.
-  if (store.current) {
-    const cur = await store.current(ctx, slot, to)
-    if (!cur.ok) return { status: 'blocked', existing: 'stale', message: cur.reason ?? 'This card is out of date. Nothing was booked.' }
-  }
+  // Sol r1+r2 (2026-11-26): a card whose reply was discarded, or whose prospect has written again (another time), never
+  // books. Checked before the claim and again right before the booking POST (they can write while the calendar is read).
+  const stale = async () => { const cur = await store.current(ctx, slot, to); return cur.ok ? null : { status: 'blocked', existing: 'stale', message: cur.reason ?? 'This card is out of date. Nothing was booked.' } }
+  const before = await stale()
+  if (before) return before
   if (p.closed) throw Error('This conversation is paused or closed.')
   if (Date.parse(slot.start) <= now + 3600000) throw Error('That time is less than an hour away. Book by hand if it still works.')
   if (p.name.trim().split(/\s+/).length < 2) throw Error('A full name is needed for the invite. Book by hand.')
@@ -135,6 +135,9 @@ export async function handleBookCard(input: Record<string, unknown>, store: Card
     const missing = open.fields.filter(f => !(f === 'website' && p.company_domain))
     if (missing.length) throw Error('The booking page needs ' + missing.join(', ') + '. Book by hand.')
   } catch (e) { await store.commit(key, card.id, null, null, null); throw e }
+  let late
+  try { late = await stale() } catch (e) { await store.commit(key, card.id, null, null, null); throw e }
+  if (late) { await store.commit(key, card.id, null, null, null); return late }
 
   let receipt
   try { receipt = await provider.bookSlot(o, secret, slot, { name: p.name, email: to, website: p.company_domain }, tz, typeId) }

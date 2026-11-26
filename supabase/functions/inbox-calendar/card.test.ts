@@ -9,7 +9,7 @@ const card = (ctx: Record<string, unknown> = {}) => ({ id: 'c0a8f7e2-1111-4222-8
 const make = (over: Partial<CardStore> = {}) => {
   const store = {
     card: vi.fn(async () => card()), prospect: vi.fn(async () => ({ id: 'b162a8cd-0399-4364-9058-5c5d03f255ed', name: 'Zech Strauser', client_id: 'risedtc', call_booked_at: null, closed: false, company_domain: 'urture.com' })),
-    existing: vi.fn(async () => null), secret: vi.fn(async () => 'secret'), claim: vi.fn(async () => true), commit: vi.fn(async () => ({ recorded: true, released: true })), ...over,
+    existing: vi.fn(async () => null), secret: vi.fn(async () => 'secret'), claim: vi.fn(async () => true), commit: vi.fn(async () => ({ recorded: true, released: true })), current: vi.fn(async () => ({ ok: true })), ...over,
   } as unknown as CardStore & Record<string, ReturnType<typeof vi.fn>>
   const provider = { slotOpen: vi.fn(async () => ({ open: true, fields: ['website'] })), bookSlot: vi.fn(async () => ({ start, end, calendar_event_id: '3guaghhi2156cr9a5t6r6t1rag' })),
     meetingRecord: vi.fn(async () => ({ meeting_id: '120362198909', booked_at: '2026-11-04T12:54:12.388Z' })) }
@@ -114,10 +114,18 @@ describe('providers', () => {
 describe('stale cards and the second availability page (2026-11-26)', () => {
   it('a card the store calls out of date books nothing and frees no claim', async () => {
     const current = vi.fn(async () => ({ ok: false, reason: 'They wrote again after this card was made. Read the thread before booking. Nothing was booked.' }))
-    const { store, provider } = make({ current } as Partial<CardStore>)
+    const synthetic = card({ booking: { provider: 'hubspot', start, end, label: 'this Thursday at 1pm ET', display_timezone: 'America/New_York', invite_email: 'person@example.test' } })
+    const { store, provider } = make({ current, card: vi.fn(async () => synthetic) } as Partial<CardStore>)
     const r = await handleBookCard(input, store, provider, now)
     expect(r).toMatchObject({ status: 'blocked', existing: 'stale' }); expect(store.claim).not.toHaveBeenCalled(); expect(provider.bookSlot).not.toHaveBeenCalled()
-    expect(current).toHaveBeenCalledWith(expect.objectContaining({ draft_message_id: 'd1' }), { start, end }, 'zech@urture.com')
+    expect(current).toHaveBeenCalledWith(expect.objectContaining({ draft_message_id: 'd1' }), { start, end }, 'person@example.test')
+  })
+  it('a card that goes stale while the calendar is read releases its claim and books nothing', async () => {
+    const current = vi.fn().mockResolvedValueOnce({ ok: true }).mockResolvedValueOnce({ ok: false, reason: 'They wrote again.' })
+    const { store, provider } = make({ current } as Partial<CardStore>)
+    const r = await handleBookCard(input, store, provider, now)
+    expect(r).toMatchObject({ status: 'blocked', existing: 'stale' }); expect(provider.slotOpen).toHaveBeenCalled(); expect(provider.bookSlot).not.toHaveBeenCalled()
+    expect(store.commit).toHaveBeenCalledWith(input.request_id, expect.any(String), null, null, null)
   })
   it('a current card still books', async () => {
     const { store, provider } = make({ current: vi.fn(async () => ({ ok: true })) } as Partial<CardStore>)
