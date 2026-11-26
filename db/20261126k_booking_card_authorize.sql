@@ -9,6 +9,8 @@ returns jsonb language plpgsql set search_path=public as $$
 declare b public.inbox_calendar_bookings; d public.ops_drafts; bk jsonb; m public.outreach_messages; src public.outreach_messages;
   v_draft uuid; v_source uuid; cs jsonb; v_now timestamptz;
 begin
+  -- Sol r9: take the table lock the final UPDATE needs before anything else, so no lock wait can fall after the clock read
+  lock table inbox_calendar_bookings in row exclusive mode;
   select * into b from inbox_calendar_bookings where request_id=p_request for update;
   if not found or b.status <> 'pending' or b.calendar_event_id is not null then return jsonb_build_object('ok',false,'reason','The booking claim is no longer pending. Nothing was booked.'); end if;
   -- Sol r6: the same 10 minute window the Remove guard honors; an older claim is never authorized
