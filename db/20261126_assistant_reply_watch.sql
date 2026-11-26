@@ -1,18 +1,19 @@
 -- Private reply supervision; the sender remains the only owner of outbound work.
 begin;
 create or replace function public.assistant_reply_queue_settings(p_at timestamptz default now())
-returns table(status text,cap int,pause_until timestamptz)
+returns table(status text,cap int,pause_until timestamptz,pause_from timestamptz)
 language sql stable security invoker set search_path=public,pg_temp as $$
 with cfg as (
   select (select value from public.integration_config where key='swishdm_outreach_enabled')='true'
      and (select value from public.integration_config where key='swishdm_dm_send_enabled')='true' as enabled,
     (select case when value ~ '^[0-9]{1,5}$' then value::int end from public.integration_config where key='swishdm_dm_daily_cap') as cap,
     (select case when nullif(value,'') is null then null when pg_input_is_valid(value,'timestamptz') then value::timestamptz
-       else 'infinity'::timestamptz end from public.integration_config where key='swishdm_dm_pause_until') as pause_until
+       else 'infinity'::timestamptz end from public.integration_config where key='swishdm_dm_pause_until') as pause_until,
+    (select updated_at from public.integration_config where key='swishdm_dm_pause_until') as pause_from
 )
 select case when enabled is null or cap is null or pause_until='infinity' then 'unavailable'
             when not enabled or cap=0 then 'disabled'
-            when pause_until>p_at then 'paused' else 'checked' end,cap,pause_until from cfg
+            when pause_until>p_at then 'paused' else 'checked' end,cap,pause_until,pause_from from cfg
 $$;
 revoke all on function public.assistant_reply_queue_settings(timestamptz) from public,anon,authenticated;
 grant execute on function public.assistant_reply_queue_settings(timestamptz) to service_role;
@@ -52,7 +53,7 @@ where a.at<=p_at-interval '48 hours' and not coalesce(a.is_reaction,false) and a
   and not exists (
     select from public.outreach_messages o
     cross join lateral (select array_remove(array[
-      o.replies_to_message_id::text, o.draft_evidence->>'replies_to_inbound', o.draft_evidence->>'inbound_id',
+      o.replies_to_message_id::text, o.draft_evidence->>'email_reply_to_message_id', o.draft_evidence->>'replies_to_inbound', o.draft_evidence->>'inbound_id',
       o.draft_evidence->>'target_inbound_id', o.draft_evidence->>'source_message_id',
       o.draft_evidence#>>'{instantly_reply,inbound_message_id}', o.draft_evidence#>>'{instantly_reply,reply_to_uuid}'
     ], null) refs, coalesce(o.draft_evidence#>>'{email,thread_id}',o.unipile_chat_id) as conversation) ref
@@ -72,7 +73,9 @@ where a.at<=p_at-interval '48 hours' and not coalesce(a.is_reaction,false) and a
           o.discard_mode in ('stop','answered_by_send') or o.snoozed_until>p_at or
           (o.send_blocked_at is null and o.send_blocked_reason is null) or
           o.send_blocked_reason in ('scheduled_in_inbox','owner_confirmation','reply_retry_pending','awaiting_client_review','discarded_in_inbox')
-          or o.send_blocked_reason like 'lint\_%'
+          or (o.approved_at is null and (starts_with(o.send_blocked_reason,'lint_') or
+             (starts_with(o.send_blocked_reason,'post_approval_race:') and
+               o.send_blocked_reason<>'post_approval_race:scheduled_thread_changed')))
         ))))
 union all
 select a.seat,a.prospect_id,a.name,a.id,'overdue_reaction_queue'::text,q.due_at
@@ -95,8 +98,10 @@ where a.seat='swishdm' and a.stage='swishdm_connected' and a.is_reaction and a.t
         and o.message_type is distinct from 'connection_note' and coalesce(o.channel,'linkedin')='linkedin'
         and o.sent_at>=a.at and o.unipile_chat_id is not distinct from a.unipile_chat_id)
   -- Sum overlapping Sun-Fri London windows, cutting off each day at the cap-th send.
-  and (select sum(greatest(interval '0 seconds',least(p_at,win.closes,coalesce(cap_at.sent_at,win.closes))
-                    - greatest(q.due_at,win.opens,coalesce(s.pause_until,win.opens))))
+  and (select sum(greatest(interval '0',hours.ends-hours.begins)
+                   - case when s.pause_until is null then interval '0' else
+                     greatest(interval '0',least(hours.ends,s.pause_until)
+                        - greatest(hours.begins,coalesce(s.pause_from,hours.begins))) end)
        from generate_series((q.due_at at time zone 'Europe/London')::date::timestamp,
                             (p_at at time zone 'Europe/London')::date::timestamp,interval '1 day') dates(d)
        cross join lateral (select (d+interval '9 hours') at time zone 'Europe/London' as opens,
@@ -106,6 +111,8 @@ where a.seat='swishdm' and a.stage='swishdm_connected' and a.is_reaction and a.t
          where c.client_id='swishdm' and m.direction='outbound' and coalesce(m.channel,'linkedin')='linkedin'
            and m.message_type in ('dm','manual_reply','reply') and m.sent_at>=(d at time zone 'Europe/London')
            and m.sent_at<=least(win.closes,p_at) order by m.sent_at offset greatest(0,s.cap-1) limit 1) cap_at on true
+       cross join lateral (select greatest(q.due_at,win.opens) as begins,
+                                 least(p_at,win.closes,coalesce(cap_at.sent_at,win.closes)) as ends) hours
        where extract(isodow from d)<>6)>=interval '4 hours'
 $$;
 revoke all on function public.assistant_reply_watch_cases(timestamptz) from public,anon,authenticated;
@@ -129,7 +136,7 @@ begin
   select value into mode from public.integration_config where key='assistant_reply_watch_mode';
   if mode is null or mode not in ('shadow','chat') then return jsonb_build_object('mode','off'); end if;
   perform pg_advisory_xact_lock(hashtextextended('assistant_reply_watch:'||p_operator::text,0));
-  select id into strict thread from public.inbox_threads where user_id=p_operator and kind='bot';
+  select id into strict thread from public.inbox_threads where user_id=p_operator and kind='bot' for no key update;
   stamp:=clock_timestamp();
   turn_id:=gen_random_uuid();
   insert into public.assistant_reply_watch(operator_id,inbound_id,kind,checked_at)
