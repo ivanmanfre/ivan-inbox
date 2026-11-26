@@ -7,13 +7,11 @@
 create or replace function public.inbox_booking_card_authorize(p_request uuid, p_card uuid)
 returns jsonb language plpgsql set search_path=public as $$
 declare b public.inbox_calendar_bookings; d public.ops_drafts; bk jsonb; m public.outreach_messages; src public.outreach_messages;
-  v_draft uuid; v_source uuid; cs jsonb;
+  v_draft uuid; v_source uuid; cs jsonb; v_now timestamptz;
 begin
   select * into b from inbox_calendar_bookings where request_id=p_request for update;
   if not found or b.status <> 'pending' or b.calendar_event_id is not null then return jsonb_build_object('ok',false,'reason','The booking claim is no longer pending. Nothing was booked.'); end if;
   -- Sol r6: the same 10 minute window the Remove guard honors; an older claim is never authorized
-  -- clock_timestamp(): after the locks, never the transaction start (a lock wait can cross the boundary)
-  if b.updated_at <= clock_timestamp() - interval '10 minutes' then return jsonb_build_object('ok',false,'reason','This booking attempt took too long. Try Book again. Nothing was booked.'); end if;
   select * into d from ops_drafts where id=p_card for update;
   if not found or d.kind <> 'task' or d.sent_at is not null or d.send_blocked_reason is not null
      or d.context->>'action' is distinct from 'book_link' or d.context->>'kind_detail' is distinct from 'book_offered_slot' then
@@ -42,8 +40,12 @@ begin
                and coalesce(o.is_reaction,false) = false and coalesce(o.sent_at,o.created_at) > coalesce(src.sent_at,src.created_at)) then
     return jsonb_build_object('ok',false,'reason','They wrote again after this card was made. Read the thread before booking. Nothing was booked.');
   end if;
+  -- Sol r6-r8: the age check runs LAST, after every lock and check, with the same clock value as the refresh: a claim
+  -- that expired while authorize waited on a lock is never revived (the Remove guard already treated it as expired)
+  v_now := clock_timestamp();
+  if b.updated_at <= v_now - interval '10 minutes' then return jsonb_build_object('ok',false,'reason','This booking attempt took too long. Try Book again. Nothing was booked.'); end if;
   -- refresh the claim so the Remove guard covers the provider POST that follows (it times out in 20 s)
-  update inbox_calendar_bookings set updated_at = clock_timestamp() where request_id = p_request;
+  update inbox_calendar_bookings set updated_at = v_now where request_id = p_request;
   return jsonb_build_object('ok',true);
 end $$;
 revoke all on function public.inbox_booking_card_authorize(uuid,uuid) from public,anon,authenticated;
