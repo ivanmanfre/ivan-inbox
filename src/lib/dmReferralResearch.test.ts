@@ -139,11 +139,12 @@ describe('referral researcher', () => {
     expect(result.draft).toBeNull()
     expect(calls).toBe(1)
   })
-  it('on the InMail lane, records the supplied profile\'s member id only when its full name is the person named (Sol r5)', async () => {
+  it('on the InMail lane, records the supplied profile\'s member id only when its full name is the person named, and leaves a profile of another person unresolved (Sol r5/r6)', async () => {
     const link = 'https://www.linkedin.com/in/oskar-lindqvist-test/'
     const text = 'I moved on from Example Labs, but my former colleague Oskar Lindqvist runs creator work there now: ' + link
-    const lane = async () => ({ channel: 'connection_note' as const, credits: 0, open_profile: null, why: 'test', checked_at: '' })
-    for (const [first, last, want] of [['Oskar', 'Lindqvist', 'ACoAA-test-oskar'], ['Oskar', 'Berg', undefined]] as const) {
+    const handed: (string | null)[] = []
+    const lane = async (_r: unknown, known?: { provider_id: string } | null) => { handed.push(known?.provider_id ?? null); return { channel: 'connection_note' as const, credits: 0, open_profile: null, why: 'test', checked_at: '' } }
+    for (const [first, last, want, status] of [['Oskar', 'Lindqvist', 'ACoAA-test-oskar', 'verified'], ['Oskar', 'Lindqvist MBA', undefined, 'verified'], ['Oskar', 'Berg', undefined, 'unresolved']] as const) {
       const apifyReads: string[] = []
       vi.stubGlobal('fetch', async (url: string, init: RequestInit) => {
         if (url.includes('api.apify.com')) { apifyReads.push(String(init.body)); return apify([{ id: 'ACoAA-test-oskar', publicIdentifier: 'oskar-lindqvist-test', firstName: first, lastName: last }]) }
@@ -152,10 +153,13 @@ describe('referral researcher', () => {
           : claude(JSON.stringify({ paragraphs: ['Hey Oskar', 'Rhea suggested I ask you about creator campaigns at Example Labs.', 'Are you open to an intro chat?'] }))
       })
       const result = await researchReferral(db, { id: 'example-referral', text, company: 'Example Labs', referrer: 'Rhea Example' }, 'Davorin', [], [], [], { inmail: lane })
-      expect(result).toMatchObject({ status: 'verified', name: 'Oskar Lindqvist' })
+      expect(result).toMatchObject({ status, name: 'Oskar Lindqvist' })
+      if (status === 'unresolved') expect(result.linkedin_url ?? null).toBeNull()
       expect(apifyReads).toHaveLength(1)
       expect(result.member_id ?? undefined).toBe(want)
     }
+    // The routing got the profile research read (no second read); the unresolved referral was never routed.
+    expect(handed).toEqual(['ACoAA-test-oskar', 'ACoAA-test-oskar'])
   })
   it('drafts for the profile the referrer supplied even when the title is unknown', async () => {
     const link = 'https://www.linkedin.com/in/vladimir-golovanov/'

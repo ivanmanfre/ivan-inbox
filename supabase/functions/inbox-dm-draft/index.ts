@@ -262,12 +262,13 @@ Deno.serve(async req => {
       // through Apify (no seat read) for an open profile and to confirm the URL still shows the verified member.
       // Sol r4: the member id comes only from the identity verified at research (r.member_id); this read never sets it.
       // No verified member (a referral researched before it was recorded, or one found by web search alone) gets no InMail.
-      const inmailLane: InmailLane | null = client === 'arch' ? async r => {
+      const inmailLane: InmailLane | null = client === 'arch' ? async (r, known) => {
         const credits = await inmailCredits(sb, client)
         const note = (why: string): InmailRoute => ({ credits, open_profile: null, channel: 'connection_note', why, checked_at: new Date().toISOString() })
         if (!r.member_id) return note('Their LinkedIn member was not verified when the referral was researched, so no InMail can go.')
         const slug = r.linkedin_url ? decodeURIComponent(new URL(r.linkedin_url).pathname.split('/').filter(Boolean)[1] ?? '') : ''
-        const p = slug ? await apifyProfileDetails(sb, slug).catch(() => null) : null
+        // Sol r6: research already read this profile in this run; a fresh read is only for redrafts.
+        const p = known && known.provider_id === r.member_id ? known : slug ? await apifyProfileDetails(sb, slug).catch(() => null) : null
         if (!p) return note('Their LinkedIn profile could not be checked, so no InMail can go.')
         if (p.provider_id !== r.member_id) return note('Their LinkedIn profile now belongs to a different member than the one verified. Check the person before contacting them.')
         return inmailRoute(credits, p.open_profile, canon.author)

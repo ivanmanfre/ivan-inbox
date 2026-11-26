@@ -1,6 +1,6 @@
 import { draftBreaksRules, formatReferralDm, inmailProblem, linkedProfiles, linkedReferralProfile, type InmailRoute, type ReferralEmail, type ReferralInmail, matchMention, mentionIdentity, pickSearchMatch, profileIdentity, readLaterVerdict, referralCandidate, sameCompany, verifyReferral, withoutLinks, type Mention, type MentionProfile, type ReferralDraft, type ReferralLater, type ReferralMessage } from './referral.ts'
 import { askClaude, jsonFrom } from './llm.ts'
-import { apifyProfileDetails, apifyProfiles } from './apify.ts'
+import { apifyProfileDetails, apifyProfiles, type ProfileDetails } from './apify.ts'
 import { findWorkEmail } from './apollo.ts'
 import type { OfferSlot } from './slots.ts'
 
@@ -60,16 +60,25 @@ ${input.text}
   } : null
   // Sol r5 (InMail lane only): the profile the referrer supplied is read now, and its member id is recorded when its full
   // name is the person the handoff names. Otherwise no member is recorded and the invite note stays the first touch.
-  if (linkedIdentity && namedProfile && opts.inmail) {
+  // Sol r6: a profile that shows another person (a different first name or surname) leaves the referral unresolved, so
+  // no invite or InMail can be created for it; the read is handed to the InMail routing so the profile is read once.
+  let suppliedRead: ProfileDetails | null = null, suppliedConflict: string | null = null
+  if (linkedIdentity && namedProfile && opts.inmail && !taggedProfile) {
     const slug = decodeURIComponent(new URL(linkedProfile!).pathname.split('/').filter(Boolean)[1] ?? '')
     const p = slug ? await apifyProfileDetails(sb, slug).catch(() => null) : null
-    if (p && /^ACoAA/.test(p.provider_id) && flat(p.name) === flat(name)) linkedIdentity.member_id = p.provider_id
+    if (p) {
+      suppliedRead = p
+      const want = flat(name).split(' '), got = flat(p.name).split(' ')
+      if (/^ACoAA/.test(p.provider_id) && flat(p.name) === flat(name)) linkedIdentity.member_id = p.provider_id
+      else if (got[0] !== want[0] || !got.includes(want.at(-1)!)) suppliedConflict = p.name
+    }
   }
   // Acknowledging a named handoff needs no capability claim or verified destination profile.
   try {
     // One free day on the owner's calendar, asked for in both the invite note and the email (Ivan 2026-11-26).
     const offered = opts.slots ? await opts.slots() : null
     const referral = taggedProfile ? await fromProfile(taggedProfile.identity, taggedProfile.atCompany, author, rules, context, input.offer ?? null, agencyFor, false, offered)
+      : linkedIdentity && suppliedConflict ? verifyReferral({ status: 'unresolved', reason: `The LinkedIn profile supplied for ${name} shows ${suppliedConflict}. Check the person before contacting them.` }, [], input)
       : linkedIdentity ? await fromProfile(linkedIdentity, namedProfile, author, rules, context, null, agencyFor, true, offered)
       : input.company ? await searchReferral(sb, input, name, author, rules, context, agencyFor, employerDomain(input.text, name, input.company, given), given, offered)
       : verifyReferral({ status: 'unresolved', reason: 'The company is needed to verify the referred profile.' }, [], input)
@@ -87,7 +96,7 @@ ${input.text}
       if (!email) email_reason = 'The email draft could not be written. Retry research.'
     }
     // ARCH: the first touch goes as an InMail when one can go (Ivan 2026-11-26); the invite note stays the fallback.
-    const inmail = opts.inmail ? await inmailFor({ ...referral, name: referral.name ?? name }, opts.inmail, author, rules, context, agencyFor, !taggedProfile && !!linkedIdentity, offered) : {}
+    const inmail = opts.inmail ? await inmailFor({ ...referral, name: referral.name ?? name }, opts.inmail, author, rules, context, agencyFor, !taggedProfile && !!linkedIdentity, offered, suppliedRead) : {}
     return { ...referral, ...inmail, name: referral.name ?? name, acknowledgement, revision: REFERRAL_REVISION,
       offer_verified_at: input.offer && (referral.draft || referral.candidate) ? input.offerVerifiedAt ?? null : null,
       ...(found ? { email_lookup: found.record } : {}),
@@ -230,14 +239,15 @@ async function draftReferralEmail(person: { name: string; company: string | null
 }
 
 /** Reads whether an InMail can go to this verified person now (seat credits, their open profile). */
-export type InmailLane = (r: ReferralDraft) => Promise<InmailRoute>
+/** `known` is a profile already read for this referral in the same run; the lane uses it instead of reading again. */
+export type InmailLane = (r: ReferralDraft, known?: ProfileDetails | null) => Promise<InmailRoute>
 
 /** The InMail first touch and its route, for a verified person with a note draft. When no InMail can go, only the
  * route is stored (the card shows the invite note and why). A drafter decline or a broken draft stores no InMail. */
-async function inmailFor(r: ReferralDraft, lane: InmailLane, author: string, rules: unknown, context: unknown, agencyFor: string | null, supplied: boolean, slots: OfferSlot[] | null): Promise<{ inmail: ReferralInmail | null; inmail_route: InmailRoute | null }> {
+async function inmailFor(r: ReferralDraft, lane: InmailLane, author: string, rules: unknown, context: unknown, agencyFor: string | null, supplied: boolean, slots: OfferSlot[] | null, known: ProfileDetails | null = null): Promise<{ inmail: ReferralInmail | null; inmail_route: InmailRoute | null }> {
   if (r.status !== 'verified' || !r.draft) return { inmail: null, inmail_route: null }
   let route: InmailRoute
-  try { route = await lane(r) } catch { return { inmail: null, inmail_route: null } }
+  try { route = await lane(r, known) } catch { return { inmail: null, inmail_route: null } }
   if (route.channel !== 'inmail') return { inmail: null, inmail_route: route }
   const identity = { status: r.status, name: r.name, company: r.company, role: r.role, linkedin_url: r.linkedin_url, summary: r.summary, sources: r.sources }
   const inmail = await draftDm(identity, author, rules, context, null, agencyFor, 'inmail', supplied, slots).then(res => referralInmail(res, slots)).catch(() => null)
