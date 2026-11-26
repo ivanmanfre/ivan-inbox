@@ -106,6 +106,7 @@ export function ReferralCard({ t, onUseAcknowledgement, onStaged }: { t: Thread;
     {acting.error && <p role="alert">{acting.error}</p>}
     {r?.email && handoff && !blocked && !leadId && !r.dismissed_at && <ReferralEmailDraft key={stamp} t={t} inbound={handoff} email={r.email} referredName={r.name} referredCompany={r.company} onStaged={onStaged} />}
     {r?.email_reason && <p>{r.email_reason}</p>}
+    {!r?.email && r?.email_lookup && r.email_lookup.status !== 'found' && !leadId && !r.dismissed_at && <p className="dm-meta">No email lane: {r.email_lookup.reason ?? 'Apollo has no work email for them.'}</p>}
     {r?.acknowledgement && !answered && !t.draft && <>
       <h4>Acknowledgement to {referrer}</h4>
       <textarea aria-label={`Acknowledgement draft for ${t.prospect_name}`} readOnly value={r.acknowledgement} rows={2} />
@@ -157,7 +158,7 @@ function ReferralEmailDraft({ t, inbound, email, referredName, referredCompany, 
   }
   return <>
     <h4>Email to {first}</h4>
-    <p className="dm-meta">From {from}. Their reply comes back to this conversation.</p>
+    <p className="dm-meta">From {from}. {email.found_by === 'apollo' ? `${referredName ?? 'Their'} gave no address, so this is their work email from Apollo (verified). ` : ''}Their reply comes back to this conversation.</p>
     <label className="dm-email-field"><span className="dm-email-field-name">To</span><input aria-label="Referral email To" value={to} onChange={e => setTo(e.target.value)} disabled={busy} /></label>
     <label className="dm-email-field"><span className="dm-email-field-name">Cc</span><input aria-label="Referral email Cc" value={cc} onChange={e => setCc(e.target.value)} disabled={busy} /></label>
     <label className="dm-email-field"><span className="dm-email-field-name">Subject</span><input aria-label="Referral email subject" value={subject} onChange={e => setSubject(e.target.value)} disabled={busy} /></label>

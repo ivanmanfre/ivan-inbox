@@ -21,6 +21,8 @@ export type ReferralDraft = {
   email?: ReferralEmail | null
   /** Why no email draft exists although the handoff gave an address. */
   email_reason?: string | null
+  /** The Apollo work-email lookup for this profile (stored so the same person never costs a second credit). */
+  email_lookup?: { linkedin_url: string; checked_at: string; source: 'apollo'; status: 'found' | 'none' | 'mismatch'; email?: string; reason?: string } | null
   /** The operator chose not to contact this person. The card stays closed and nothing is redrafted. */
   dismissed_at?: string | null
   /** What the referrer wrote after the handoff, read by the model (never a keyword list). */
@@ -31,7 +33,9 @@ export type ReferralDraft = {
   story_key?: string
   lead_message_id?: string
 }
-export type ReferralEmail = { to: string; cc: string[]; subject: string; body: string }
+export type ReferralEmail = { to: string; cc: string[]; subject: string; body: string
+  /** The handoff gave no address; Apollo found their verified work email (Ivan 2026-11-26: both lanes on a referral). */
+  found_by?: 'apollo' }
 /** go = thanks, "you too", an emoji or anything that leaves the handoff standing. hold = wait, hold off, do not
  * contact them, they left. redirect = talk to someone else instead. */
 export type ReferralLater = { through_message_id: string; verdict: 'go' | 'hold' | 'redirect'; quote: string | null; checked_at: string
