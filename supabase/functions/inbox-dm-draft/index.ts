@@ -229,7 +229,7 @@ Deno.serve(async req => {
       const current = (r: ReferralDraft | undefined, msgId: string) => r?.input_message_id === msgId && r.revision === REFERRAL_REVISION && offerFresh(r.offer_verified_at)
         && (r.status !== 'verified' || r.story_key === keyFor(msgId))
         // The time the email offers must still be a day out; an older one is redrafted with a fresh calendar read.
-        && !(r.email?.slot && Date.parse(r.email.slot.start) < Date.now() + 24 * 3600000)
+        && ![r.email?.slot, r.slot].some(x => x && Date.parse(x.start) < Date.now() + 24 * 3600000)
       const anchor = openReferral(cached) ? inboundRows.find(m => m.id === cached.input_message_id) : undefined
       if (!retryReferral && current(cached, target.id)) { referral = cached!; changed = false }
       else if (cached?.input_message_id === target.id && openReferral(cached)) referral = { ...await redraftReferral(cached, canon.author, prompts, story(target.id), lookupDb, slots), story_key: keyFor(target.id) }
