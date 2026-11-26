@@ -3,6 +3,7 @@
 // the sections need, each failing on its own without taking the list down:
 //   · inbox_interest_cards() (all seats; the raw rows also give Ivan's scan-open days for the lift)
 //   · warm_signal_cards() (Ivan's seat)
+//   · inbox_report_opens() (all seats: the thread timeline's "Opened the report" lines)
 //   · dated follow-ups    (outreach_prospects skip_reason='follow_up_dated': id + date only;
 //                          the seat comes from the conversation's own client_id)
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -18,6 +19,7 @@ import { projectFollowups, type FollowupSource } from './upcoming'
 import { forget, recall, remember } from '../../lib/pageMemo'
 import { fetchOwnerEngagers, type OwnerEngagerCard } from './ownerEngagers'
 import { readStrangers, rememberedStrangers } from './strangers'
+import { fetchReportOpens, type ReportOpen } from './reportOpens'
 
 /** `at`: when the last read that worked landed (ms), for a failed read's "last read HH:MM". */
 export type Side<T> = { rows: T[]; failed: boolean; loaded: boolean; at?: number | null }
@@ -119,6 +121,7 @@ export function useDmsData() {
   const [strangers, reloadStrangers] = useSide(readStrangers, undefined, rememberedStrangers)
   const [warm, reloadWarm, editWarm] = useSide<WarmCard>(fetchWarmCards)
   const [viewSeen, reloadViewSeen] = useSide<ViewSeen>(fetchViewSeen)
+  const [reportOpens, reloadReportOpens] = useSide<ReportOpen>(fetchReportOpens)
   const [dated, readDates] = useSide(readDatedFollowUps)
   const [followupRaw, reloadFollowups] = useSide(readFollowupSources, FOLLOWUP_FRESH.mount, rememberedFollowups)
   const upcoming = useMemo(() => ({ ...followupRaw, rows: projectFollowups(followupRaw.rows, Date.now(), followupMorningBatch) }), [followupRaw])
@@ -185,8 +188,8 @@ export function useDmsData() {
   const interestRanks = useMemo(() => new Map(cameRaw.rows.map(c => [c.prospect_id, interestPriority(c)])), [cameRaw.rows])
 
   const refreshAll = useCallback(() => {
-    inbox.refresh(); reloadCame(); reloadOwners(); reloadStrangers(); reloadWarm(); reloadViewSeen(); reloadDated(); reloadAgent()
-  }, [inbox, reloadCame, reloadOwners, reloadStrangers, reloadWarm, reloadViewSeen, reloadDated, reloadAgent])
+    inbox.refresh(); reloadCame(); reloadOwners(); reloadStrangers(); reloadWarm(); reloadViewSeen(); reloadDated(); reloadAgent(); reloadReportOpens()
+  }, [inbox, reloadCame, reloadOwners, reloadStrangers, reloadWarm, reloadViewSeen, reloadDated, reloadAgent, reloadReportOpens])
 
   return {
     threads, loading: inbox.loading, error: inbox.error, loadedAt: inbox.loadedAt, priorityAt: inbox.priorityAt, fromCache: inbox.fromCache, cachedAt: inbox.cachedAt,
@@ -195,7 +198,7 @@ export function useDmsData() {
     ownerEngagers, reloadOwners, dropOwnerEngager: (card: OwnerEngagerCard) => editOwners(r => r.filter(c => c.tenant !== card.tenant || c.profile_id !== card.profile_id)),
     strangers, scanDays, interestRanks, warm, viewSeen, dropWarm: (pid: string) => editWarm(r => r.filter(c => c.prospect_id !== pid)), reloadWarm,
     dated, reloadDated, upcoming,
-    agent, reloadAgent,
+    agent, reloadAgent, reportOpens,
   }
 }
 

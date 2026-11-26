@@ -121,6 +121,27 @@ describe('engagements in the timeline (10-10)', () => {
     expect(document.querySelector('.dm-ev')?.textContent).toContain('Commented on your post')
     expect(document.querySelector('.dm-ev q')?.textContent).toBe('Great point')
   })
+  // Ivan 11-26: a real open of the report we sent is a display-only line at its time.
+  it('shows each report-open day as "Opened the report" at its time, between the messages and engagements', async () => {
+    const { warsawHm } = await import('../ui/time')
+    const opens = [
+      { prospect_id: 'a', report: 'swishdm/compare/abcdefghijklmnopqrst', at: iso(20 * 3_600_000), place: 'Lyon, France' },
+      { prospect_id: 'a', report: 'swishdm/compare/abcdefghijklmnopqrst', at: iso(2 * 3_600_000), place: null },
+    ]
+    render(<History t={t0()} cap={10} engagements={[ev(iso(10 * 3_600_000), 'Some post')]} reportOpens={opens} />)
+    const lines = [...document.querySelectorAll('.dm-ev')]
+    expect(lines.map(l => l.getAttribute('data-signal'))).toEqual(['report_open', 'reaction', 'report_open'])
+    expect(lines[0].textContent).toBe(`Opened the report · Lyon, France${warsawHm(opens[0].at)}`)
+    expect(lines[2].textContent).toBe(`Opened the report${warsawHm(opens[1].at)}`)
+    expect(lines[0].querySelector('time')?.getAttribute('dateTime')).toBe(opens[0].at)
+    expect(lines[0].querySelector('a')).toBeNull()
+    const order = [...document.querySelectorAll('.dm-b, .dm-ev')].map(n => n.className.includes('dm-ev') ? 'ev' : 'msg')
+    expect(order).toEqual(['msg', 'ev', 'ev', 'ev'])
+  })
+  it('shows no report line without report opens, even with a came-back scan reopen', () => {
+    render(<History t={t0()} cap={10} engagements={[{ kind: 'scan_open', at: iso(4 * 3_600_000), detail: null }]} reportOpens={[]} />)
+    expect(document.querySelectorAll('.dm-ev')).toHaveLength(0)
+  })
 })
 
 describe('waiting footer after a sent came-back follow-up (10-10)', () => {
