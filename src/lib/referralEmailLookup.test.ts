@@ -61,7 +61,8 @@ describe('referral both lanes (Ivan 2026-11-26)', () => {
     const emailPrompt = String((calls[4].body.messages as { content: string }[])[0].content)
     expect(emailPrompt).toMatch(/public deck link/)
     expect(emailPrompt).toMatch(/public case study/)
-    expect(emailPrompt).toMatch(/no time and no link/)
+    expect(emailPrompt).toMatch(/no day or time/)
+    expect(emailPrompt).toMatch(/scale line from the client rules/)
     expect(emailPrompt).toMatch(/Under 150 words/)
   })
   it('reuses a stored lookup for the same profile (no second credit) and skips seats without email', async () => {
@@ -109,13 +110,13 @@ describe('referral email asks for one free time (Ivan 2026-11-26)', () => {
   it('picks weekday times 36h+ out inside 09:00-17:00 in the seat zone, one per day', () => {
     const picked = pickSlots([at('2026-11-27T09:00:00Z'), at('2026-11-28T10:00:00Z'), at('2026-11-30T12:45:00Z'), at('2026-11-30T15:15:00Z'),
       at('2026-11-30T16:45:00Z'), at('2026-12-01T06:00:00Z'), at('2026-12-01T09:00:00Z')], 'arch', now)
-    expect(picked).toEqual([{ start: '2026-11-30T12:45:00.000Z', label: 'next Monday at 1:45pm CET' }, { start: '2026-12-01T09:00:00.000Z', label: 'next Tuesday at 10am CET' }])
+    expect(picked).toEqual([{ start: '2026-11-30T12:45:00.000Z', label: 'next Monday at 1:45pm CET', day: 'next Monday' }, { start: '2026-12-01T09:00:00.000Z', label: 'next Tuesday at 10am CET', day: 'next Tuesday' }])
     expect(pickSlots([at('2026-11-30T12:45:00Z')], 'swishdm', now)).toEqual([])
   })
   const cached: ReferralDraft = { status: 'verified', input_message_id: 'in-1', name: 'Dana Fictional', company: 'Brewco UK', role: 'Marketing Director',
     linkedin_url: 'https://www.linkedin.com/in/dana-fictional-1', summary: 's', draft: 'old', reason: null, sources: [], revision: 13,
     email: { to: 'dana.fictional@brewco.example', cc: [], subject: 's', body: 'b', found_by: 'apollo' } }
-  const slots = [{ start: '2026-11-30T12:45:00.000Z', label: 'next Monday at 1:45pm CET' }]
+  const slots = [{ start: '2026-11-30T12:45:00.000Z', label: 'next Monday at 1:45pm CET', day: 'next Monday' }]
   const dm = () => claude(JSON.stringify({ paragraphs: ['Hey Dana', 'Sam pointed me to you.', "I'm Davorin, founder of ARCH.", 'Would you be open to a quick chat about it?'] }))
   const email = (ask: string) => () => claude(JSON.stringify({ subject: 'Sam suggested I reach out', paragraphs: ['Hi Dana', "I'm Davorin, founder of ARCH.", ask] }))
   const go = async (ask: string) => {
@@ -125,13 +126,13 @@ describe('referral email asks for one free time (Ivan 2026-11-26)', () => {
     return { r: await redraftReferral(cached, 'Davorin', [], {}, null, async () => slots), calls }
   }
   it('keeps an email that names one offered time and records it', async () => {
-    const { r, calls } = await go('Would you be against a quick chat next Monday at 1:45pm CET?')
+    const { r, calls } = await go('Are you open to an intro chat next Monday?')
     expect(r.email?.slot).toEqual(slots[0])
-    expect(r.email?.body).toContain('next Monday at 1:45pm CET')
-    expect(String((calls[1].body.messages as { content: string }[])[0].content)).toContain('"free_times":["next Monday at 1:45pm CET"]')
+    expect(r.email?.body).toContain('Are you open to an intro chat next Monday?')
+    expect(String((calls[1].body.messages as { content: string }[])[0].content)).toContain('"free_days":["next Monday"]')
   })
   it('refuses a booking link or a time that was not offered', async () => {
     expect((await go('Pick a time here: https://is.gd/arch_intro')).r.email).toBeNull()
-    expect((await go('Would you be against a quick chat next Tuesday at 3pm CET?')).r.email).toBeNull()
+    expect((await go('Are you open to an intro chat next Tuesday?')).r.email).toBeNull()
   })
 })

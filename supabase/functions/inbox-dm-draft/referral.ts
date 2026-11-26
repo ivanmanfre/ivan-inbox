@@ -37,7 +37,7 @@ export type ReferralEmail = { to: string; cc: string[]; subject: string; body: s
   /** The handoff gave no address; Apollo found their verified work email (Ivan 2026-11-26: both lanes on a referral). */
   found_by?: 'apollo'
   /** The one free calendar time the email asks about (checked when drafted). */
-  slot?: { start: string; label: string } }
+  slot?: { start: string; label: string; day?: string } }
 /** go = thanks, "you too", an emoji or anything that leaves the handoff standing. hold = wait, hold off, do not
  * contact them, they left. redirect = talk to someone else instead. */
 export type ReferralLater = { through_message_id: string; verdict: 'go' | 'hold' | 'redirect'; quote: string | null; checked_at: string
