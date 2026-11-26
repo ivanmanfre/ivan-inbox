@@ -23,6 +23,13 @@ export type CardStore = {
   secret(key: string): Promise<string>
   claim(id: string, client: string, requestId: string, start: string, email: string, timezone: string): Promise<boolean>
   commit(requestId: string, cardId: string, event: string | null, meeting: string | null, booked: string | null): Promise<{ recorded?: boolean; released?: boolean; status?: string }>
+  /** Is the card still the live next step? Its staged confirm unsent, not discarded, still held for this time and email,
+   * and no newer message from them since the turn the card answers. */
+  current(ctx: Record<string, unknown>, slot: Slot, email: string): Promise<{ ok: boolean; reason?: string }>
+  /** One DB step right before the POST (db inbox_booking_card_authorize): card, reply and newer messages, serialized with Remove. */
+  authorize(requestId: string, cardId: string): Promise<{ ok: boolean; reason?: string }>
+  /** Free a pending claim by request id (works when the card is gone). */
+  release(requestId: string): Promise<void>
 }
 // A 4xx answer to the booking POST means nothing was created: the request may be retried. Anything else is ambiguous.
 export class Rejected extends Error {}
@@ -49,7 +56,15 @@ export async function slotOpen(o: CardOwner, secret: string, slot: Slot, typeId:
     const required = (Array.isArray(r.customParams?.formFields) ? r.customParams.formFields : []).filter((f: { isRequired?: boolean }) => f.isRequired).map((f: { name: string }) => f.name).filter((n: string) => !['firstname', 'lastname', 'email'].includes(n))
     const av = r.linkAvailability?.linkAvailabilityByDuration?.['1800000']?.availabilities
     if (!Array.isArray(av)) throw Error('Availability could not be loaded.')
-    return { open: av.some((a: { startMillisUtc: number; endMillisUtc: number }) => a.startMillisUtc === st && a.endMillisUtc === en), fields: required }
+    const hit = (list: { startMillisUtc: number; endMillisUtc: number }[]) => list.some(a => a.startMillisUtc === st && a.endMillisUtc === en)
+    if (hit(av)) return { open: true, fields: required }
+    // The first page covers only a few days; the drafter reads the next page too, so Book must see the same range.
+    if (r.linkAvailability?.hasMore) {
+      const r2 = await call(`https://api.hubapi.com/scheduler/v3/meetings/meeting-links/book/availability-page/${encodeURIComponent(o.slug)}?timezone=UTC&monthOffset=1`, secret, fetch)
+      const u2 = r2?.allUsersBusyTimes, av2 = r2?.linkAvailability?.linkAvailabilityByDuration?.['1800000']?.availabilities
+      if (Array.isArray(u2) && u2.length === 1 && String(u2[0]?.meetingsUser?.userId) === o.user_id && Array.isArray(av2)) return { open: hit(av2), fields: required }
+    }
+    return { open: false, fields: required }
   }
   const me = await call('https://tidycal.com/api/me', secret, fetch)
   if (String(me?.email || '').toLowerCase() !== o.user_id) throw Error('The owner calendar could not be verified.')
@@ -107,6 +122,19 @@ export async function handleBookCard(input: Record<string, unknown>, store: Card
     return { status: 'blocked', existing: existing.status, message: existing.status === 'confirmed' || existing.status === 'booked' ? 'A call is already booked for this person. Nothing new was booked.' : 'A booking for this person is in progress or unconfirmed. Check the owner calendar. Nothing new was booked.' }
   }
   if (p.call_booked_at) return { status: 'blocked', existing: 'booked', message: 'A call is already booked for this person. Nothing new was booked.' }
+  // Sol r1+r2 (2026-11-26): a card whose reply was discarded, or whose prospect has written again (another time), never
+  // books. Checked before the claim and again right before the booking POST (they can write while the calendar is read).
+  const stale = async () => {
+    // Sol r3: the card itself is re-read (Remove, Done or a changed booking on it = no invite)
+    const again = await store.card(card.id)
+    const ab = ((again?.context ?? {}) as Record<string, unknown>).booking as Record<string, unknown> | undefined
+    if (!again || again.sent_at || again.send_blocked_reason || again.kind !== card.kind || !ab || Date.parse(String(ab.start)) !== Date.parse(slot.start) || Date.parse(String(ab.end)) !== Date.parse(slot.end) || String(ab.invite_email || '').trim().toLowerCase() !== to)
+      return { status: 'blocked', existing: 'stale', message: 'This card was removed or changed. Nothing was booked.' }
+    const cur = await store.current(ctx, slot, to)
+    return cur.ok ? null : { status: 'blocked', existing: 'stale', message: cur.reason ?? 'This card is out of date. Nothing was booked.' }
+  }
+  const before = await stale()
+  if (before) return before
   if (p.closed) throw Error('This conversation is paused or closed.')
   if (Date.parse(slot.start) <= now + 3600000) throw Error('That time is less than an hour away. Book by hand if it still works.')
   if (p.name.trim().split(/\s+/).length < 2) throw Error('A full name is needed for the invite. Book by hand.')
@@ -118,12 +146,16 @@ export async function handleBookCard(input: Record<string, unknown>, store: Card
     if (!open.open) throw Error('That time is no longer free on the calendar. Offer a new time in the thread.')
     const missing = open.fields.filter(f => !(f === 'website' && p.company_domain))
     if (missing.length) throw Error('The booking page needs ' + missing.join(', ') + '. Book by hand.')
-  } catch (e) { await store.commit(key, card.id, null, null, null); throw e }
+  } catch (e) { await store.release(key); throw e }   // Sol r5: by request id (works when the card is gone)
+  // Sol r4: the last check is one database step that Remove waits on; a gone or changed card frees the claim by request id
+  let auth
+  try { auth = await store.authorize(key, card.id) } catch (e) { await store.release(key); throw e }
+  if (!auth.ok) { await store.release(key); return { status: 'blocked', existing: 'stale', message: auth.reason ?? 'This card is out of date. Nothing was booked.' } }
 
   let receipt
   try { receipt = await provider.bookSlot(o, secret, slot, { name: p.name, email: to, website: p.company_domain }, tz, typeId) }
   catch (e) {
-    if (e instanceof Rejected) { await store.commit(key, card.id, null, null, null); throw e }
+    if (e instanceof Rejected) { await store.release(key); throw e }
     // Anything after the POST started is ambiguous: the ledger stays pending, so a retry can never book twice.
     throw Error('Booking could not be confirmed. Check the owner calendar before trying again; another booking is blocked.')
   }

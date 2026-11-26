@@ -10,7 +10,8 @@ export function validTimezone(value: unknown): value is string {
   if (typeof value !== 'string' || value.length > 80) return false
   try { new Intl.DateTimeFormat('en-US', { timeZone: value }).format(); return true } catch { return false }
 }
-export type Calendar = { owner: string; provider: string; booking_url: string; checked_at: string; timezone: string; duration_minutes: number; slots: Slot[]; can_book: boolean }
+export type Booked = Slot & { label: string; ours: boolean }
+export type Calendar = { owner: string; provider: string; booking_url: string; checked_at: string; timezone: string; duration_minutes: number; slots: Slot[]; can_book: boolean; busy?: Slot[]; booked?: Booked[]; booked_labels_unavailable?: boolean }
 type Fetch = typeof globalThis.fetch
 async function json(url: string, secret: string, fetch: Fetch, init?: RequestInit) {
   const r = await fetch(url, { ...init, headers: { Authorization: `Bearer ${secret}`, 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(15000) })
@@ -19,7 +20,7 @@ async function json(url: string, secret: string, fetch: Fetch, init?: RequestIni
 }
 export async function availability(owner: Owner, secret: string, timezone: string, now = Date.now(), fetch: Fetch = globalThis.fetch): Promise<Calendar> {
   if (!validTimezone(timezone)) throw Error('Enter a valid timezone, such as America/New_York.')
-  let slots: Slot[], canBook = false
+  let slots: Slot[], canBook = false, busy: Slot[] = []
   if (owner.provider === 'hubspot') {
     const r = await json(`https://api.hubapi.com/scheduler/v3/meetings/meeting-links/book/${encodeURIComponent(owner.slug)}?timezone=${encodeURIComponent(timezone)}`, secret, fetch)
     const users = r.allUsersBusyTimes
@@ -27,6 +28,10 @@ export async function availability(owner: Owner, secret: string, timezone: strin
     const available = r.linkAvailability?.linkAvailabilityByDuration?.['1800000']?.availabilities
     if (!Array.isArray(available)) throw Error('Availability could not be loaded. Use the booking link.')
     slots = available.filter((s: { startMillisUtc: number; endMillisUtc: number }) => Number.isFinite(s.startMillisUtc) && Number.isFinite(s.endMillisUtc)).map((s: { startMillisUtc: number; endMillisUtc: number }) => ({ start: new Date(s.startMillisUtc).toISOString(), end: new Date(s.endMillisUtc).toISOString() }))
+    // CALENDAR_BOOKED_LABELS_V1: the owner's busy blocks, times only (HubSpot gives no titles); our own booked calls are
+    // labelled from the booking ledger in the handler
+    const raw = Array.isArray(users[0].busyTimes) ? users[0].busyTimes : Array.isArray(users[0].busyTimesUnmerged) ? users[0].busyTimesUnmerged : []
+    busy = raw.filter((b: { start: number; end: number }) => Number.isFinite(b?.start) && Number.isFinite(b?.end) && b.end > b.start).map((b: { start: number; end: number }) => ({ start: new Date(b.start).toISOString(), end: new Date(b.end).toISOString() }))
     const fields = r.customParams?.formFields
     canBook = Array.isArray(fields) && !fields.some((f: { isRequired?: boolean; name: string }) => f.isRequired && !['firstname', 'lastname', 'email'].includes(f.name)) && !r.customParams?.legalConsentEnabled
   } else {
@@ -42,7 +47,28 @@ export async function availability(owner: Owner, secret: string, timezone: strin
   }
   slots = slots.filter(s => Date.parse(s.start) > now + 3600000 && Date.parse(s.start) < now + 31 * 86400000 && Date.parse(s.end) - Date.parse(s.start) === 1800000)
     .sort((a, b) => Date.parse(a.start) - Date.parse(b.start))
-  return { owner: owner.name, provider: owner.provider, booking_url: owner.booking_url, checked_at: new Date(now).toISOString(), timezone, duration_minutes: 30, slots, can_book: canBook }
+  busy = busy.filter(b => Date.parse(b.end) > now && Date.parse(b.start) < now + 31 * 86400000).sort((a, b) => Date.parse(a.start) - Date.parse(b.start))
+  return { owner: owner.name, provider: owner.provider, booking_url: owner.booking_url, checked_at: new Date(now).toISOString(), timezone, duration_minutes: 30, slots, can_book: canBook, busy }
+}
+
+/** Busy blocks with our own booked calls named (11-26: "what's booked Monday" took four API calls). HubSpot merges
+ * touching blocks, so a block is split around our bookings: our calls carry their label, the rest stays "Busy". A
+ * booking with no block yet (calendar sync lag) is listed too. */
+export function labelBusy(busy: Slot[], ours: Booked[]): Booked[] {
+  const t = (x: string) => Date.parse(x), iso = (ms: number) => new Date(ms).toISOString()
+  const used = new Set<number>(), out: Booked[] = []
+  for (const b of busy) {
+    const hits = ours.map((o, i) => ({ o, i })).filter(x => t(x.o.start) < t(b.end) && t(b.start) < t(x.o.end)).sort((x, y) => t(x.o.start) - t(y.o.start))
+    let cursor = t(b.start)
+    for (const { o, i } of hits) {
+      if (t(o.start) > cursor) out.push({ start: iso(cursor), end: iso(Math.min(t(o.start), t(b.end))), label: 'Busy', ours: false })
+      if (!used.has(i)) out.push(o)
+      used.add(i); cursor = Math.max(cursor, t(o.end))
+    }
+    if (cursor < t(b.end)) out.push({ start: iso(cursor), end: b.end, label: 'Busy', ours: false })
+  }
+  ours.forEach((o, i) => { if (!used.has(i)) out.push(o) })
+  return out.sort((a, b) => t(a.start) - t(b.start))
 }
 export type Receipt = Slot & { calendar_event_id: string }
 export async function book(owner: Owner, secret: string, slot: Slot, identity: { name: string; email: string }, timezone: string, fetch: Fetch = globalThis.fetch): Promise<Receipt> {

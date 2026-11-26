@@ -1,4 +1,4 @@
-import { availability, book, meetingRecord, ownerFor, validTimezone, type Receipt } from './calendar.ts'
+import { availability, book, labelBusy, meetingRecord, ownerFor, validTimezone, type Booked, type Receipt } from './calendar.ts'
 export type Booking = { status: string; start?: string; end?: string; calendar_event_id?: string; meeting_id?: string; request_id?: string; booked_at?: string; handoff?: boolean }
 export type Prospect = { id: string; name: string; email: string | null; campaign_id: string; client_id: string; call_booked_at: string | null; closed: boolean }
 export type Store = {
@@ -8,6 +8,7 @@ export type Store = {
   claim(id: string, client: string, requestId: string, start: string, email: string, timezone: string): Promise<boolean>
   save(requestId: string, status: 'failed' | 'confirmed' | 'uncertain', receipt: Receipt | null): Promise<void>
   finish(requestId: string, meeting: { meeting_id: string; booked_at: string }): Promise<void>
+  booked?(client: string, from: string, to: string): Promise<Booked[]>
 }
 const uuid = (x: unknown): x is string => typeof x === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(x)
 const providers = { availability, book, meetingRecord }
@@ -33,7 +34,15 @@ export async function handleCalendar(input: Record<string, unknown>, store: Stor
   if (p.call_booked_at) return { ...base, existing_booking: { status: 'booked', booked_at: p.call_booked_at } as Booking }
   if (p.closed) throw Error('This conversation is paused or closed.')
   const secret = await store.secret(owner.secret_key)
-  if (input.action === 'availability') return { ...base, calendar: await provider.availability(owner, secret, input.timezone) }
+  if (input.action === 'availability') {
+    const { busy, ...calendar } = await provider.availability(owner, secret, input.timezone)
+    if (!busy) return { ...base, calendar }
+    // CALENDAR_BOOKED_LABELS_V1: what is already on the owner's calendar, with our booked calls named. Best effort:
+    // a ledger read failure leaves the plain busy blocks.
+    let ours: Booked[] = [], degraded = false
+    try { ours = store.booked ? await store.booked(p.client_id, calendar.checked_at, new Date(Date.parse(calendar.checked_at) + 31 * 86400000).toISOString()) : [] } catch { ours = []; degraded = true }
+    return { ...base, calendar: { ...calendar, booked: labelBusy(busy, ours), ...(degraded ? { booked_labels_unavailable: true } : {}) } }
+  }
   if (input.confirmed !== true || !uuid(input.request_id) || typeof input.start !== 'string' || !Number.isFinite(Date.parse(input.start)) || Date.parse(input.start) <= Date.now() + 3600000 || typeof input.email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email) || input.email.length > 254 || p.name.trim().split(/\s+/).length < 2) throw Error('Confirm their agreement, full name, email and a future slot before booking.')
   if (owner.provider !== 'hubspot') throw Error('Book through the owner’s calendar link.')
   const start = new Date(input.start).toISOString(), email = input.email.trim().toLowerCase(), key = input.request_id

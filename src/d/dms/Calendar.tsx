@@ -4,6 +4,12 @@ import { CALENDAR_LINKS, proposedTimes, requestCalendar, slotLabel, type Calenda
 import { Btn } from '../ui/Key'
 import './calendar.css'
 
+function busyLabel(b: { start: string; end: string }, timezone: string) {
+  const day = new Intl.DateTimeFormat('en-GB', { timeZone: timezone, weekday: 'short', day: 'numeric', month: 'short' })
+  const time = new Intl.DateTimeFormat('en-GB', { timeZone: timezone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+  return `${day.format(new Date(b.start))} ${time.format(new Date(b.start))}–${time.format(new Date(b.end))}`
+}
+
 export function CalendarPanel({ prospectId, clientId, onInsert }: { prospectId: string; clientId: string; onInsert: (text: string) => void }) {
   const [open, setOpen] = useState(false)
   const [timezone, setTimezone] = useState(() => Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC')
@@ -64,6 +70,8 @@ export function CalendarPanel({ prospectId, clientId, onInsert }: { prospectId: 
       {cal && !receipt && <>
         <p className="dm-calendar-note">{clientId === 'risedtc' ? 'Mattan’s standard 30 minute calendar' : '30 minute slots'} · checked {new Date(cal.checked_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}. Times are available at this check; selecting one does not reserve it.</p>
         {cal.slots.length === 0 ? <p>No available times returned. Refresh or use the booking page.</p> : <div className="dm-calendar-slots">{cal.slots.map(s => <label key={s.start}><input type="checkbox" checked={selected.includes(s.start)} disabled={booking || (selected.length === 2 && !selected.includes(s.start))} onChange={() => { setSelected(prev => prev.includes(s.start) ? prev.filter(v => v !== s.start) : [...prev, s.start]); setAgreed(false) }} />{slotLabel(s, timezone)}</label>)}</div>}
+        {(!!cal.booked?.length || cal.booked_labels_unavailable) && <div className="dm-calendar-booked"><p className="dm-calendar-note">Already on {owner}’s calendar{cal.booked_labels_unavailable ? ' (our call names could not be loaded, so some calls may be missing or unnamed)' : ''}</p>
+          {!!cal.booked?.length && <ul>{cal.booked.map(b => <li key={b.start + b.label} className={b.ours ? 'ours' : undefined}>{busyLabel(b, timezone)} · {b.label}</li>)}</ul>}</div>}
         <div className="dm-calendar-actions"><Btn className="dm-k" disabled={!slots.length || booking} onClick={() => onInsert(proposedTimes(slots, timezone))}>Insert times into reply</Btn>
           {cal.can_book && <Btn className="dm-k" disabled={slots.length !== 1 || booking} onClick={() => { setBookMode(v => !v); setAgreed(false) }}>Book agreed time</Btn>}</div>
         {!cal.can_book && <p className="dm-calendar-note">Use the owner’s booking page to send the invite.</p>}
