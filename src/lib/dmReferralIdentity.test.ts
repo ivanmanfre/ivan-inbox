@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { profileShowsPerson } from '../../supabase/functions/inbox-dm-draft/referral'
 
 // Invented names only (public repo).
-describe('profileShowsPerson (Sol r7/r8)', () => {
+describe('profileShowsPerson (Sol r7/r8/r9)', () => {
   it.each([
     ['Tomas Weller', 'Tomas', 'Weller', true],
     ['Tomas Weller', 'Tomás', 'Weller', true],
@@ -17,6 +17,12 @@ describe('profileShowsPerson (Sol r7/r8)', () => {
     ['Tomas Weller', 'Tomas Andreas', 'Weller', false],
     ['Tomas Weller', 'Marta', 'Weller', false],
     ['', 'Tomas', 'Weller', false],
+    ['Tomas Weller', 'Tomas', 'Weller Jr.', false],
+    ['Tomas Weller Jr.', 'Tomas', 'Weller Jr.', true],
+    ['Tomas Weller Jr', 'Tomas', 'Weller', false],
+    ['Tomas Weller', 'Tomas', 'Weller III', false],
+    ['Tomas Weller', 'Tomas Weller', '', false],
+    ['Tomas Weller MBA', 'Tomas', 'Weller', true],
   ])('%s vs %s / %s → %s', (named, first_name, last_name, want) => {
     expect(profileShowsPerson(named, { first_name, last_name })).toBe(want)
   })

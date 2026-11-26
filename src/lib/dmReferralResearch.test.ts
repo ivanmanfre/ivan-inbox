@@ -144,7 +144,7 @@ describe('referral researcher', () => {
     const text = 'I moved on from Example Labs, but my former colleague Oskar Lindqvist runs creator work there now: ' + link
     const handed: (string | null)[] = []
     const lane = async (_r: unknown, known?: { provider_id: string } | null) => { handed.push(known?.provider_id ?? null); return { channel: 'connection_note' as const, credits: 0, open_profile: null, why: 'test', checked_at: '' } }
-    for (const [first, last, want, status] of [['Oskar', 'Lindqvist', 'ACoAA-test-oskar', 'verified'], ['Oskar', 'Lindqvist MBA', 'ACoAA-test-oskar', 'verified'], ['Oskar', 'Berg Lindqvist', undefined, 'unresolved'], ['Oskar', 'Berg', undefined, 'unresolved'], ['Oskar Lindqvist', 'Berg', undefined, 'unresolved']] as const) {
+    for (const [first, last, want, status] of [['Oskar', 'Lindqvist', 'ACoAA-test-oskar', 'verified'], ['Oskar', 'Lindqvist MBA', 'ACoAA-test-oskar', 'verified'], ['Oskar', 'Berg Lindqvist', undefined, 'unresolved'], ['Oskar', 'Lindqvist Jr.', undefined, 'unresolved'], ['Oskar', 'Berg', undefined, 'unresolved'], ['Oskar Lindqvist', 'Berg', undefined, 'unresolved']] as const) {
       const apifyReads: string[] = []
       vi.stubGlobal('fetch', async (url: string, init: RequestInit) => {
         if (url.includes('api.apify.com')) { apifyReads.push(String(init.body)); return apify([{ id: 'ACoAA-test-oskar', publicIdentifier: 'oskar-lindqvist-test', firstName: first, lastName: last }]) }

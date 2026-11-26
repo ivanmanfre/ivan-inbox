@@ -47,10 +47,11 @@ export type ReferralInmail = { subject: string; body: string; slot?: { start: st
 /** An InMail goes when the seat has Sales Navigator credits or the person's profile is open (free, no cap). */
 export type InmailRoute = { channel: 'inmail' | 'connection_note'; credits: number | null; open_profile: boolean | null; why: string; checked_at: string }
 /** The reviewed person's first name still appears on the profile the URL shows now. */
-// Sol r8: only these are dropped before the names are compared (a title before the given name, a suffix or credential
-// after the family name). Short surnames such as Ma or Ba are real names, so they are not on the list.
+// Sol r8/r9: only these are dropped before the names are compared: a title before the given name, a credential after
+// the family name. Generational suffixes (Jr, Sr, II, III) name a different person and stay in the comparison. Short
+// surnames such as Ma or Ba are real names, so they are not on the list.
 const NAME_TITLES = new Set(['dr', 'mr', 'mrs', 'ms', 'prof'])
-const NAME_SUFFIXES = new Set(['jr', 'sr', 'ii', 'iii', 'iv', 'mba', 'phd', 'md', 'cpa', 'cfa', 'pmp', 'esq', 'msc'])
+const NAME_CREDENTIALS = new Set(['mba', 'phd', 'md', 'cpa', 'cfa', 'pmp', 'esq', 'msc'])
 
 /** Sol r7/r8: the profile shows the person the handoff names. A full name must equal LinkedIn's given names followed
  * by its family names, word for word, once titles and suffixes are dropped. So "Tomas Weller" + "Rivera", "Tomas
@@ -59,9 +60,11 @@ const NAME_SUFFIXES = new Set(['jr', 'sr', 'ii', 'iii', 'iv', 'mba', 'phd', 'md'
 export function profileShowsPerson(named: string | null | undefined, p: { first_name: string; last_name: string }): boolean {
   const tokens = (x: string) => x.toLowerCase().normalize('NFKD').replace(/\p{M}/gu, '').split(/[^\p{L}\p{N}]+/u).filter(Boolean)
   const want = tokens(named ?? ''), given = tokens(p.first_name).filter(t => !NAME_TITLES.has(t)), family = tokens(p.last_name)
-  while (family.length && NAME_SUFFIXES.has(family.at(-1)!)) family.pop()
+  for (const list of [want, family]) while (list.length && NAME_CREDENTIALS.has(list.at(-1)!)) list.pop()
   if (!want.length || !given.length) return false
   if (want.length === 1) return given[0] === want[0]
+  // A full name needs a family name on the profile (Sol r9): the whole name in the given-name field proves nothing.
+  if (!family.length) return false
   return want.join(' ') === [...given, ...family].join(' ')
 }
 
