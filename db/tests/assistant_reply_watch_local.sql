@@ -76,7 +76,9 @@ begin
   insert into integration_config(key,value) values('swishdm_dm_pause_until',(observed+interval '1 day')::text);
   assert not exists(select from assistant_reply_watch_cases(observed));
   update outreach_messages set draft_evidence=jsonb_set(draft_evidence,'{dm_queue,due_at}','"2026-11-25T14:00:00Z"') where id=m;
-  update integration_config set value='2026-11-26T09:00:00Z',updated_at='2026-11-25 18:00Z' where key='swishdm_dm_pause_until';
+  update integration_config set value='2026-11-26T09:00:00Z' where key='swishdm_dm_pause_until';
+  -- Position this arithmetic fixture at the historical London timestamp.
+  update integration_config set updated_at='2026-11-25 18:00Z' where key='swishdm_dm_pause_until';
   assert not exists(select from assistant_reply_watch_cases('2026-11-26 09:59Z'));
   assert exists(select from assistant_reply_watch_cases('2026-11-26 10:00Z'));
   update integration_config set updated_at='2026-11-25 16:00Z' where key='swishdm_dm_pause_until';
@@ -144,4 +146,26 @@ begin
   assert exists(select from assistant_reply_watch_cases() where inbound_id=i);
   update outreach_messages set send_blocked_reason='discarded_in_inbox',discard_mode='reply_myself' where id=o;
   assert exists(select from assistant_reply_watch_cases() where inbound_id=i);
+end $$;
+
+-- Exercise the sender's key/value-only writes on an existing stale timestamp.
+do $$
+declare before_write timestamptz; started timestamptz; deadline text:=(now()+interval '2 hours')::text;
+begin
+  insert into integration_config(key,value) values('swishdm_dm_pause_until',(now()-interval '7 days')::text)
+    on conflict(key) do update set value=excluded.value;
+  update integration_config set updated_at=now()-interval '8 days' where key='swishdm_dm_pause_until';
+  before_write:=clock_timestamp();
+  insert into integration_config(key,value) values('swishdm_dm_pause_until',deadline)
+    on conflict(key) do update set value=excluded.value returning updated_at into started;
+  assert started between before_write and clock_timestamp();
+  assert (select pause_from=started and status='paused' from assistant_reply_queue_settings());
+  insert into integration_config(key,value) values('swishdm_dm_pause_until',deadline)
+    on conflict(key) do update set value=excluded.value;
+  insert into integration_config(key,value) values('swishdm_dm_pause_until',(now()+interval '3 hours')::text)
+    on conflict(key) do update set value=excluded.value;
+  assert (select pause_from=started from assistant_reply_queue_settings());
+  insert into integration_config(key,value,updated_at) values('another_key','initial','2020-01-01');
+  insert into integration_config(key,value) values('another_key','changed') on conflict(key) do update set value=excluded.value;
+  assert (select updated_at='2020-01-01'::timestamptz from integration_config where key='another_key');
 end $$;

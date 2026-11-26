@@ -1,5 +1,30 @@
 -- Private reply supervision; the sender remains the only owner of outbound work.
 begin;
+-- The sender writes only key and value. Record the start of each continuous DM pause,
+-- preserving it if either sender path retries the same write or extends an active pause.
+create or replace function public.assistant_stamp_swishdm_pause()
+returns trigger language plpgsql security invoker set search_path=public,pg_temp as $$
+declare written_at timestamptz:=clock_timestamp();
+begin
+  if tg_op='UPDATE' then
+    if old.value is not distinct from new.value then
+      new.updated_at:=old.updated_at;
+      return new;
+    end if;
+    if pg_input_is_valid(old.value,'timestamptz') and pg_input_is_valid(new.value,'timestamptz') then
+      if old.value::timestamptz>=written_at and new.value::timestamptz>=written_at then
+        new.updated_at:=coalesce(old.updated_at,written_at);
+        return new;
+      end if;
+    end if;
+  end if;
+  new.updated_at:=written_at;
+  return new;
+end $$;
+revoke all on function public.assistant_stamp_swishdm_pause() from public,anon,authenticated;
+create or replace trigger assistant_swishdm_pause_stamp before insert or update of value on public.integration_config
+  for each row when (new.key='swishdm_dm_pause_until') execute function public.assistant_stamp_swishdm_pause();
+
 create or replace function public.assistant_reply_queue_settings(p_at timestamptz default now())
 returns table(status text,cap int,pause_until timestamptz,pause_from timestamptz)
 language sql stable security invoker set search_path=public,pg_temp as $$
