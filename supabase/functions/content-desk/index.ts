@@ -296,7 +296,7 @@ async function regenQuestion(svc: any, userId: string, answerId: string): Promis
 // deno-lint-ignore no-explicit-any
 async function openJobs(svc: any, userId: string) {
   const { data } = await svc.from('desk_t3_jobs').select('title, status, created_at, t3_link')
-    .eq('user_id', userId).order('created_at', { ascending: false }).limit(5)
+    .eq('user_id', userId).eq('origin', 'desk').order('created_at', { ascending: false }).limit(5)
   return data ?? []
 }
 
@@ -1261,7 +1261,8 @@ async function tick(svc: any, opts: { dry: boolean }) {
   const r = render(b.json)
   const { data: ledger } = await svc.from('desk_triggers').select('kind, dedupe_key, fired_at, suppressed')
     .gte('fired_at', new Date(Date.now() - 21 * 86400e3).toISOString())
-  const { data: done } = await svc.from('desk_t3_jobs').select('id, title, updated_at').in('status', ['done', 'failed'])
+  // only the desk's own jobs: inbox cloud jobs ring the phone themselves (db/20261126p)
+  const { data: done } = await svc.from('desk_t3_jobs').select('id, title, updated_at').eq('origin', 'desk').in('status', ['done', 'failed'])
     .gte('updated_at', new Date(Date.now() - 2 * 86400e3).toISOString())
   const cap = Number(cfg.proactive_week_cap ?? 5) || 5
   const planned = planTriggers({
