@@ -16,6 +16,7 @@
 import { useState } from 'react'
 import { Button, Icon, Input } from '../../ds'
 import { supabase } from '../../lib/supabase'
+import { hasPasskeyFlag, isPasskeyCancel, passkeySupported, setPasskeyFlag } from '../../lib/passkey'
 import './login.css'
 
 export function Login() {
@@ -24,7 +25,19 @@ export function Login() {
   const [stage, setStage] = useState<'email' | 'code'>('email')
   const [err, setErr] = useState('')
   const [linkSent, setLinkSent] = useState(false)
-  const [busy, setBusy] = useState<'code' | 'link' | 'verify' | null>(null)
+  const [busy, setBusy] = useState<'code' | 'link' | 'verify' | 'passkey' | null>(null)
+  const canPasskey = passkeySupported()
+  const passkeyFirst = canPasskey && hasPasskeyFlag()
+
+  // Face ID: the passkey is discoverable, so no email is needed. On success
+  // onAuthStateChange flips the gate to the app.
+  async function passkey() {
+    setBusy('passkey')
+    const { error } = await supabase.auth.signInWithPasskey()
+    setBusy(null)
+    if (!error) { setErr(''); setPasskeyFlag(true); return }
+    if (!isPasskeyCancel(error)) setErr(error.message)
+  }
 
   async function sendCode() {
     localStorage.setItem('inbox-email', email)
@@ -57,13 +70,21 @@ export function Login() {
         <h1 className="ds-t-page">Inbox</h1>
         {stage === 'email' ? (
           <>
+            {canPasskey && (
+              <Button
+                variant={passkeyFirst ? 'primary' : 'default'} block icon="lock"
+                busy={busy === 'passkey'} onClick={() => void passkey()}
+              >
+                Sign in with Face ID
+              </Button>
+            )}
             <Input
               label="Email" value={email} inputMode="email" autoComplete="email"
               placeholder="you@example.com"
               onChange={e => setEmail(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && email) void sendCode() }}
             />
-            <Button variant="primary" block busy={busy === 'code'} disabled={!email} onClick={() => void sendCode()}>
+            <Button variant={passkeyFirst ? 'default' : 'primary'} block busy={busy === 'code'} disabled={!email} onClick={() => void sendCode()}>
               Send code
             </Button>
             <Button variant="quiet" block busy={busy === 'link'} disabled={!email} onClick={() => void sendLink()}>

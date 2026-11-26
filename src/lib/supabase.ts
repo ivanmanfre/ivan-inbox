@@ -32,6 +32,9 @@ export const supabase = createClient(
       detectSessionInUrl: true,
       flowType: 'implicit',
       storage: pageStorage,
+      // Face ID sign-in (src/lib/passkey.ts). Without this flag every passkey
+      // method throws at call time.
+      experimental: { passkey: true },
     },
     // Every database read and write settles (src/lib/noAnswer.ts): a hung request used to grey Send
     // in every thread until a relaunch (Ivan 10-21, Diane O'Brien).

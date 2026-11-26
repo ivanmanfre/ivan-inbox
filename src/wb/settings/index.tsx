@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { disablePush, enablePush, getPushState, type PushState } from '../../lib/push'
 import { chimeEnabled, playChime, setChimeEnabled } from '../../lib/chime'
+import { isPasskeyCancel, passkeySupported, setPasskeyFlag } from '../../lib/passkey'
 import { Avatar, Button, Icon, SectionCard, Segmented, SettingRow, Switch } from '../../ds'
 import { Body, Head, Screen } from '../kit'
 import './settings.css'
@@ -180,6 +181,59 @@ function BoardLinks() {
   )
 }
 
+// Face ID sign-in. Adding a passkey needs the signed-in session this screen
+// already has; the login screen then offers Face ID before the email field.
+function FaceIdCard() {
+  const [count, setCount] = useState<number | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+
+  async function load() {
+    const { data, error } = await supabase.auth.passkey.list()
+    if (error) { setCount(null); return }
+    setCount(data?.length ?? 0)
+  }
+  useEffect(() => { if (passkeySupported()) void load() }, [])
+
+  async function add() {
+    setBusy(true)
+    setErr('')
+    const { error } = await supabase.auth.registerPasskey()
+    setBusy(false)
+    if (error) {
+      const code = (error as { code?: string }).code
+      if (code === 'ERROR_AUTHENTICATOR_PREVIOUSLY_REGISTERED') { setPasskeyFlag(true); setErr('This device already has Face ID on.') }
+      else if (!isPasskeyCancel(error)) setErr(error.message)
+      return
+    }
+    setPasskeyFlag(true)
+    await load()
+  }
+
+  if (!passkeySupported()) return null
+  const on = (count ?? 0) > 0
+  return (
+    <SectionCard label="Sign-in">
+      <SettingRow
+        label="Face ID"
+        hint={
+          <>
+            {on
+              ? `On. Sign in with Face ID next time instead of an email code.${count! > 1 ? ` ${count} passkeys saved.` : ''}`
+              : 'Sign in with Face ID instead of an email code. Turn on once per device.'}
+            {err && <span className="a-set-err">{err}</span>}
+          </>
+        }
+        control={
+          <Button variant={on ? 'default' : 'primary'} icon="lock" busy={busy} onClick={() => void add()}>
+            {on ? 'Add this device' : 'Turn on'}
+          </Button>
+        }
+      />
+    </SectionCard>
+  )
+}
+
 export function Settings({ shell = 'stock' }: { shell?: SettingsShell } = {}) {
   const [push, setPush] = useState<PushState>('off')
   const [pushBusy, setPushBusy] = useState(false)
@@ -277,6 +331,8 @@ export function Settings({ shell = 'stock' }: { shell?: SettingsShell } = {}) {
             notifications".
           </p>
         </SectionCard>
+
+        <FaceIdCard />
 
         <SectionCard label="Appearance">
           <SettingRow
