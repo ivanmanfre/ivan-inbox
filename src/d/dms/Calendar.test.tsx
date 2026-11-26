@@ -23,6 +23,13 @@ describe('conversation calendar panel', () => {
   expect(request.mock.calls.every(c => c[0].action === 'availability')).toBe(true)
   expect(screen.getByText(/Prospect’s timezone is unconfirmed/)).toBeInTheDocument()
  })
+ it('lists what is already on the owner calendar with our calls named', async () => {
+  request.mockResolvedValue({ ...result, calendar: { ...result.calendar, booked: [{ start: '2026-10-20T17:00:00.000Z', end: '2026-10-20T17:30:00.000Z', label: 'Busy', ours: false }, { start: '2026-10-20T17:30:00.000Z', end: '2026-10-20T18:00:00.000Z', label: 'Intro call: Bo Sample (Acme Co)', ours: true }] } })
+  open(); fireEvent.change(screen.getByLabelText('Calendar timezone'), { target: { value: 'UTC' } })
+  expect(await screen.findByText(/Already on Mattan’s calendar/)).toBeInTheDocument()
+  expect(screen.getByText(/17:30–18:00 · Intro call: Bo Sample \(Acme Co\)/)).toBeInTheDocument()
+  expect(screen.getByText(/17:00–17:30 · Busy/)).toBeInTheDocument()
+ })
  it('requires one slot, email and explicit agreement before the invite action', async () => {
   open(); const choices = await screen.findAllByRole('checkbox', { name: /Oct/ }); fireEvent.click(choices[0])
   fireEvent.click(screen.getByRole('button', { name: 'Book agreed time' }))

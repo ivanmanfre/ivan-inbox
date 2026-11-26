@@ -3,7 +3,7 @@ export type CalendarSlot = { start: string; end: string }
 export type CalendarBooking = { status: string; start?: string; end?: string; calendar_event_id?: string; meeting_id?: string; handoff?: boolean; booked_at?: string }
 export type CalendarResult = {
   owner: string; booking_url: string; email?: string | null; timezone?: string
-  calendar?: { owner: string; checked_at: string; duration_minutes: number; timezone: string; slots: CalendarSlot[]; can_book: boolean }
+  calendar?: { owner: string; checked_at: string; duration_minutes: number; timezone: string; slots: CalendarSlot[]; can_book: boolean; booked?: (CalendarSlot & { label: string; ours: boolean })[]; booked_labels_unavailable?: boolean }
   existing_booking?: CalendarBooking; booking?: CalendarBooking
 }
 export const CALENDAR_LINKS: Record<string, { owner: string; url: string }> = {

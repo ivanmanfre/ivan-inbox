@@ -110,3 +110,25 @@ describe('providers', () => {
     expect(String(f2.mock.calls[0][0])).toBe('https://tidycal.com/api/booking-types/2132756/bookings')
   })
 })
+
+describe('stale cards and the second availability page (2026-11-26)', () => {
+  it('a card the store calls out of date books nothing and frees no claim', async () => {
+    const current = vi.fn(async () => ({ ok: false, reason: 'They wrote again after this card was made. Read the thread before booking. Nothing was booked.' }))
+    const { store, provider } = make({ current } as Partial<CardStore>)
+    const r = await handleBookCard(input, store, provider, now)
+    expect(r).toMatchObject({ status: 'blocked', existing: 'stale' }); expect(store.claim).not.toHaveBeenCalled(); expect(provider.bookSlot).not.toHaveBeenCalled()
+    expect(current).toHaveBeenCalledWith(expect.objectContaining({ draft_message_id: 'd1' }), { start, end }, 'zech@urture.com')
+  })
+  it('a current card still books', async () => {
+    const { store, provider } = make({ current: vi.fn(async () => ({ ok: true })) } as Partial<CardStore>)
+    expect(await handleBookCard(input, store, provider, now)).toMatchObject({ status: 'booked' })
+  })
+  it('slotOpen finds a time on the next page when the first page has more', async () => {
+    const page1 = { isOffline: false, linkType: 'PERSONAL_LINK', customParams: { formFields: [] }, allUsersBusyTimes: [{ meetingsUser: { userId: '80659343' } }], linkAvailability: { hasMore: true, linkAvailabilityByDuration: { '1800000': { availabilities: [] } } } }
+    const page2 = { allUsersBusyTimes: [{ meetingsUser: { userId: '80659343' } }], linkAvailability: { hasMore: false, linkAvailabilityByDuration: { '1800000': { availabilities: [{ startMillisUtc: Date.parse(start), endMillisUtc: Date.parse(end) }] } } } }
+    const fetch = vi.fn(async (url: string) => Response.json(String(url).includes('availability-page') ? page2 : page1))
+    const o = { client_id: 'risedtc', name: 'Mattan', provider: 'hubspot', slug: 'mattan5/rise-intro-call--li', secret_key: 'k', user_id: '80659343', booking_url: 'u' } as const
+    expect((await slotOpen(o, 'secret', { start, end }, '', fetch as never)).open).toBe(true)
+    expect(String(fetch.mock.calls[1][0])).toContain('/book/availability-page/mattan5%2Frise-intro-call--li?timezone=UTC&monthOffset=1')
+  })
+})

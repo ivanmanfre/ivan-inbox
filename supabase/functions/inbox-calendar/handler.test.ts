@@ -18,6 +18,17 @@ describe('calendar booking orchestration', () => {
     const r = await handleCalendar({ ...input, action: 'availability' }, store, provider)
     expect(r.calendar?.slots).toEqual([{ start, end }]); expect(store.claim).not.toHaveBeenCalled(); expect(provider.book).not.toHaveBeenCalled()
   })
+  it('labels our booked calls on the busy blocks and survives a ledger failure', async () => {
+    const { store, provider } = make()
+    const busy = [{ start, end }, { start: end, end: new Date(Date.parse(end) + 3600000).toISOString() }]
+    provider.availability.mockResolvedValue({ ...cal, busy } as typeof cal)
+    const booked = vi.fn(async () => [{ start, end, label: 'Intro call: Bo Sample (Acme Co)', ours: true }])
+    const r = await handleCalendar({ ...input, action: 'availability' }, { ...store, booked }, provider)
+    expect(r.calendar?.booked).toEqual([{ start, end, label: 'Intro call: Bo Sample (Acme Co)', ours: true }, { ...busy[1], label: 'Busy', ours: false }])
+    expect(booked).toHaveBeenCalledWith('risedtc', cal.checked_at, expect.any(String)); expect(JSON.stringify(r)).not.toContain('"busy"')
+    const r2 = await handleCalendar({ ...input, action: 'availability' }, { ...store, booked: vi.fn(async () => { throw Error('x') }) }, provider)
+    expect(r2.calendar?.booked?.map(b => b.label)).toEqual(['Busy', 'Busy']); expect(r2.calendar?.booked_labels_unavailable).toBe(true)
+  })
   it('resolves owner from the campaign and rejects missing/unknown tenancy', async () => {
     const { store, provider } = make(); store.prospect.mockResolvedValue({ ...await store.prospect(), client_id: 'swishdm' })
     await expect(handleCalendar(input, store, provider)).rejects.toThrow(/calendar.*unavailable/i); expect(provider.book).not.toHaveBeenCalled()

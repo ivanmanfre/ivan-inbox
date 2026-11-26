@@ -23,6 +23,9 @@ export type CardStore = {
   secret(key: string): Promise<string>
   claim(id: string, client: string, requestId: string, start: string, email: string, timezone: string): Promise<boolean>
   commit(requestId: string, cardId: string, event: string | null, meeting: string | null, booked: string | null): Promise<{ recorded?: boolean; released?: boolean; status?: string }>
+  /** Is the card still the live next step? Its staged confirm unsent, not discarded, still held for this time and email,
+   * and no newer message from them since the turn the card answers. */
+  current?(ctx: Record<string, unknown>, slot: Slot, email: string): Promise<{ ok: boolean; reason?: string }>
 }
 // A 4xx answer to the booking POST means nothing was created: the request may be retried. Anything else is ambiguous.
 export class Rejected extends Error {}
@@ -49,7 +52,15 @@ export async function slotOpen(o: CardOwner, secret: string, slot: Slot, typeId:
     const required = (Array.isArray(r.customParams?.formFields) ? r.customParams.formFields : []).filter((f: { isRequired?: boolean }) => f.isRequired).map((f: { name: string }) => f.name).filter((n: string) => !['firstname', 'lastname', 'email'].includes(n))
     const av = r.linkAvailability?.linkAvailabilityByDuration?.['1800000']?.availabilities
     if (!Array.isArray(av)) throw Error('Availability could not be loaded.')
-    return { open: av.some((a: { startMillisUtc: number; endMillisUtc: number }) => a.startMillisUtc === st && a.endMillisUtc === en), fields: required }
+    const hit = (list: { startMillisUtc: number; endMillisUtc: number }[]) => list.some(a => a.startMillisUtc === st && a.endMillisUtc === en)
+    if (hit(av)) return { open: true, fields: required }
+    // The first page covers only a few days; the drafter reads the next page too, so Book must see the same range.
+    if (r.linkAvailability?.hasMore) {
+      const r2 = await call(`https://api.hubapi.com/scheduler/v3/meetings/meeting-links/book/availability-page/${encodeURIComponent(o.slug)}?timezone=UTC&monthOffset=1`, secret, fetch)
+      const u2 = r2?.allUsersBusyTimes, av2 = r2?.linkAvailability?.linkAvailabilityByDuration?.['1800000']?.availabilities
+      if (Array.isArray(u2) && u2.length === 1 && String(u2[0]?.meetingsUser?.userId) === o.user_id && Array.isArray(av2)) return { open: hit(av2), fields: required }
+    }
+    return { open: false, fields: required }
   }
   const me = await call('https://tidycal.com/api/me', secret, fetch)
   if (String(me?.email || '').toLowerCase() !== o.user_id) throw Error('The owner calendar could not be verified.')
@@ -107,6 +118,11 @@ export async function handleBookCard(input: Record<string, unknown>, store: Card
     return { status: 'blocked', existing: existing.status, message: existing.status === 'confirmed' || existing.status === 'booked' ? 'A call is already booked for this person. Nothing new was booked.' : 'A booking for this person is in progress or unconfirmed. Check the owner calendar. Nothing new was booked.' }
   }
   if (p.call_booked_at) return { status: 'blocked', existing: 'booked', message: 'A call is already booked for this person. Nothing new was booked.' }
+  // Sol r1 (2026-11-26): a card whose reply was discarded, or whose prospect has written again (another time), never books.
+  if (store.current) {
+    const cur = await store.current(ctx, slot, to)
+    if (!cur.ok) return { status: 'blocked', existing: 'stale', message: cur.reason ?? 'This card is out of date. Nothing was booked.' }
+  }
   if (p.closed) throw Error('This conversation is paused or closed.')
   if (Date.parse(slot.start) <= now + 3600000) throw Error('That time is less than an hour away. Book by hand if it still works.')
   if (p.name.trim().split(/\s+/).length < 2) throw Error('A full name is needed for the invite. Book by hand.')

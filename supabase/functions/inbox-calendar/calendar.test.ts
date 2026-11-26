@@ -1,11 +1,24 @@
 import { describe, expect, it, vi } from 'vitest'
-import { availability, book, ownerFor, validTimezone } from './calendar'
+import { availability, book, labelBusy, ownerFor, validTimezone } from './calendar'
 
 const now = Date.parse('2026-10-17T00:00:00Z')
 const start = '2026-10-20T18:00:00.000Z'
 const end = '2026-10-20T18:30:00.000Z'
 const fixture = () => ({ isOffline: false, linkType: 'PERSONAL_LINK', customParams: { formFields: [] }, allUsersBusyTimes: [{ isOffline: false, meetingsUser: { userId: '80659343' } }], linkAvailability: { linkAvailabilityByDuration: { '1800000': { availabilities: [{ startMillisUtc: Date.parse(start), endMillisUtc: Date.parse(end) }, { startMillisUtc: now - 1, endMillisUtc: now + 1799999 }] } } } })
 const jsonFetch = (data: unknown) => vi.fn(async () => Response.json(data))
+
+describe('booked labels', () => {
+  it('names our booked calls on busy blocks, keeps other blocks as Busy, and lists an unsynced booking', () => {
+    const busy = [{ start: '2026-11-30T18:00:00.000Z', end: '2026-11-30T19:00:00.000Z' }, { start: '2026-11-30T19:00:00.000Z', end: '2026-11-30T19:30:00.000Z' }]
+    const ours = [{ start: '2026-11-30T19:00:00.000Z', end: '2026-11-30T19:30:00.000Z', label: 'Intro call: Ada Example (Acme Co)', ours: true }, { start: '2026-12-01T15:00:00.000Z', end: '2026-12-01T15:30:00.000Z', label: 'Intro call: Bo Sample', ours: true }]
+    expect(labelBusy(busy, ours)).toEqual([{ ...busy[0], label: 'Busy', ours: false }, { ...busy[1], label: 'Intro call: Ada Example (Acme Co)', ours: true }, ours[1]])
+  })
+  it('splits a merged block around our calls', () => {
+    const merged = [{ start: '2026-11-30T18:00:00.000Z', end: '2026-11-30T20:00:00.000Z' }]
+    const a = { start: '2026-11-30T19:00:00.000Z', end: '2026-11-30T19:30:00.000Z', label: 'Intro call: Ada', ours: true }, b = { start: '2026-11-30T19:30:00.000Z', end: '2026-11-30T20:00:00.000Z', label: 'Intro call: Bo', ours: true }
+    expect(labelBusy(merged, [b, a]).map(x => [x.start.slice(11, 16), x.end.slice(11, 16), x.label])).toEqual([['18:00', '19:00', 'Busy'], ['19:00', '19:30', 'Intro call: Ada'], ['19:30', '20:00', 'Intro call: Bo']])
+  })
+})
 
 describe('owner calendar providers', () => {
   it('never maps missing or unknown campaign identity to a calendar', () => {
@@ -20,6 +33,13 @@ describe('owner calendar providers', () => {
     expect(result.slots).toEqual([{ start, end }]); expect(result.timezone).toBe('America/New_York'); expect(result.duration_minutes).toBe(30)
     expect(JSON.stringify(result)).not.toContain('meetingsUser')
     expect(fetch.mock.calls[0][0]).toContain('/book/mattan5?timezone=America%2FNew_York')
+  })
+  it('returns busy block times only, never their details', async () => {
+    const f = fixture() as ReturnType<typeof fixture> & { allUsersBusyTimes: { busyTimes?: unknown[] }[] }
+    f.allUsersBusyTimes[0].busyTimes = [{ start: Date.parse(start) - 3600000, end: Date.parse(start), title: 'private' }]
+    const result = await availability(ownerFor('risedtc')!, 'secret', 'UTC', now, jsonFetch(f))
+    expect(result.busy).toEqual([{ start: new Date(Date.parse(start) - 3600000).toISOString(), end: start }])
+    expect(JSON.stringify(result)).not.toContain('private')
   })
   it.each(['offline', 'wrong owner', 'wrong type'])('refuses %s calendars', async issue => {
     const f = fixture()
