@@ -60,7 +60,9 @@ const NAME_CREDENTIALS = new Set(['mba', 'phd', 'md', 'cpa', 'cfa', 'pmp', 'esq'
 export function profileShowsPerson(named: string | null | undefined, p: { first_name: string; last_name: string }): boolean {
   const tokens = (x: string) => x.toLowerCase().normalize('NFKD').replace(/\p{M}/gu, '').split(/[^\p{L}\p{N}]+/u).filter(Boolean)
   const want = tokens(named ?? ''), given = tokens(p.first_name).filter(t => !NAME_TITLES.has(t)), family = tokens(p.last_name)
-  for (const list of [want, family]) while (list.length && NAME_CREDENTIALS.has(list.at(-1)!)) list.pop()
+  // Sol r10: the handoff name is compared as written (Mba is also a surname), and a credential is dropped from the
+  // profile's family name only while a family name remains, so the first-name-only rule applies only to a one-word handoff.
+  while (family.length > 1 && NAME_CREDENTIALS.has(family.at(-1)!)) family.pop()
   if (!want.length || !given.length) return false
   if (want.length === 1) return given[0] === want[0]
   // A full name needs a family name on the profile (Sol r9): the whole name in the given-name field proves nothing.
