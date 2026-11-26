@@ -199,6 +199,11 @@ Deno.serve(async (req) => {
     console.log(JSON.stringify({ bot_tick: 'created_thread', thread_id: threadId }))
   }
 
+  // Check for reply exceptions even when the unread digest is quiet or paced.
+  // Failure here leaves the existing content and notification tick available.
+  const { error: replyWatchError } = await db.rpc('assistant_reply_watch_sweep', { p_operator: OPERATOR_ID })
+  if (replyWatchError) console.error('reply watch failed', replyWatchError.code)
+
   // ---- 3. busy: never stamp rows for a turn that will not start ----------
   // Railway caps a run at 15 minutes. Allow another 15 for slot acquisition,
   // a session restart and callback retries. Only this scheduled bot's work
@@ -240,6 +245,7 @@ Deno.serve(async (req) => {
     .from('inbox_turns')
     .select('id', { count: 'exact', head: true })
     .eq('origin', 'bot')
+    .or('sources->0->>kind.is.null,sources->0->>kind.neq.reply_watch')
     .gte('created_at', utcDayStart(new Date()))
   if (capErr) return say({ bot_tick: 'cap_lookup_failed', error: capErr.message.slice(0, 200) }, 500)
   if ((todayCount ?? 0) >= cap) {
@@ -259,6 +265,7 @@ Deno.serve(async (req) => {
     .select('created_at, prompt')
     .eq('thread_id', threadId)
     .eq('origin', 'bot')
+    .or('sources->0->>kind.is.null,sources->0->>kind.neq.reply_watch')
     .eq('status', 'done')
     .gte('created_at', new Date(Date.now() - TOLD_WINDOW_MS).toISOString())
   if (toldErr) return say({ bot_tick: 'told_lookup_failed', error: toldErr.message.slice(0, 200) }, 500)
@@ -319,6 +326,7 @@ Deno.serve(async (req) => {
     .select('answer')
     .eq('thread_id', threadId)
     .eq('origin', 'bot')
+    .or('sources->0->>kind.is.null,sources->0->>kind.neq.reply_watch')
     .eq('status', 'done')
     .order('created_at', { ascending: false })
     .limit(1)

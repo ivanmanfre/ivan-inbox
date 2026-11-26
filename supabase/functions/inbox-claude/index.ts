@@ -32,6 +32,7 @@ import {
   P16_OPERATOR_RULES,
   summaryDelta,
 } from './assembler.ts'
+import { asksAboutStuckReplies, describeStuckReplies } from './stuck-replies.ts'
 import { persistedAnswer } from './persisted-answer.ts'
 import { answerContent, contentIntent } from './content-turn.ts'
 import { BOT_TOOLS, MAX_SYSTEM_APPEND_CHARS } from './bot-tools.ts'
@@ -451,7 +452,9 @@ Deno.serve(async (req) => {
   let previousContent: { id: string } | undefined
   if (editorial === 'reference') {
     const { data: prior, error } = await db.from('inbox_turns').select('origin,status,sources')
-      .eq('thread_id', thread.id).order('created_at', { ascending: false }).limit(1).maybeSingle()
+      .eq('thread_id', thread.id)
+      .or('origin.neq.bot,sources->0->>kind.is.null,sources->0->>kind.neq.reply_watch')
+      .order('created_at', { ascending: false }).limit(1).maybeSingle()
     if (error) return fail(503, 'context_assembly_failed', origin)
     const source = prior?.status === 'done' && Array.isArray(prior.sources)
       ? prior.sources.find((r: { kind?: string }) => r.kind === 'content_desk' || r.kind === 'content_choice') : null
@@ -569,6 +572,7 @@ Deno.serve(async (req) => {
   if (!scanReference && turnOrigin === 'operator' && !editorial && scanDraftReference.test(prompt.trim())) {
     const { data: prior, error } = await db.from('inbox_turns').select('id,origin,status,sources,prompt')
       .eq('user_id', user.id).eq('thread_id', thread.id)
+      .or('origin.neq.bot,sources->0->>kind.is.null,sources->0->>kind.neq.reply_watch')
       .order('created_at', { ascending: false }).limit(1).maybeSingle()
     if (error) return fail(503, 'scan_alert_lookup_failed', origin)
     scanReference = scanFollowupReference(prior)
@@ -619,6 +623,21 @@ Deno.serve(async (req) => {
       error_detail: detail?.slice(0, 2000) ?? null,
       finished_at: new Date().toISOString(),
     }).eq('id', turnId).is('finished_at', null)
+  }
+
+  if (turnOrigin === 'operator' && !scanReference && asksAboutStuckReplies(prompt)) {
+    return persistedAnswer({ db, turnId, threadId: thread.id, headers: cors(origin),
+      run: async () => {
+        const now = new Date().toISOString()
+        const [{ data, error, count }, settings] = await Promise.all([
+          db.rpc('assistant_reply_watch_cases', { p_at: now }, { count: 'exact' }).select('seat,prospect_id,person,kind,since')
+          .order('since').order('prospect_id').limit(10),
+          db.rpc('assistant_reply_queue_settings', { p_at: now }).select('status').single(),
+        ])
+        if (error || !Array.isArray(data) || count == null) throw new Error('reply_check_unavailable')
+        return { text: describeStuckReplies(data, count, settings.data?.status ?? 'unavailable'), source: { kind: 'reply_watch', path: 'assistant_reply_watch_cases' } }
+      },
+    })
   }
 
   if (turnOrigin === 'operator' && (scanReference || asksAboutScanEmail(prompt))) {
