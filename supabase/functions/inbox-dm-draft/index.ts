@@ -205,7 +205,8 @@ Deno.serve(async req => {
         // One check for both branches (Sol r3): the route now, the seat it would go from, and a member id that takes an InMail.
         const route = client === 'arch' ? inmailRoute(await inmailCredits(sb, client), profile.open_profile, canon.author) : null
         const sender = route?.channel === 'inmail' ? await seatAccount(sb, client) : null
-        const canInmail = Boolean(route?.channel === 'inmail' && sender && /^ACoAA/.test(profile.provider_id))
+        // Sol r5: an InMail needs the verified member too, so an unpinned (legacy) referral keeps its note path.
+        const canInmail = Boolean(route?.channel === 'inmail' && sender && /^ACoAA/.test(profile.provider_id) && pinned === profile.provider_id)
         const asInmail = Boolean(leadInmail && canInmail)
         // The card showed the InMail: when it cannot go now, nothing is staged; the card switches to the invite note so the
         // operator reviews the copy that would go (Sol r1: never stage a note the operator did not look at).

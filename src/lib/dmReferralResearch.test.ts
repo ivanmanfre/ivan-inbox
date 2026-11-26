@@ -139,6 +139,24 @@ describe('referral researcher', () => {
     expect(result.draft).toBeNull()
     expect(calls).toBe(1)
   })
+  it('on the InMail lane, records the supplied profile\'s member id only when its full name is the person named (Sol r5)', async () => {
+    const link = 'https://www.linkedin.com/in/oskar-lindqvist-test/'
+    const text = 'I moved on from Example Labs, but my former colleague Oskar Lindqvist runs creator work there now: ' + link
+    const lane = async () => ({ channel: 'connection_note' as const, credits: 0, open_profile: null, why: 'test', checked_at: '' })
+    for (const [first, last, want] of [['Oskar', 'Lindqvist', 'ACoAA-test-oskar'], ['Oskar', 'Berg', undefined]] as const) {
+      const apifyReads: string[] = []
+      vi.stubGlobal('fetch', async (url: string, init: RequestInit) => {
+        if (url.includes('api.apify.com')) { apifyReads.push(String(init.body)); return apify([{ id: 'ACoAA-test-oskar', publicIdentifier: 'oskar-lindqvist-test', firstName: first, lastName: last }]) }
+        const prompt = JSON.parse(String(init.body)).messages[0].content as string
+        return prompt.includes('Determine whether') ? claude(JSON.stringify({ name: 'Oskar Lindqvist', linkedin_url: link }))
+          : claude(JSON.stringify({ paragraphs: ['Hey Oskar', 'Rhea suggested I ask you about creator campaigns at Example Labs.', 'Are you open to an intro chat?'] }))
+      })
+      const result = await researchReferral(db, { id: 'example-referral', text, company: 'Example Labs', referrer: 'Rhea Example' }, 'Davorin', [], [], [], { inmail: lane })
+      expect(result).toMatchObject({ status: 'verified', name: 'Oskar Lindqvist' })
+      expect(apifyReads).toHaveLength(1)
+      expect(result.member_id ?? undefined).toBe(want)
+    }
+  })
   it('drafts for the profile the referrer supplied even when the title is unknown', async () => {
     const link = 'https://www.linkedin.com/in/vladimir-golovanov/'
     const text = "I'm no longer working with the ChillBase team, but I can recommend my former colleague, Vladimir Golovanov: " + link +

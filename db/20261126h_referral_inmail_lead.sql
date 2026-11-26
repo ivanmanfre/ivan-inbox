@@ -172,7 +172,8 @@ end $function$;
 revoke all on function public.inbox_referral_create_lead(uuid, uuid, integer, text, text[], timestamp with time zone, text[], jsonb, text, jsonb, text) from public, anon, authenticated;
 grant execute on function public.inbox_referral_create_lead(uuid, uuid, integer, text, text[], timestamp with time zone, text[], jsonb, text, jsonb, text) to service_role;
 
--- Sol r4: inbox_set_referral_v2 as live (2026-11-26), plus: a same-handoff save keeps the member id first recorded.
+-- Sol r4/r5: inbox_set_referral_v2 as live (2026-11-26), plus: a same-handoff save that conflicts with a verified pin is
+-- refused (returns false; the caller answers "changed, try again"), so the pin, the profile URL and the copy never split.
 CREATE OR REPLACE FUNCTION public.inbox_set_referral_v2(p_prospect uuid, p_referral jsonb, p_keep_verified boolean, p_expected_input text)
  RETURNS boolean
  LANGUAGE plpgsql
@@ -199,11 +200,17 @@ begin
   acted := case when cur ->> 'input_message_id' = p_referral ->> 'input_message_id'
     then jsonb_strip_nulls(jsonb_build_object(
       'lead_prospect_id', cur -> 'lead_prospect_id', 'lead_message_id', cur -> 'lead_message_id',
-      'lead_created_at', cur -> 'lead_created_at', 'lead_result', cur -> 'lead_result', 'dismissed_at', cur -> 'dismissed_at',
-      -- Sol r4: the member verified for this handoff stays pinned; a later save for the same handoff (a redraft, a
-      -- concurrent run) can neither clear nor replace it. An unresolved candidate pins nothing.
-      'member_id', case when cur ->> 'status' = 'verified' then cur -> 'member_id' end))
+      'lead_created_at', cur -> 'lead_created_at', 'lead_result', cur -> 'lead_result', 'dismissed_at', cur -> 'dismissed_at'))
     else '{}'::jsonb end;
+  -- The verified member pinned for this handoff: a same-handoff save that drops, changes or downgrades it, or points at
+  -- another profile URL, is refused under this row lock (a redraft carries the same identity and passes).
+  if cur ->> 'input_message_id' = p_referral ->> 'input_message_id' and cur ->> 'status' = 'verified'
+     and nullif(cur ->> 'member_id', '') is not null
+     and (p_referral ->> 'status' is distinct from 'verified'
+          or p_referral ->> 'member_id' is distinct from cur ->> 'member_id'
+          or li_slug(p_referral ->> 'linkedin_url') is distinct from li_slug(cur ->> 'linkedin_url')) then
+    return false;
+  end if;
   -- A newer handoff replaces this one while its staged invite waits for Send: the invite goes back to review.
   if cur ->> 'input_message_id' is distinct from p_referral ->> 'input_message_id' and nullif(cur ->> 'lead_message_id', '') is not null then
     update outreach_messages set approved_at = null, send_blocked_at = now(), send_blocked_reason = 'referral_paused: a newer handoff replaced this referral'

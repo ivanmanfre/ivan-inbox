@@ -163,6 +163,15 @@ describe('the ARCH first touch as an InMail', () => {
       expect(upstream.some(p => p.includes('Write the first LinkedIn InMail'))).toBe(false)
     }
   })
+  it('a legacy unpinned referral: the note Create stages even with credits and an open profile, with no redraft loop (Sol r5)', async () => {
+    const legacy = { ...verified, revision: REFERRAL_REVISION, story_key: keyAfter(youToo), later: checked('later-1'), member_id: undefined }
+    const open = [{ id: 'ACoAA-test-tomas', publicIdentifier: 'tomas-weller-test', firstName: 'Tomas', lastName: 'Weller', openProfile: true }]
+    const got = await run([pitch, handoff, ack, youToo], { body: { mode: 'referral_lead', input_message_id: HANDOFF, draft: verified.draft, linkedin_url: verified.linkedin_url, story_key: keyAfter(youToo) },
+      enrichment: { inbox_referral: legacy }, apify: open, credits: 12, rpc: fn => fn === 'inbox_referral_create_lead' ? { status: 'created', lead_prospect_id: '00000000-0000-4000-8000-0000000000aa', message_id: 'm' } : true })
+    expect(got.status).toBe(200)
+    expect(got.result.inmail_available).toBeUndefined()
+    expect(got.calls.find(c => c.fn === 'inbox_referral_create_lead')!.args).toMatchObject({ p_channel: 'connection_note' })
+  })
   it('a referral with no verified member (researched before it was recorded) gets no InMail, and no profile read (Sol r4)', async () => {
     const legacy = { ...verified, member_id: undefined, revision: REFERRAL_REVISION - 1 }
     const rivera = [{ id: 'ACoAA-test-rivera', publicIdentifier: 'tomas-weller-test', firstName: 'Tomas', lastName: 'Rivera', openProfile: true }]

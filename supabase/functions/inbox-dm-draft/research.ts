@@ -1,6 +1,6 @@
 import { draftBreaksRules, formatReferralDm, inmailProblem, linkedProfiles, linkedReferralProfile, type InmailRoute, type ReferralEmail, type ReferralInmail, matchMention, mentionIdentity, pickSearchMatch, profileIdentity, readLaterVerdict, referralCandidate, sameCompany, verifyReferral, withoutLinks, type Mention, type MentionProfile, type ReferralDraft, type ReferralLater, type ReferralMessage } from './referral.ts'
 import { askClaude, jsonFrom } from './llm.ts'
-import { apifyProfiles } from './apify.ts'
+import { apifyProfileDetails, apifyProfiles } from './apify.ts'
 import { findWorkEmail } from './apollo.ts'
 import type { OfferSlot } from './slots.ts'
 
@@ -58,6 +58,13 @@ ${input.text}
       : 'LinkedIn profile supplied in the message.',
     draft: null, reason: null, sources: [{ url: linkedProfile, title: 'LinkedIn profile from the referral' }],
   } : null
+  // Sol r5 (InMail lane only): the profile the referrer supplied is read now, and its member id is recorded when its full
+  // name is the person the handoff names. Otherwise no member is recorded and the invite note stays the first touch.
+  if (linkedIdentity && namedProfile && opts.inmail) {
+    const slug = decodeURIComponent(new URL(linkedProfile!).pathname.split('/').filter(Boolean)[1] ?? '')
+    const p = slug ? await apifyProfileDetails(sb, slug).catch(() => null) : null
+    if (p && /^ACoAA/.test(p.provider_id) && flat(p.name) === flat(name)) linkedIdentity.member_id = p.provider_id
+  }
   // Acknowledging a named handoff needs no capability claim or verified destination profile.
   try {
     // One free day on the owner's calendar, asked for in both the invite note and the email (Ivan 2026-11-26).
