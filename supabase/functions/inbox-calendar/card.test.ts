@@ -140,3 +140,14 @@ describe('stale cards and the second availability page (2026-11-26)', () => {
     expect(String(fetch.mock.calls[1][0])).toContain('/book/availability-page/mattan5%2Frise-intro-call--li?timezone=UTC&monthOffset=1')
   })
 })
+
+describe('a card removed while the calendar is read (Sol r3)', () => {
+  it('books nothing and releases the claim', async () => {
+    const live = card(), removed = { ...card(), send_blocked_reason: 'dismissed' }
+    const cardFn = vi.fn().mockResolvedValueOnce(live).mockResolvedValueOnce(live).mockResolvedValue(removed)
+    const { store, provider } = make({ card: cardFn } as Partial<CardStore>)
+    const r = await handleBookCard(input, store, provider, now)
+    expect(r).toMatchObject({ status: 'blocked', existing: 'stale' }); expect(provider.bookSlot).not.toHaveBeenCalled()
+    expect(store.commit).toHaveBeenCalledWith(input.request_id, expect.any(String), null, null, null)
+  })
+})

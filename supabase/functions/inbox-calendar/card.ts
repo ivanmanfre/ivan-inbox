@@ -120,7 +120,15 @@ export async function handleBookCard(input: Record<string, unknown>, store: Card
   if (p.call_booked_at) return { status: 'blocked', existing: 'booked', message: 'A call is already booked for this person. Nothing new was booked.' }
   // Sol r1+r2 (2026-11-26): a card whose reply was discarded, or whose prospect has written again (another time), never
   // books. Checked before the claim and again right before the booking POST (they can write while the calendar is read).
-  const stale = async () => { const cur = await store.current(ctx, slot, to); return cur.ok ? null : { status: 'blocked', existing: 'stale', message: cur.reason ?? 'This card is out of date. Nothing was booked.' } }
+  const stale = async () => {
+    // Sol r3: the card itself is re-read (Remove, Done or a changed booking on it = no invite)
+    const again = await store.card(card.id)
+    const ab = ((again?.context ?? {}) as Record<string, unknown>).booking as Record<string, unknown> | undefined
+    if (!again || again.sent_at || again.send_blocked_reason || again.kind !== card.kind || !ab || Date.parse(String(ab.start)) !== Date.parse(slot.start) || Date.parse(String(ab.end)) !== Date.parse(slot.end) || String(ab.invite_email || '').trim().toLowerCase() !== to)
+      return { status: 'blocked', existing: 'stale', message: 'This card was removed or changed. Nothing was booked.' }
+    const cur = await store.current(ctx, slot, to)
+    return cur.ok ? null : { status: 'blocked', existing: 'stale', message: cur.reason ?? 'This card is out of date. Nothing was booked.' }
+  }
   const before = await stale()
   if (before) return before
   if (p.closed) throw Error('This conversation is paused or closed.')

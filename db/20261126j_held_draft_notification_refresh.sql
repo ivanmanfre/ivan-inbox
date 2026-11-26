@@ -7,13 +7,21 @@ language plpgsql security definer set search_path = public as $$
 begin
   if new.direction = 'outbound' and new.sent_at is null and old.sent_at is null
      and length(coalesce(old.message_text, '')) >= 8 and new.message_text is distinct from old.message_text then
+    -- Sol r3: only the draft-text section (a whole "\n\n<text>\n\n" block, or the trailing block), and only when exactly
+    -- one open notification for this prospect carries it; an ambiguous match is left alone
+    with m as (
+      select n.id from inbox_notifications n
+       where n.family = 'reply_draft_pending'
+         and n.media->>'prospect_id' = new.prospect_id::text
+         and n.dismissed_at is null
+         and n.created_at between new.created_at - interval '2 minutes' and new.created_at + interval '15 minutes'
+         and (strpos(n.body, E'\n\n' || old.message_text || E'\n\n') > 0 or right(n.body, length(old.message_text) + 2) = E'\n\n' || old.message_text)
+    )
     update inbox_notifications n
-       set body = left(replace(n.body, old.message_text, coalesce(new.message_text, '')), 4000)
-     where n.family = 'reply_draft_pending'
-       and n.media->>'prospect_id' = new.prospect_id::text
-       and n.dismissed_at is null
-       and n.created_at between new.created_at - interval '2 minutes' and new.created_at + interval '15 minutes'
-       and strpos(n.body, old.message_text) > 0;
+       set body = left(case when strpos(n.body, E'\n\n' || old.message_text || E'\n\n') > 0
+                            then replace(n.body, E'\n\n' || old.message_text || E'\n\n', E'\n\n' || coalesce(new.message_text, '') || E'\n\n')
+                            else left(n.body, length(n.body) - length(old.message_text)) || coalesce(new.message_text, '') end, 4000)
+     where n.id = (select id from m) and (select count(*) from m) = 1;
   end if;
   return null;
 end $$;

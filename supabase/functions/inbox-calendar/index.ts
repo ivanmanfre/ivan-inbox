@@ -72,14 +72,18 @@ Deno.serve(async req => {
         }
       }
       // every attribution (canceled too): a canceled meeting is never shown again from the inbox ledger
-      const att = await pageAll<{ meeting_id: string | null; meeting_start: string; prospect_id: string | null; booker_name: string | null; meeting_outcome: string | null }>((lo, hi) => sb.from('booking_attributions').select('meeting_id,meeting_start,prospect_id,booker_name,meeting_outcome').eq('client_id', client).gte('meeting_start', since).lt('meeting_start', to).order('meeting_start').order('meeting_id').range(lo, hi))
+      const att = await pageAll<{ meeting_id: string | null; meeting_start: string; prospect_id: string | null; booker_name: string | null; booker_email: string | null; meeting_outcome: string | null }>((lo, hi) => sb.from('booking_attributions').select('meeting_id,meeting_start,prospect_id,booker_name,booker_email,meeting_outcome').eq('client_id', client).gte('meeting_start', since).lt('meeting_start', to).order('meeting_start').order('meeting_id').range(lo, hi))
+      const canceled = (o: string | null) => /^cancel+ed$/i.test(String(o ?? ''))   // CANCELED, CANCELLED and canceled all occur
       for (const r of att) {
         if (r.meeting_id) attributed.add(String(r.meeting_id))
-        if (r.meeting_outcome !== 'CANCELED') rows.push({ start: r.meeting_start, prospect_id: r.prospect_id, name: r.booker_name })
+        if (!canceled(r.meeting_outcome)) rows.push({ start: r.meeting_start, prospect_id: r.prospect_id, name: r.booker_name })
       }
-      const inbox = await pageAll<{ start_at: string; prospect_id: string | null; meeting_id: string | null; calendar_event_id: string | null }>((lo, hi) => sb.from('inbox_calendar_bookings').select('start_at,prospect_id,meeting_id,calendar_event_id').eq('client_id', client).eq('status', 'confirmed').gte('start_at', since).lt('start_at', to).order('start_at').order('request_id').range(lo, hi))
+      const inbox = await pageAll<{ start_at: string; prospect_id: string | null; meeting_id: string | null; calendar_event_id: string | null; email: string | null }>((lo, hi) => sb.from('inbox_calendar_bookings').select('start_at,prospect_id,meeting_id,calendar_event_id,email').eq('client_id', client).eq('status', 'confirmed').gte('start_at', since).lt('start_at', to).order('start_at').order('request_id').range(lo, hi))
       for (const r of inbox) {
-        if ((r.meeting_id && attributed.has(String(r.meeting_id))) || att.some(x => x.prospect_id === r.prospect_id && Date.parse(x.meeting_start) === Date.parse(r.start_at))) continue   // attributed (or canceled) already
+        // attributed (or canceled) already: same meeting id, same prospect + start, or same invite email + start (a cancel
+        // can clear the attribution's prospect before the receipt has its meeting id)
+        const sameStart = (x: { meeting_start: string }) => Date.parse(x.meeting_start) === Date.parse(r.start_at)
+        if ((r.meeting_id && attributed.has(String(r.meeting_id))) || att.some(x => sameStart(x) && ((r.prospect_id && x.prospect_id === r.prospect_id) || (r.email && String(x.booker_email ?? '').trim().toLowerCase() === r.email.trim().toLowerCase())))) continue
         rows.push({ start: r.start_at, prospect_id: r.prospect_id, name: null })
       }
       const ids = [...new Set(rows.map(r => r.prospect_id).filter((x): x is string => !!x))], byId = new Map<string, { name: string | null; company: string | null }>()
