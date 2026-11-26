@@ -48,15 +48,20 @@ describe('cloud conversations', () => {
     expect(merge([stale], [live])[0].status).toBe('done')
   })
 
-  it('a submission keeps its key until it is confirmed, per destination', () => {
+  it('a submission keeps its key until that key is confirmed, per destination and text', () => {
     let n = 0
     const make = () => `k${++n}`
     const a = submissionKey('new', 'build a scan', make)
     expect(submissionKey('new', 'build a scan', make)).toBe(a)
     expect(submissionKey('r1', 'build a scan', make)).not.toBe(a)
-    expect(submissionKey('new', 'something else', make)).not.toBe(a)
-    submissionDone('new')
-    expect(submissionKey('new', 'something else', make)).not.toBe(a)
+    const b = submissionKey('new', 'something else', make)
+    expect(b).not.toBe(a)
+    // a second submission never erases the first one's key (Sol r3 #5)
+    expect(submissionKey('new', 'build a scan', make)).toBe(a)
+    submissionDone('new', b)
+    expect(submissionKey('new', 'build a scan', make)).toBe(a)
+    submissionDone('new', a)
+    expect(submissionKey('new', 'build a scan', make)).not.toBe(a)
   })
 
   it('upsert replaces by id', () => {

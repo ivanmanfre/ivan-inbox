@@ -29,11 +29,16 @@ function useCloudJobs(openId: string | null) {
   const [convoRead, setConvoRead] = useState<{ id: string; state: 'loading' | 'done' | 'failed' } | null>(null)
   const openRef = useRef(openId)
   openRef.current = openId
+  // Only the newest read for the conversation on screen may set its state: a late answer for one
+  // Ivan left never overwrites the one he is looking at (Sol r3 #6). Rows always merge.
+  const seq = useRef(0)
   const readOne = useCallback((id: string) => {
+    const n = ++seq.current
     setConvoRead(c => (c?.id === id && c.state === 'done' ? c : { id, state: 'loading' }))
+    const mine = () => n === seq.current && openRef.current === id
     readConversation(id).then(
-      rows => { setJobs(l => merge(l ?? [], rows)); setConvoRead({ id, state: 'done' }) },
-      () => setConvoRead({ id, state: 'failed' }),
+      rows => { setJobs(l => merge(l ?? [], rows)); if (mine()) setConvoRead({ id, state: 'done' }) },
+      () => { if (mine()) setConvoRead({ id, state: 'failed' }) },
     )
   }, [])
   const read = useCallback(() => {
@@ -78,10 +83,11 @@ export function Cloud({ layout, onBack, openId, onOpen }: {
     if (busy || !text.trim()) return
     const d = 'new'
     setBusy(d); setNote(null)
-    const r = await startCloudJob(text, submissionKey(d, text, newKey))
+    const key = submissionKey(d, text, newKey)
+    const r = await startCloudJob(text, key)
     setBusy(null)
     if (!r.ok || !r.job_id) { setNote({ dest: d, text: errorWords(r.error) }); setPrefill({ dest: d, text, n: Date.now() }); return }
-    submissionDone(d)
+    submissionDone(d, key)
     read()
     if (destRef.current === d) onOpen(r.job_id)
   }
@@ -89,10 +95,11 @@ export function Cloud({ layout, onBack, openId, onOpen }: {
     if (busy || !text.trim() || !c.replyTo) return
     const d = c.root.id
     setBusy(d); setNote(null)
-    const r = await replyCloudJob(c.replyTo.id, text, submissionKey(d, text, newKey))
+    const key = submissionKey(d, text, newKey)
+    const r = await replyCloudJob(c.replyTo.id, text, key)
     setBusy(null)
     if (!r.ok) { setNote({ dest: d, text: errorWords(r.error) }); setPrefill({ dest: d, text, n: Date.now() }); return }
-    submissionDone(d)
+    submissionDone(d, key)
     read()
   }
 

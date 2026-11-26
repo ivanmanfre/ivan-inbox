@@ -21,6 +21,7 @@ alter table public.desk_t3_jobs add column if not exists notify_request_id bigin
 -- delivery of the one cloud_job notification: confirmed by the retry sweep, retried up to 5 times
 alter table public.desk_t3_jobs add column if not exists notify_ok boolean;
 alter table public.desk_t3_jobs add column if not exists notify_attempts int not null default 0;
+alter table public.desk_t3_jobs add column if not exists notify_at timestamptz;
 
 do $c$ begin
   if not exists (select 1 from pg_constraint where conname = 'desk_t3_jobs_origin_check') then
@@ -202,38 +203,54 @@ begin
       'title', v_title,
       'body', nullif(v_body, ''),
       'url', './#exp/d/claude/cloud?job=' || v_root::text,
-      'dedupe_key', 'cloud_job:' || j.id::text,
+      -- a retry gets its own key: inbox-notify never rings again for a key it has seen (Sol r3 #1)
+      'dedupe_key', 'cloud_job:' || j.id::text || case when j.notify_attempts > 0 then ':r' || j.notify_attempts::text else '' end,
       'push', true),
     timeout_milliseconds := 30000) into v_req;
-  update public.desk_t3_jobs set notify_request_id = v_req, notify_attempts = notify_attempts + 1 where id = j.id;
+  update public.desk_t3_jobs set notify_request_id = v_req, notify_attempts = notify_attempts + 1, notify_at = now() where id = j.id;
 exception when others then
   -- a notification must never undo the job's final report
   raise warning 'cloud_job_notify failed for %: %', p_job, sqlstate;
 end $f$;
 revoke all on function public.cloud_job_notify(uuid) from public, anon, authenticated;
 
--- The retry sweep (pg_cron, every 5 min; Sol r2 #8). For each finished inbox/reply job of the last
--- day whose notification is not confirmed: a 2xx answer confirms it; a failed, timed-out or missing
--- answer (10 min after the post) posts again, up to 5 tries. inbox-notify folds the same dedupe key,
--- so a repeat never rings twice for one job.
+-- The retry sweep (pg_cron, every 5 min; Sol r2 #8, r3 #1-2). Each finished inbox/reply job of the
+-- last day whose push is not settled (notify_ok is null): confirmed when inbox-notify answered 2xx AND
+-- at least one phone took it ('sent' in results); otherwise, once the last post has had 10 minutes,
+-- post again (a new dedupe key, so it rings), up to 5 posts; after the 5th has had its 10 minutes the
+-- job is settled as notify_ok = false and leaves the sweep, so it can never crowd out newer jobs.
 create or replace function public.cloud_job_notify_sweep() returns int
 language plpgsql security definer set search_path = public, pg_temp as $f$
 declare
-  j record; r record; n int := 0;
+  j record; r record; n int := 0; v_sent boolean; v_nosubs boolean;
 begin
   for j in
-    select id, notify_request_id, notify_attempts, updated_at from public.desk_t3_jobs
-     where origin <> 'desk' and status in ('done', 'failed') and notify_ok is not true
+    select id, notify_request_id, notify_attempts, notify_at from public.desk_t3_jobs
+     where origin <> 'desk' and status in ('done', 'failed') and notify_ok is null
        and updated_at > now() - interval '1 day'
      order by updated_at
      limit 50
   loop
-    select status_code, timed_out, error_msg into r from net._http_response where id = j.notify_request_id;
+    v_sent := false; v_nosubs := false;
+    select status_code, content into r from net._http_response where id = j.notify_request_id;
     if found and r.status_code between 200 and 299 then
+      begin
+        v_sent := coalesce((r.content::jsonb -> 'results') ? 'sent', false);
+        -- no phone is signed up at all: a repost cannot ring anything, so the feed row is the delivery
+        v_nosubs := coalesce((r.content::jsonb ->> 'subs')::int = 0 and (r.content::jsonb ->> 'deduped') = 'false', false);
+      exception when others then
+        v_sent := false;
+      end;
+    end if;
+    if v_sent then
       update public.desk_t3_jobs set notify_ok = true where id = j.id;
+    elsif v_nosubs then
+      update public.desk_t3_jobs set notify_ok = false where id = j.id;
+    elsif j.notify_at is not null and j.notify_at > now() - interval '10 minutes' then
+      null;  -- the last post still has time to land
     elsif j.notify_attempts >= 5 then
       update public.desk_t3_jobs set notify_ok = false where id = j.id;
-    elsif j.notify_request_id is null or found or j.updated_at < now() - interval '10 minutes' then
+    else
       perform public.cloud_job_notify(j.id);
       n := n + 1;
     end if;

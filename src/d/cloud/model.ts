@@ -126,33 +126,41 @@ export function upsert(list: CloudJob[], row: CloudJob): CloudJob[] {
 }
 
 // ---- submissions that survive a reload -------------------------------------
-// A submission keeps one key until the server confirms it, saved on the device per destination
-// ('new' or a conversation's root id), so a retry after a lost answer or a reload returns the job
-// it already made instead of starting a second one (Sol r2 #1).
-const SUBMIT_KEY = 'cloud-submit-v1'
-type Pending = Record<string, { text: string; key: string }>
+// Every unconfirmed submission keeps its own key, saved on the device per destination ('new' or a
+// conversation's root id) and text, so a retry after a lost answer or a reload returns the job it
+// already made instead of starting a second one. Only the key the server confirmed is cleared, so
+// a second submission or another tab never erases the first one's key (Sol r2 #1, r3 #5).
+const SUBMIT_KEY = 'cloud-submit-v2'
+type Pending = Record<string, { text: string; key: string; at: number }[]>
+const KEEP_MS = 7 * 86400e3
 
 function readPending(): Pending {
-  try { return JSON.parse(localStorage.getItem(SUBMIT_KEY) || '{}') as Pending } catch { return {} }
+  try {
+    const p = JSON.parse(localStorage.getItem(SUBMIT_KEY) || '{}') as Pending
+    return p && typeof p === 'object' ? p : {}
+  } catch { return {} }
 }
 function writePending(p: Pending): void {
-  try { localStorage.setItem(SUBMIT_KEY, JSON.stringify(p)) } catch { /* storage blocked: key lives for this page only */ }
+  try { localStorage.setItem(SUBMIT_KEY, JSON.stringify(p)) } catch { /* storage blocked: memory only */ }
 }
 const memory: Pending = {}
 
-export function submissionKey(dest: string, text: string, make: () => string): string {
-  const stored = { ...readPending(), ...memory }
-  const hit = stored[dest]
-  if (hit && hit.text === text) return hit.key
-  const next = { text, key: make() }
-  memory[dest] = next
-  writePending({ ...readPending(), [dest]: next })
+export function submissionKey(dest: string, text: string, make: () => string, now = Date.now()): string {
+  const stored = readPending()
+  const list = [...(stored[dest] ?? []), ...(memory[dest] ?? [])].filter(x => now - x.at < KEEP_MS)
+  const hit = list.find(x => x.text === text)
+  if (hit) return hit.key
+  const next = { text, key: make(), at: now }
+  memory[dest] = [...(memory[dest] ?? []), next]
+  writePending({ ...stored, [dest]: [...(stored[dest] ?? []).filter(x => now - x.at < KEEP_MS), next] })
   return next.key
 }
 
-export function submissionDone(dest: string): void {
-  delete memory[dest]
+/** The server confirmed this key: forget it, and only it. */
+export function submissionDone(dest: string, key: string): void {
+  memory[dest] = (memory[dest] ?? []).filter(x => x.key !== key)
   const p = readPending()
-  delete p[dest]
+  p[dest] = (p[dest] ?? []).filter(x => x.key !== key)
+  if (!p[dest].length) delete p[dest]
   writePending(p)
 }
