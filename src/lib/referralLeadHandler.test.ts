@@ -27,10 +27,11 @@ const checked = (...ids: string[]) => ({ through_message_id: ids.at(-1) ?? HANDO
 const redrafted = 'Hey Tomas\n\nPriya said you are the person for creator campaigns at Northwind.\n\nWhat do you measure that work on these days?'
 
 type Call = { fn: string; args: Record<string, unknown> }
-async function run(rows: Record<string, unknown>[], opts: { body?: Record<string, unknown>; server?: boolean; enrichment?: Record<string, unknown>; model?: (prompt: string) => unknown; apify?: unknown[]; rpc?: (fn: string, args: Record<string, unknown>) => unknown }) {
+async function run(rows: Record<string, unknown>[], opts: { body?: Record<string, unknown>; server?: boolean; enrichment?: Record<string, unknown>; model?: (prompt: string) => unknown; apify?: unknown[]; rpc?: (fn: string, args: Record<string, unknown>) => unknown; credits?: number | null }) {
   const calls: Call[] = []
   const upstream: string[] = []
   const apifyBodies: unknown[] = []
+  const balanceReads: string[] = []
   let handler: (req: Request) => Promise<Response> = () => { throw Error('handler not loaded') }
   const sb = {
     rpc: async (fn: string, args: Record<string, unknown>) => { calls.push({ fn, args }); return { data: opts.rpc ? opts.rpc(fn, args) : true, error: null } },
@@ -41,7 +42,7 @@ async function run(rows: Record<string, unknown>[], opts: { body?: Record<string
         select(value: string) { fields = value; return query },
         eq(field: string, value: unknown) { if (field === 'direction') direction = value; return query }, in() { return query },
         order() { return query }, limit() { return query }, not() { return query },
-        maybeSingle: async () => ({ data: table === 'integration_config' ? { value: 'apify-token' } : null }),
+        maybeSingle: async () => ({ data: table === 'integration_config' ? { value: 'config-value' } : null }),
         single: async () => ({ data: fields.startsWith('referral:') ? { referral: null } : { operator_note: null, enrichment_data: opts.enrichment ?? {}, linkedin_url: 'https://www.linkedin.com/in/priya-example-test' } }),
         then(resolve: (value: unknown) => unknown) {
           const data = table === 'content_prompts' ? slugs.map(slug => ({ slug, body: 'current verified rules', updated_at: '2026-11-20' }))
@@ -57,6 +58,8 @@ async function run(rows: Record<string, unknown>[], opts: { body?: Record<string
     Deno: { env: { get: (name: string) => name === 'INBOX_CLAUDE_ALLOWED_USER_ID' ? 'owner' : 'configured' }, serve: (fn: typeof handler) => { handler = fn } },
     Response, AbortSignal, URL, console, decodeURIComponent, encodeURIComponent,
     fetch: async (url: string, init: { body: string }) => {
+      // The seat's InMail credit balance (a read; nothing is sent). null = unreadable.
+      if (url.includes('/linkedin/inmail_balance')) { balanceReads.push(url); return opts.credits === null ? new Response('', { status: 500 }) : Response.json({ sales_navigator: opts.credits ?? 40 }) }
       if (url.includes('api.apify.com')) { apifyBodies.push(JSON.parse(init.body)); return Response.json(opts.apify ?? []) }
       const prompt = JSON.parse(init.body).messages[0].content as string
       upstream.push(prompt)
@@ -75,7 +78,7 @@ async function run(rows: Record<string, unknown>[], opts: { body?: Record<string
   load('index.ts')
   const headers: Record<string, string> = opts.server ? { 'x-inbox-secret': 'configured' } : { Authorization: 'Bearer owner-token' }
   const response = await handler(new Request('https://test/draft', { method: 'POST', headers, body: JSON.stringify({ prospect_id: PROSPECT, ...opts.body }) }))
-  return { status: response.status, result: await response.json(), calls, upstream, apifyBodies }
+  return { status: response.status, result: await response.json(), calls, upstream, apifyBodies, balanceReads }
 }
 
 const judge = (verdict: string, quote: string | null = null) => (prompt: string) =>
@@ -121,6 +124,55 @@ describe('a verified referral stays open after later replies', () => {
   })
 })
 
+// The InMail drafter (ARCH): a fuller intro with a short subject; the note drafter answers as before.
+const inmailBody = "Hey Tomas\n\nPriya pointed me to you for creator campaigns at Northwind Games.\n\nI'm Davorin, founder of ARCH. We run creator campaigns for mobile games, for studios like Example Studio.\n\nAre you open to an intro chat sometime next week?"
+const withInmail = (verdict = 'go', inmail: Record<string, unknown> = { subject: 'ARCH x Northwind', paragraphs: inmailBody.split('\n\n'), reason: null }) => (prompt: string) =>
+  prompt.includes('Write the first LinkedIn InMail') ? inmail : judge(verdict)(prompt)
+
+describe('the ARCH first touch as an InMail', () => {
+  it('a redraft writes the InMail beside the invite note when the seat has credits, without a profile read', async () => {
+    const cached = { ...verified, revision: REFERRAL_REVISION - 1 }
+    const { result, upstream, apifyBodies, balanceReads } = await run([pitch, handoff, ack, youToo], { server: true, body: { mode: 'referral' }, enrichment: { inbox_referral: cached }, model: withInmail(), credits: 12 })
+    expect(balanceReads).toHaveLength(1)
+    expect(apifyBodies).toHaveLength(0)
+    expect(result.referral).toMatchObject({ draft: redrafted, inmail: { subject: 'ARCH x Northwind', body: inmailBody }, inmail_route: { channel: 'inmail', credits: 12, open_profile: null } })
+    const prompt = upstream.find(p => p.includes('Write the first LinkedIn InMail'))!
+    expect(prompt).toContain('scale line')
+    expect(prompt).toContain('No link of any kind')
+  })
+  it('no credits: their profile is read through Apify, and a closed profile keeps the invite note with the reason', async () => {
+    const cached = { ...verified, revision: REFERRAL_REVISION - 1 }
+    const closed = [{ id: 'ACoAA-test-tomas', publicIdentifier: 'tomas-weller-test', firstName: 'Tomas', lastName: 'Weller', openProfile: false }]
+    const { result, upstream, apifyBodies } = await run([pitch, handoff, ack, youToo], { server: true, body: { mode: 'referral' }, enrichment: { inbox_referral: cached }, model: withInmail(), credits: 0, apify: closed })
+    expect(apifyBodies).toEqual([expect.objectContaining({ publicIdentifiers: ['tomas-weller-test'] })])
+    expect(result.referral.inmail).toBeNull()
+    expect(result.referral.inmail_route).toMatchObject({ channel: 'connection_note', credits: 0, open_profile: false })
+    expect(result.referral.inmail_route.why).toContain('no InMail credits')
+    expect(upstream.some(p => p.includes('Write the first LinkedIn InMail'))).toBe(false)
+  })
+  it('an open profile goes as an InMail even with the credits unreadable', async () => {
+    const cached = { ...verified, revision: REFERRAL_REVISION - 1 }
+    const open = [{ id: 'ACoAA-test-tomas', publicIdentifier: 'tomas-weller-test', firstName: 'Tomas', lastName: 'Weller', openProfile: true }]
+    const { result } = await run([pitch, handoff, ack, youToo], { server: true, body: { mode: 'referral' }, enrichment: { inbox_referral: cached }, model: withInmail(), credits: null, apify: open })
+    expect(result.referral.inmail_route).toMatchObject({ channel: 'inmail', credits: null, open_profile: true })
+    expect(result.referral.inmail).toMatchObject({ subject: 'ARCH x Northwind' })
+  })
+  it('an InMail with a link, a long subject or no subject is not kept', async () => {
+    const cached = { ...verified, revision: REFERRAL_REVISION - 1 }
+    for (const bad of [{ subject: 'ARCH x Northwind', paragraphs: ['Hey Tomas', 'See https://example.test/deck'] }, { subject: 'A subject that runs far too long for this', paragraphs: ['Hey Tomas', 'Hi'] }, { paragraphs: ['Hey Tomas', 'Hi'] }]) {
+      const { result } = await run([pitch, handoff, ack, youToo], { server: true, body: { mode: 'referral' }, enrichment: { inbox_referral: cached }, model: withInmail('go', bad), credits: 3 })
+      expect(result.referral.inmail).toBeNull()
+      expect(result.referral.draft).toBe(redrafted)
+    }
+  })
+  it('other seats never read credits or draft an InMail', async () => {
+    const rise = [pitch, handoff, ack, youToo].map(r => ({ ...r, client_id: 'risedtc' }))
+    const { result, balanceReads } = await run(rise, { server: true, body: { mode: 'referral' }, enrichment: { inbox_referral: { ...verified, revision: REFERRAL_REVISION - 1 } }, model: withInmail(), credits: 9 })
+    expect(balanceReads).toHaveLength(0)
+    expect(result.referral.inmail ?? null).toBeNull()
+  })
+})
+
 describe('a conditional handoff and a staged invite', () => {
   it('the handoff itself is read for a hold even with no later reply', async () => {
     const conditional = row(HANDOFF, 'inbound', 'Hold off until January, then talk to Tomas Weller, he is the influencer manager here', 10)
@@ -153,6 +205,45 @@ describe('create referred lead', () => {
     expect(made.args).toMatchObject({ p_referrer: PROSPECT, p_input_message: HANDOFF, p_revision: REFERRAL_REVISION, p_text: verified.draft, p_expected_url: verified.linkedin_url, p_later_ids: ['later-1'],
       p_lead: { linkedin_url: 'https://www.linkedin.com/in/tomas-weller-test', provider_id: 'ACoAA-test-tomas', country: 'Portugal', company: 'Northwind Games' } })
     expect((made.args.p_evidence as { review_note: string }).review_note).toContain('already messaged Tomas by hand on LinkedIn')
+  })
+  const inmailReady = { ...ready, inmail: { subject: 'ARCH x Northwind', body: inmailBody }, inmail_route: { channel: 'inmail', credits: 12, open_profile: null, why: 'credits', checked_at: at(31) } }
+  const inmailBodyReq = (over: Record<string, unknown> = {}) => ({ ...body(inmailBody), channel: 'inmail', subject: 'ARCH x Northwind', note: verified.draft, ...over })
+  const created = (fn: string) => fn === 'inbox_referral_create_lead' ? { status: 'created', lead_prospect_id: '00000000-0000-4000-8000-0000000000aa', message_id: 'm' } : true
+  it('stages one held InMail when the seat has credits, with the lane, seat and recipient the sender checks', async () => {
+    const { status, result, calls } = await run([pitch, handoff, ack, youToo], { body: inmailBodyReq(), enrichment: { inbox_referral: inmailReady }, apify: profile, rpc: created, credits: 12 })
+    expect(status).toBe(200)
+    expect(result.lead).toMatchObject({ status: 'created', channel: 'inmail' })
+    const made = calls.find(c => c.fn === 'inbox_referral_create_lead')!
+    expect(made.args).toMatchObject({ p_channel: 'inmail', p_text: `Subject: ARCH x Northwind\n\n${inmailBody}`,
+      p_evidence: { sent_as: 'inmail', delivery_lane: 'arch_referral_inmail', inmail_api: 'sales_navigator', inmail_provider_id: 'ACoAA-test-tomas', sender_account_id: 'config-value', fallback_note: verified.draft, no_sequence_enrollment: true } })
+    expect((made.args.p_evidence as { review_note: string }).review_note).toContain('LinkedIn InMail (one Sales Navigator credit)')
+  })
+  it('no credits and a closed profile at Create: the invite note goes instead, and the answer says why', async () => {
+    const closed = [{ ...profile[0], openProfile: false }]
+    const { result, calls } = await run([pitch, handoff, ack, youToo], { body: inmailBodyReq(), enrichment: { inbox_referral: inmailReady }, apify: closed, rpc: created, credits: 0 })
+    expect(result.lead).toMatchObject({ status: 'created', channel: 'connection_note' })
+    expect(result.lead.inmail_fallback).toContain('no InMail credits')
+    const made = calls.find(c => c.fn === 'inbox_referral_create_lead')!
+    expect(made.args).toMatchObject({ p_channel: 'connection_note', p_text: verified.draft, p_evidence: { sent_as: 'connection_note' } })
+  })
+  it('an open profile goes free at Create even with no credits', async () => {
+    const open = [{ ...profile[0], openProfile: true }]
+    const { calls } = await run([pitch, handoff, ack, youToo], { body: inmailBodyReq(), enrichment: { inbox_referral: inmailReady }, apify: open, rpc: created, credits: 0 })
+    const made = calls.find(c => c.fn === 'inbox_referral_create_lead')!
+    expect(made.args).toMatchObject({ p_channel: 'inmail' })
+    expect((made.args.p_evidence as { review_note: string }).review_note).toContain('free: their profile is open')
+  })
+  it('refuses an InMail edited to carry a link or dashes, a long fallback note, or one the card never showed', async () => {
+    const link = await run([pitch, handoff, ack, youToo], { body: inmailBodyReq({ draft: `${inmailBody}\n\nhttps://example.test` }), enrichment: { inbox_referral: inmailReady }, apify: profile, rpc: created })
+    expect(link.status).toBe(400)
+    expect(link.result.error).toContain('no links')
+    expect((await run([pitch, handoff, ack, youToo], { body: inmailBodyReq({ subject: 'ARCH — Northwind' }), enrichment: { inbox_referral: inmailReady }, apify: profile, rpc: created })).status).toBe(400)
+    const longNote = await run([pitch, handoff, ack, youToo], { body: inmailBodyReq({ note: 'x'.repeat(301) }), enrichment: { inbox_referral: inmailReady }, apify: profile, rpc: created })
+    expect(longNote.status).toBe(400)
+    expect(longNote.result.error).toContain('fallback invite note')
+    const none = await run([pitch, handoff, ack, youToo], { body: inmailBodyReq(), enrichment: { inbox_referral: ready }, apify: profile, rpc: created })
+    expect(none.status).toBe(409)
+    expect(none.calls.find(c => c.fn === 'inbox_referral_create_lead')).toBeUndefined()
   })
   it('the cron secret can never create a lead', async () => {
     expect((await run([pitch, handoff], { server: true, body: body(), enrichment: { inbox_referral: ready } })).status).toBe(403)

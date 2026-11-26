@@ -34,6 +34,36 @@ export type ReferralDraft = {
   lead_message_id?: string
   /** The free calendar day the invite note asks for (Ivan 2026-11-26). */
   slot?: { start: string; label: string; day: string } | null
+  /** ARCH: the first touch as an InMail (subject + the fuller intro) when one can go (Ivan 2026-11-26). */
+  inmail?: ReferralInmail | null
+  /** Whether that InMail can go, read when it was drafted; Create reads it again. */
+  inmail_route?: InmailRoute | null
+}
+export type ReferralInmail = { subject: string; body: string; slot?: { start: string; label: string; day: string } }
+/** An InMail goes when the seat has Sales Navigator credits or the person's profile is open (free, no cap). */
+export type InmailRoute = { channel: 'inmail' | 'connection_note'; credits: number | null; open_profile: boolean | null; why: string; checked_at: string }
+
+/** The sender's limits for a referral InMail (Send Messages REFERRAL_INMAIL lanes). */
+export const INMAIL_SUBJECT_LIMIT = 60
+export const INMAIL_BODY_LIMIT = 1900
+/** How the row stores it, the shape the sender parses: "Subject: ...", a blank line, then the body. */
+export const inmailText = (subject: string, body: string) => `Subject: ${subject.replace(/\s+/g, ' ').trim()}\n\n${body.trim()}`
+/** Why an InMail (as edited) cannot be staged, or null. Same copy rules as the note, and no links. */
+export function inmailProblem(subject: string, body: string): string | null {
+  const s = subject.replace(/\s+/g, ' ').trim(), b = body.trim()
+  if (!s || s.length > INMAIL_SUBJECT_LIMIT) return `The InMail subject must be 1 to ${INMAIL_SUBJECT_LIMIT} characters.`
+  if (!b || b.length > INMAIL_BODY_LIMIT) return `The InMail fits ${INMAIL_BODY_LIMIT} characters. This one has ${b.length}.`
+  if (draftBreaksRules(`${s}\n${b}`)) return 'The InMail breaks the copy rules (no dashes, no "!", no performance-only claims).'
+  if (/https?:\/\/|\bwww\./i.test(`${s}\n${b}`)) return 'The InMail carries no links.'
+  return null
+}
+/** Credits or an open profile let the InMail go; otherwise the invite note goes. Unknown credits are not credits. */
+export function inmailRoute(credits: number | null, openProfile: boolean | null, owner: string, now = new Date()): InmailRoute {
+  const base = { credits, open_profile: openProfile, checked_at: now.toISOString() }
+  if (openProfile === true) return { ...base, channel: 'inmail', why: 'Their profile is open, so the InMail is free.' }
+  if (typeof credits === 'number' && credits > 0) return { ...base, channel: 'inmail', why: `${owner}'s seat has ${credits} Sales Navigator InMail credits.` }
+  return { ...base, channel: 'connection_note', why: credits === 0 ? `${owner}'s seat has no InMail credits left and their profile is not open.`
+    : `${owner}'s InMail credits could not be read and their profile is not known to be open.` }
 }
 export type ReferralEmail = { to: string; cc: string[]; subject: string; body: string
   /** The handoff gave no address; Apollo found their verified work email (Ivan 2026-11-26: both lanes on a referral). */

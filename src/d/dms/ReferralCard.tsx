@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { Thread } from '../../lib/inbox'
 import { createReferredLead, dismissReferral, drafterEmailRow, readStoredReferral, REFERRAL_LEAD_MODEL, referralEmailRow, referralInbound, requestDmReferral, stageReferralEmail, type ReferredLeadResult } from '../../lib/dmReferral'
-import { INVITE_NOTE_LIMIT, laterChecked, laterInbound, type ReferralDraft, type ReferralEmail } from '../../../supabase/functions/inbox-dm-draft/referral'
+import { INMAIL_BODY_LIMIT, INVITE_NOTE_LIMIT, laterChecked, laterInbound, type ReferralDraft, type ReferralEmail } from '../../../supabase/functions/inbox-dm-draft/referral'
 import { ReferredLeadCard } from './ReferredLeadCard'
 import { threadEmailSender } from '../../lib/inbox'
 
@@ -31,11 +31,12 @@ export function ReferralCard({ t, onUseAcknowledgement, onStaged }: { t: Thread;
   const [copied, setCopied] = useState<'dm' | 'ack' | null>(null)
   const [copyError, setCopyError] = useState(false)
   const [note, setNote] = useState<{ stamp: string; text: string } | null>(null)
+  const [inmailEdit, setInmailEdit] = useState<{ stamp: string; subject: string; body: string } | null>(null)
   const [acting, setActing] = useState<{ busy: boolean; error: string | null; lead: ReferredLeadResult | null; dismissed: boolean }>({ busy: false, error: null, lead: null, dismissed: false })
   useEffect(() => {
     if (!stamp) return
     let current = true
-    setState(null); setCopied(null); setCopyError(false); setNote(null); setActing({ busy: false, error: null, lead: null, dismissed: false })
+    setState(null); setCopied(null); setCopyError(false); setNote(null); setInmailEdit(null); setActing({ busy: false, error: null, lead: null, dismissed: false })
     void requestDmReferral(t, retry > 0, cached, dismissedIds).then(data => {
       if (current) setState({ stamp, data, error: null })
     }).catch(e => {
@@ -64,13 +65,20 @@ export function ReferralCard({ t, onUseAcknowledgement, onStaged }: { t: Thread;
   const blocked = Boolean(paused || unchecked)
   const canCreate = t.client_id === 'arch' && r?.status === 'verified' && !leadId && !r.dismissed_at && !!r.draft && !paused && !unchecked
   const noteText = note?.stamp === stamp ? note.text : contact?.draft ?? ''
+  // ARCH (Ivan 2026-11-26): the first touch goes as an InMail when one can go; the note is the fallback.
+  const route = canCreate ? r!.inmail_route ?? null : null
+  const asInmail = canCreate && !!r!.inmail && route?.channel === 'inmail'
+  const inmail = asInmail ? inmailEdit?.stamp === stamp ? inmailEdit : { subject: r!.inmail!.subject, body: r!.inmail!.body } : null
+  const editInmail = (patch: { subject?: string; body?: string }) => setInmailEdit({ stamp, subject: inmail!.subject, body: inmail!.body, ...patch })
+  const ready = asInmail ? !!inmail!.subject.trim() && !!inmail!.body.trim() && inmail!.body.trim().length <= INMAIL_BODY_LIMIT && !!noteText.trim() && noteText.trim().length <= INVITE_NOTE_LIMIT
+    : !!noteText.trim() && noteText.trim().length <= INVITE_NOTE_LIMIT
   const copy = async (kind: 'dm' | 'ack') => {
-    try { await navigator.clipboard.writeText(kind === 'ack' ? r!.acknowledgement! : contact!.draft!); setCopied(kind); setCopyError(false) }
+    try { await navigator.clipboard.writeText(kind === 'ack' ? r!.acknowledgement! : inmail ? inmail.body : contact!.draft!); setCopied(kind); setCopyError(false) }
     catch { setCopyError(true) }
   }
   const create = async () => {
     setActing(a => ({ ...a, busy: true, error: null }))
-    try { const lead = await createReferredLead(t, r!.input_message_id, noteText, r!.linkedin_url!, r!.story_key ?? ''); setActing(a => ({ ...a, busy: false, lead })); onStaged?.() }
+    try { const lead = await createReferredLead(t, r!.input_message_id, inmail ? inmail.body : noteText, r!.linkedin_url!, r!.story_key ?? '', inmail ? { subject: inmail.subject, note: noteText } : undefined); setActing(a => ({ ...a, busy: false, lead })); onStaged?.() }
     catch (e) { setActing(a => ({ ...a, busy: false, error: e instanceof Error ? e.message : 'The lead could not be created. Try again.' })) }
   }
   const dismiss = async () => {
@@ -83,7 +91,7 @@ export function ReferralCard({ t, onUseAcknowledgement, onStaged }: { t: Thread;
     {!result && <p role="status">Researching the referred person and preparing a DM for review…</p>}
     {result?.error && <p role="alert">{result.error}</p>}
     {r?.status === 'unresolved' && !r.lead_prospect_id && <p>{r.reason || 'The referred person needs clarification.'}</p>}
-    {acting.lead?.status === 'created' && <p role="status">{r?.name} is now an ARCH lead. The invite note is held in their conversation until Send.</p>}
+    {acting.lead?.status === 'created' && <p role="status">{r?.name} is now an ARCH lead. {acting.lead.channel === 'inmail' ? 'The InMail' : 'The invite note'} is held in their conversation until Send.{acting.lead.inmail_fallback ? ` No InMail could go: ${acting.lead.inmail_fallback}` : ''}</p>}
     {acting.lead?.status === 'linked_existing' && <p role="status">{r?.name} was already an ARCH lead, so nothing new was staged. Linked.</p>}
     {leadId && <a className="d-link" href={`#exp/d/dms?thread=${encodeURIComponent(leadId)}`}>Open referred lead</a>}
     {paused && <p role="status"><b>Paused.</b> {referrer} wrote later: “{paused.quote}”{paused.verdict === 'redirect' ? ' They point to someone else now.' : ''}</p>}
@@ -92,15 +100,25 @@ export function ReferralCard({ t, onUseAcknowledgement, onStaged }: { t: Thread;
     {contact && contact.draft && !blocked && <>
       {r?.candidate && <h4>Possible match: {contact.name}</h4>}
       <p>{contact.summary}</p>
-      <p className="dm-meta">Draft from {t.client_id === 'swishdm' ? 'Jonathan' : t.client_id === 'risedtc' ? 'Mattan' : t.client_id === 'arch' ? 'Davorin' : 'Ivan'}. {canCreate ? `It goes out as a LinkedIn invite note (${noteText.length}/${INVITE_NOTE_LIMIT}). Check whether Davorin already messaged ${person} by hand first.` : 'Review it on LinkedIn. Connection status has not been checked.'}</p>
-      <textarea aria-label={`DM draft for ${contact.name}`} readOnly={!canCreate} value={canCreate ? noteText : contact.draft ?? ''} onChange={e => setNote({ stamp, text: e.target.value })} rows={5} disabled={acting.busy} />
+      {inmail ? <>
+        <h4>InMail to {person}</h4>
+        <p className="dm-meta">Draft from Davorin. It goes out as a LinkedIn InMail ({inmail.body.trim().length}/{INMAIL_BODY_LIMIT}): {route!.why} Check whether Davorin already messaged {person} by hand first.</p>
+        <label className="dm-email-field"><span className="dm-email-field-name">Subject</span><input aria-label={`InMail subject for ${contact.name}`} value={inmail.subject} onChange={e => editInmail({ subject: e.target.value })} disabled={acting.busy} /></label>
+        <textarea aria-label={`InMail draft for ${contact.name}`} value={inmail.body} onChange={e => editInmail({ body: e.target.value })} rows={8} disabled={acting.busy} />
+        <details><summary>Invite note if no InMail can go ({noteText.length}/{INVITE_NOTE_LIMIT})</summary>
+          <textarea aria-label={`Fallback invite note for ${contact.name}`} value={noteText} onChange={e => setNote({ stamp, text: e.target.value })} rows={4} disabled={acting.busy} />
+        </details>
+      </> : <>
+        <p className="dm-meta">Draft from {t.client_id === 'swishdm' ? 'Jonathan' : t.client_id === 'risedtc' ? 'Mattan' : t.client_id === 'arch' ? 'Davorin' : 'Ivan'}. {canCreate ? `It goes out as a LinkedIn invite note (${noteText.length}/${INVITE_NOTE_LIMIT})${route?.channel === 'connection_note' ? ` because no InMail can go: ${route.why.replace(/\.$/, '')}` : route ? ' because the InMail draft could not be written' : ''}. Check whether Davorin already messaged ${person} by hand first.` : 'Review it on LinkedIn. Connection status has not been checked.'}</p>
+        <textarea aria-label={`DM draft for ${contact.name}`} readOnly={!canCreate} value={canCreate ? noteText : contact.draft ?? ''} onChange={e => setNote({ stamp, text: e.target.value })} rows={5} disabled={acting.busy} />
+      </>}
       <div className="dm-referral-actions">
-        {canCreate && <button type="button" className="dm-k" disabled={acting.busy || !noteText.trim() || noteText.trim().length > INVITE_NOTE_LIMIT} onClick={() => void create()}>{acting.busy ? 'Creating…' : 'Create referred lead'}</button>}
-        <button type="button" className="dm-k" onClick={() => void copy('dm')}>{copied === 'dm' ? 'Copied' : 'Copy DM'}</button>
+        {canCreate && <button type="button" className="dm-k" disabled={acting.busy || !ready} onClick={() => void create()}>{acting.busy ? 'Creating…' : 'Create referred lead'}</button>}
+        <button type="button" className="dm-k" onClick={() => void copy('dm')}>{copied === 'dm' ? 'Copied' : inmail ? 'Copy InMail' : 'Copy DM'}</button>
         <a className="d-link" href={contact.linkedin_url!} target="_blank" rel="noreferrer">Open LinkedIn profile</a>
         {r?.status === 'verified' && !leadId && <button type="button" className="dm-k" disabled={acting.busy} onClick={() => void dismiss()}>Not contacting {person}</button>}
       </div>
-      {canCreate && <p className="dm-meta">Creating the lead sends nothing. The note waits in {person}'s conversation for Send.</p>}
+      {canCreate && <p className="dm-meta">Creating the lead sends nothing. The {inmail ? 'InMail' : 'note'} waits in {person}'s conversation for Send.</p>}
       <details><summary>Research sources</summary>{contact.sources.map(s => <a className="d-link" key={s.url} href={s.url} target="_blank" rel="noreferrer">{s.title}</a>)}</details>
     </>}
     {acting.error && <p role="alert">{acting.error}</p>}
