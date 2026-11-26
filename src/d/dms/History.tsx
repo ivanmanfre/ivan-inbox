@@ -23,6 +23,7 @@ import { emailDetails } from '../../lib/emailPresentation'
 import { EmailPreview } from './EmailMessage'
 import { Attachments } from './Attachments'
 import type { DmAttachments, LooseFiles } from '../../lib/dmAttachments'
+import type { ReportOpen } from './reportOpens'
 
 export function kindPill(m: InboxMessage): string | null {
   if (m.ai_model === 'lm_gate_v1') return 'Lead magnet'
@@ -106,7 +107,9 @@ export type HeldEditThen = 'save' | 'send' | 'later'
 type HistoryProps = { onSendAnyways?: (m: InboxMessage) => void; onDiscardHeld?: (m: InboxMessage) => void
   /** Ivan 10-21 (Leighton Penrose): save an edit to a held message, then keep it held, send it, or schedule
    *  it. Resolves true once the edit is saved (the editor closes). `heldLater`: the thread can schedule. */
-  onEditHeld?: (m: InboxMessage, text: string, then: HeldEditThen) => Promise<boolean>; heldLater?: boolean; sending?: boolean; t: Thread; cap?: number; engagements?: readonly CameBackSignal[] | null; now?: number; onReplyEmail?: (m: InboxMessage) => void; onForwardEmail?: (m: InboxMessage) => void
+  onEditHeld?: (m: InboxMessage, text: string, then: HeldEditThen) => Promise<boolean>; heldLater?: boolean; sending?: boolean; t: Thread; cap?: number; engagements?: readonly CameBackSignal[] | null
+  /** Ivan 11-26: real opens of the report we sent (one per report per day, rpc inbox_report_opens). Display only. */
+  reportOpens?: readonly ReportOpen[] | null; now?: number; onReplyEmail?: (m: InboxMessage) => void; onForwardEmail?: (m: InboxMessage) => void
   revealMessageId?: string | null; activeEmailReplyId?: string | null
   /** Brief 4: meta once per run (status, reaction, email and a channel change always), arrivals grow from their tail. */
   v4?: boolean
@@ -121,8 +124,17 @@ export function History(props: HistoryProps) {
 }
 
 /** One engagement in the timeline (Ivan 10-10: "it only says reacted to something, I need to know to what"):
- *  which post they reacted to or commented on, linked, at its time. Never a profile view or a scan reopen. */
+ *  which post they reacted to or commented on, linked, at its time. Ivan 11-26: a real open of the report we sent
+ *  shows too, as "Opened the report" (from inbox_report_opens, never the came-back scan reopens). Never a profile view. */
 function EngagementLine({ s, owner }: { s: CameBackSignal; owner: string }) {
+  if (s.kind === 'report_open') {
+    return (
+      <div className="dm-ev" data-signal={s.kind} data-at={s.at}>
+        <span>Opened the report{s.detail ? ` · ${s.detail}` : ''}</span>
+        <time dateTime={s.at}>{warsawHm(s.at)}</time>
+      </div>
+    )
+  }
   const verb = s.kind === 'comment' ? 'Commented on' : s.kind === 'reaction' ? 'Reacted to' : 'Engaged with'
   // The tracker stores the first 80 characters, often mid-word: end a cut title on a whole word.
   const raw = s.post_title?.trim()
@@ -152,7 +164,7 @@ function FilesOnly({ l, who }: { l: LooseFiles; who: string }) {
   )
 }
 
-function HistoryRead({ onSendAnyways, onDiscardHeld, onEditHeld, heldLater = false, sending, t, cap = 6, now = Date.now(), onReplyEmail, onForwardEmail, retry, v4 = false, engagements, revealMessageId, activeEmailReplyId, reading = false, attachments = null }: HistoryProps & { retry: () => void }) {
+function HistoryRead({ onSendAnyways, onDiscardHeld, onEditHeld, heldLater = false, sending, t, cap = 6, now = Date.now(), onReplyEmail, onForwardEmail, retry, v4 = false, engagements, reportOpens, revealMessageId, activeEmailReplyId, reading = false, attachments = null }: HistoryProps & { retry: () => void }) {
   const source = useReplySource({ kind: 'operator', clientId: t.client_id ?? 'ivan' }, t.prospect_id, true)
   const [all, setAll] = useState(false)
   useEffect(() => {
@@ -195,6 +207,11 @@ function HistoryRead({ onSendAnyways, onDiscardHeld, onEditHeld, heldLater = fal
   // the first shown message fold with them.
   const edge = rows.length > shown.length ? Date.parse(timelineTime(shown[0])) : -Infinity
   const evs: TimelineExtra[] = engagementSignals(engagements).filter(e => Date.parse(e.at) >= edge).reverse()
+  const opens = (reportOpens ?? []).filter(o => Date.parse(o.at) >= edge)
+  if (opens.length) {
+    evs.push(...opens.map(o => ({ kind: 'report_open', at: o.at, detail: o.place, post_url: o.report })))
+    evs.sort((a, b) => Date.parse(a.at) - Date.parse(b.at))
+  }
   // A file sent with no words has no message row: it takes its own place on the same clock.
   const loose = (attachments?.loose ?? []).filter(l => Date.parse(l.at) >= edge)
   if (loose.length) { evs.push(...loose); evs.sort((a, b) => Date.parse(a.at) - Date.parse(b.at)) }

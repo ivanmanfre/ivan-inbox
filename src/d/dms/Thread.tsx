@@ -26,6 +26,7 @@ import { SwishReferral } from './SwishReferral'
 import { CalendarPanel } from './Calendar'
 import { History, type HeldEditThen } from './History'
 import type { CameBackSignal } from '../../wb/dms/cameBackData'
+import type { ReportOpen } from './reportOpens'
 import { Composer } from './Keys'
 import { ThreadMenu, type MenuAct } from './Menu'
 import { AgentSheet, ContextSheet } from './Sheets'
@@ -71,7 +72,7 @@ export async function copyText(s: string): Promise<boolean> {
   try { await navigator.clipboard.writeText(s); return true } catch { window.prompt('Copy this link', s); return false }
 }
 
-export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, now, onBack, onAsk, onDraftStart, onMenu, staleN, pre, reload, signal, engagements, v4 = false, registerGuard, reading = false }: {
+export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, now, onBack, onAsk, onDraftStart, onMenu, staleN, pre, reload, signal, engagements, reportOpens, v4 = false, registerGuard, reading = false }: {
   t: T; auto?: boolean; all: readonly T[]; phone: boolean; verbs: DmVerbs; now: number
   onBack: () => void; onAsk: () => void
   onDraftStart?: () => void
@@ -80,6 +81,8 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
   signal?: ReactNode
   /** The posts they reacted to or commented on, shown in the timeline at their dates. */
   engagements?: readonly CameBackSignal[] | null
+  /** Ivan 11-26: the days they opened the report we sent, shown in the timeline at the first open's time. */
+  reportOpens?: readonly ReportOpen[] | null
   /** Brief 4 (skin section `dms`): the v4 view, picked at the final return only. */
   v4?: boolean
   /** Brief 4: where this pane registers its unsaved check (SPEC-dms §3.4). Only given under v4. */
@@ -395,7 +398,7 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
     if (t.ownerConfirmation) void verbs.holdRelease(t)
     dock.current?.querySelector('textarea')?.focus()
   }} />
-  const history = <History v4={v4} reading={reading} onSendAnyways={isStudioSeat(t.client_id) ? undefined : m => void sendAnyways(m)} onDiscardHeld={m => { if (!busy) void run(() => verbs.discardHeld(t, m)) }} onEditHeld={isStudioSeat(t.client_id) ? undefined : editHeld} heldLater={!isStudioSeat(t.client_id) && !scheduledPending} sending={busy} t={t} cap={phone ? 6 : 12} now={now} engagements={engagements} attachments={attachments} onReplyEmail={canComposeEmail(t) && !t.spam && !busy ? openEmailReply : undefined}
+  const history = <History v4={v4} reading={reading} onSendAnyways={isStudioSeat(t.client_id) ? undefined : m => void sendAnyways(m)} onDiscardHeld={m => { if (!busy) void run(() => verbs.discardHeld(t, m)) }} onEditHeld={isStudioSeat(t.client_id) ? undefined : editHeld} heldLater={!isStudioSeat(t.client_id) && !scheduledPending} sending={busy} t={t} cap={phone ? 6 : 12} now={now} engagements={engagements} reportOpens={reportOpens} attachments={attachments} onReplyEmail={canComposeEmail(t) && !t.spam && !busy ? openEmailReply : undefined}
     revealMessageId={revealMessageId} activeEmailReplyId={resolvedEmail?.target?.source_message_id ?? null}
     onForwardEmail={['arch', 'risedtc'].includes(t.client_id) && !busy ? setForwardEmail : undefined} />
   const historyView = referredLead && !t.messages.some(m => m.direction === 'inbound')
