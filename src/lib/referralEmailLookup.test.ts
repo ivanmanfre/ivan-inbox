@@ -55,6 +55,13 @@ describe('referral both lanes (Ivan 2026-11-26)', () => {
     expect(prompt).toMatch(/introduces Davorin and the company/)
     expect(prompt).not.toMatch(/measured on/)
     expect(prompt).toMatch(/Under 290 characters/)
+    expect(prompt).not.toMatch(/public deck link/)
+    // The email carries the deck, one approved case study and the booking link from the client rules.
+    const emailPrompt = String((calls[4].body.messages as { content: string }[])[0].content)
+    expect(emailPrompt).toMatch(/public deck link/)
+    expect(emailPrompt).toMatch(/public case study/)
+    expect(emailPrompt).toMatch(/live booking link/)
+    expect(emailPrompt).toMatch(/Under 150 words/)
   })
   it('reuses a stored lookup for the same profile (no second credit) and skips seats without email', async () => {
     const stored = { linkedin_url: URL_, checked_at: '2026-11-26T00:00:00Z', source: 'apollo' as const, status: 'none' as const, reason: 'Apollo has no work email for them.' }
