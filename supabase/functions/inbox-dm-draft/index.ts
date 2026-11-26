@@ -1,5 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
-import { draftBreaksRules, emailEnvelope, inmailProblem, inmailRoute, inmailText, INVITE_NOTE_LIMIT, laterChecked, laterInbound, openReferral, referralTarget, storyAfter, storyKey, type ReferralDraft } from './referral.ts'
+import { draftBreaksRules, emailEnvelope, inmailProblem, inmailRoute, inmailText, INVITE_NOTE_LIMIT, laterChecked, laterInbound, openReferral, referralTarget, sameFirstName, storyAfter, storyKey, type ReferralDraft } from './referral.ts'
 import { judgeLater, redraftReferral, researchReferral, REFERRAL_REVISION, type InmailLane } from './research.ts'
 import { inmailCredits, seatAccount } from './inmail.ts'
 import { offerSlots } from './slots.ts'
@@ -182,9 +182,11 @@ Deno.serve(async req => {
         if (!profile) return respond({ error: 'The LinkedIn profile could not be read. Try again.' }, 409)
         // The profile behind the reviewed URL must still be the person the draft names (Sol r1: a slug that now resolves to
         // someone else would otherwise get the reviewed copy).
-        const tokens = (x: string) => x.toLowerCase().normalize('NFKD').replace(/\p{M}/gu, '').split(/[^\p{L}\p{N}]+/u).filter(Boolean)
-        const reviewedFirst = tokens(cached.name ?? '')[0]
-        if (reviewedFirst && !tokens(profile.name).includes(reviewedFirst)) return respond({ error: `That LinkedIn profile now shows ${profile.name}. Check the person before creating the lead.` }, 409)
+        if (!sameFirstName(cached.name, profile.name)) return respond({ error: `That LinkedIn profile now shows ${profile.name}. Check the person before creating the lead.` }, 409)
+        // Sol r2: the member id read when the draft was made is the person reviewed; a URL that now resolves to another
+        // member (even one with the same first name) gets nothing. The InMail always needs it; the note when it is known.
+        const pinned = cached.inmail_route?.member_id ?? null
+        if ((leadInmail && !pinned) || (pinned && pinned !== profile.provider_id)) return respond({ error: 'That LinkedIn profile is not the member the draft was checked against. Refresh the conversation.' }, 409)
         // The lookup takes seconds: a message sent, a reply or a discard meanwhile means the note is no longer the one reviewed.
         const readAt = new Date().toISOString()
         const { data: nowRows, error: nowError } = await sb.from('inbox_messages_v').select('id,direction,message_text,sent_at,created_at,send_blocked_reason').eq('prospect_id', id).order('created_at').order('id')
@@ -207,6 +209,12 @@ Deno.serve(async req => {
         if (leadInmail && !asInmail) {
           const why = route?.channel !== 'inmail' ? route!.why : !sender ? 'The InMail sender seat could not be read.' : 'Their LinkedIn member id cannot take an InMail.'
           return respond({ error: `No InMail can go now: ${why} Review the invite note and create the lead again.`, inmail_unavailable: why }, 409)
+        }
+        // Sol r2: a note Create rechecks too. When an InMail can go now and the card showed the note, nothing is staged; the
+        // card brings the InMail back (or redrafts it) for review. A drafter that declined the InMail keeps the note.
+        if (!leadInmail && client === 'arch' && !(cached.inmail_route?.channel === 'inmail' && !cached.inmail)) {
+          const nowRoute = inmailRoute(await inmailCredits(sb, client), profile.open_profile, canon.author)
+          if (nowRoute.channel === 'inmail' && /^ACoAA/.test(profile.provider_id)) return respond({ error: `An InMail can go now: ${nowRoute.why} Review it before creating the lead.`, inmail_available: nowRoute.why }, 409)
         }
         const byHand = `Check whether Davorin already messaged ${first} by hand on LinkedIn: messages sent outside the system are not in this inbox.`
         const { data: made, error: makeError } = await sb.rpc('inbox_referral_create_lead', {
@@ -250,12 +258,14 @@ Deno.serve(async req => {
       const pick = referralTarget(conversation, cached, dismissedIds)
       // ARCH: whether the first touch can go as an InMail (Ivan 2026-11-26). The seat's credit balance first; only when
       // that is not enough, their profile through Apify (no seat read) for an open profile.
+      // The profile is always read: its member id is pinned on the route, and Create stages only for that member (Sol r2).
       const inmailLane: InmailLane | null = client === 'arch' ? async r => {
         const credits = await inmailCredits(sb, client)
-        let open: boolean | null = null
         const slug = r.linkedin_url ? decodeURIComponent(new URL(r.linkedin_url).pathname.split('/').filter(Boolean)[1] ?? '') : ''
-        if (!(typeof credits === 'number' && credits > 0) && slug) open = await apifyProfileDetails(sb, slug).then(p => p?.open_profile ?? null).catch(() => null)
-        return inmailRoute(credits, open, canon.author)
+        const p = slug ? await apifyProfileDetails(sb, slug).catch(() => null) : null
+        if (!p || !/^ACoAA/.test(p.provider_id) || !sameFirstName(r.name, p.name))
+          return { credits, open_profile: null, channel: 'connection_note', why: 'Their LinkedIn profile could not be checked, so no InMail can go.', checked_at: new Date().toISOString() }
+        return { ...inmailRoute(credits, p.open_profile, canon.author), member_id: p.provider_id }
       } : null
       // Seats that send email (davorin@, itsmattan@, im@) also get the referred person's verified work email.
       const emailLane = ['ivan', 'arch', 'risedtc'].includes(client), lookupDb = emailLane ? sb : null

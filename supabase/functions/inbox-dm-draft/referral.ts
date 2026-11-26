@@ -41,7 +41,15 @@ export type ReferralDraft = {
 }
 export type ReferralInmail = { subject: string; body: string; slot?: { start: string; label: string; day: string } }
 /** An InMail goes when the seat has Sales Navigator credits or the person's profile is open (free, no cap). */
-export type InmailRoute = { channel: 'inmail' | 'connection_note'; credits: number | null; open_profile: boolean | null; why: string; checked_at: string }
+export type InmailRoute = { channel: 'inmail' | 'connection_note'; credits: number | null; open_profile: boolean | null; why: string; checked_at: string
+  /** The LinkedIn member id behind the reviewed profile URL when the draft was made; Create stages only for this member. */
+  member_id?: string | null }
+/** The reviewed person's first name still appears on the profile the URL shows now. */
+export function sameFirstName(reviewed: string | null | undefined, shown: string): boolean {
+  const tokens = (x: string) => x.toLowerCase().normalize('NFKD').replace(/\p{M}/gu, '').split(/[^\p{L}\p{N}]+/u).filter(Boolean)
+  const first = tokens(reviewed ?? '')[0]
+  return !first || tokens(shown).includes(first)
+}
 
 /** The sender's limits for a referral InMail (Send Messages REFERRAL_INMAIL lanes). */
 export const INMAIL_SUBJECT_LIMIT = 60

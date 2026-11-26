@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { Thread } from '../../lib/inbox'
-import { createReferredLead, dismissReferral, drafterEmailRow, inmailUnavailable, readStoredReferral, REFERRAL_LEAD_MODEL, referralEmailRow, referralInbound, requestDmReferral, stageReferralEmail, type ReferredLeadResult } from '../../lib/dmReferral'
+import { createReferredLead, dismissReferral, drafterEmailRow, inmailAvailable, inmailUnavailable, readStoredReferral, REFERRAL_LEAD_MODEL, referralEmailRow, referralInbound, requestDmReferral, stageReferralEmail, type ReferredLeadResult } from '../../lib/dmReferral'
 import { INMAIL_BODY_LIMIT, INVITE_NOTE_LIMIT, laterChecked, laterInbound, type ReferralDraft, type ReferralEmail } from '../../../supabase/functions/inbox-dm-draft/referral'
 import { ReferredLeadCard } from './ReferredLeadCard'
 import { threadEmailSender } from '../../lib/inbox'
@@ -85,6 +85,10 @@ export function ReferralCard({ t, onUseAcknowledgement, onStaged }: { t: Thread;
     catch (e) {
       const why = inmail ? inmailUnavailable(e) : null
       if (why) { setNoInmail({ stamp, why }); setActing(a => ({ ...a, busy: false, error: null })); return }
+      // A note Create found an InMail can go now: show the drafted InMail again, or redraft to write one.
+      const can = inmail ? null : inmailAvailable(e)
+      if (can && r!.inmail) { setNoInmail(null); setActing(a => ({ ...a, busy: false, error: null })); return }
+      if (can) { setRetry(n => n + 1); return }
       setActing(a => ({ ...a, busy: false, error: e instanceof Error ? e.message : 'The lead could not be created. Try again.' }))
     }
   }

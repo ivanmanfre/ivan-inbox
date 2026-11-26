@@ -54,6 +54,13 @@ begin
   if slug is null or li_slug(ref ->> 'linkedin_url') is distinct from slug then
     return jsonb_build_object('status', 'error', 'reason', 'The LinkedIn profile does not match the referral.');
   end if;
+  -- Sol r2: the member id pinned when the draft was made is the person reviewed. An InMail needs it; a note, when known.
+  if (p_channel = 'inmail' and nullif(ref -> 'inmail_route' ->> 'member_id', '') is null)
+     or (nullif(ref -> 'inmail_route' ->> 'member_id', '') is not null
+         -- Exact compare (both come from the same profile read): li_member_key() is null for a short or odd id.
+         and (member is null or btrim(ref -> 'inmail_route' ->> 'member_id') is distinct from member)) then
+    return jsonb_build_object('status', 'error', 'reason', 'That LinkedIn profile is not the member the draft was checked against. Refresh the conversation.');
+  end if;
   if p_channel is distinct from 'connection_note' and p_channel is distinct from 'inmail' then
     return jsonb_build_object('status', 'error', 'reason', 'The first touch is an invite note or an InMail.');
   end if;
@@ -163,4 +170,28 @@ begin
 end $function$;
 revoke all on function public.inbox_referral_create_lead(uuid, uuid, integer, text, text[], timestamp with time zone, text[], jsonb, text, jsonb, text) from public, anon, authenticated;
 grant execute on function public.inbox_referral_create_lead(uuid, uuid, integer, text, text[], timestamp with time zone, text[], jsonb, text, jsonb, text) to service_role;
+
+-- Sol r2: the Send Messages final check for a referral lead row, read-only. It answers {ok:true} only when the row as
+-- stored now still carries this run's claim and an approval, has no block or delivery id, and the referral hold read
+-- (on the row's current evidence) is clear. Anything else, or no answer, stops the send.
+create or replace function public.inbox_referral_send_check(p_message_id uuid, p_claimed_at timestamp with time zone)
+ returns jsonb
+ language plpgsql
+ stable
+ set search_path to 'public'
+as $function$
+declare m outreach_messages%rowtype; why text;
+begin
+  select * into m from outreach_messages where id = p_message_id;
+  if not found then return jsonb_build_object('ok', false, 'why', 'row_missing'); end if;
+  if m.ai_model is distinct from 'inbox_referral_lead_v1' then return jsonb_build_object('ok', false, 'why', 'not_a_referral_lead'); end if;
+  if m.sent_at is distinct from p_claimed_at or m.approved_at is null or m.send_blocked_at is not null or m.unipile_message_id is not null then
+    return jsonb_build_object('ok', false, 'why', 'row_changed');
+  end if;
+  why := inbox_referral_hold_reason(m.ai_model, m.prospect_id, m.draft_evidence, m.recipient_email);
+  if why is not null then return jsonb_build_object('ok', false, 'why', why); end if;
+  return jsonb_build_object('ok', true);
+end $function$;
+revoke all on function public.inbox_referral_send_check(uuid, timestamp with time zone) from public, anon, authenticated;
+grant execute on function public.inbox_referral_send_check(uuid, timestamp with time zone) to service_role;
 commit;

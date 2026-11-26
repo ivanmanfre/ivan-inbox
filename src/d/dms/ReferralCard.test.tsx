@@ -209,6 +209,20 @@ describe('verified referral stays open and becomes a lead', () => {
     expect(await screen.findByText(/The invite note is held in their conversation until Send/)).toBeInTheDocument()
     expect(JSON.parse(fetch.mock.calls[2][1].body)).not.toHaveProperty('channel')
   })
+  it('a note Create that finds an InMail can go now brings the InMail back for review (Sol r2)', async () => {
+    readLead.mockResolvedValue({ data: { referral: inmailStored }, error: null })
+    fetch.mockResolvedValueOnce({ ok: true, json: async () => ({ referral: inmailStored }) })
+      .mockResolvedValueOnce({ ok: false, json: async () => ({ error: 'No InMail can go now: Their profile is not open.', inmail_unavailable: 'Their profile is not open.' }) })
+      .mockResolvedValueOnce({ ok: false, json: async () => ({ error: 'An InMail can go now: credits.', inmail_available: 'credits.' }) })
+    render(<ReferralCard t={rows()} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Create referred lead' }))
+    await screen.findByRole('textbox', { name: 'DM draft for Tomas Weller' })
+    fireEvent.click(screen.getByRole('button', { name: 'Create referred lead' }))
+    // Nothing was staged: the InMail the card already drafted is back on screen.
+    expect(await screen.findByRole('textbox', { name: 'InMail draft for Tomas Weller' })).toBeInTheDocument()
+    expect(screen.queryByText(/is now an ARCH lead/)).not.toBeInTheDocument()
+    expect(fetch).toHaveBeenCalledTimes(3)
+  })
   it('a "hold off" shows the card paused with the quote and no Create', async () => {
     const paused = { ...stored, later: { ...stored.later, verdict: 'hold', quote: 'please hold off until January' } }
     readLead.mockResolvedValue({ data: { referral: paused }, error: null })

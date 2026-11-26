@@ -1,5 +1,6 @@
 -- Rollback of 20261126h: back to the invite-note-only signature (the live definition before 2026-11-26).
 begin;
+drop function if exists public.inbox_referral_send_check(uuid, timestamp with time zone);
 drop function if exists public.inbox_referral_create_lead(uuid, uuid, integer, text, text[], timestamp with time zone, text[], jsonb, text, jsonb, text);
 CREATE OR REPLACE FUNCTION public.inbox_referral_create_lead(p_referrer uuid, p_input_message uuid, p_revision integer, p_expected_url text, p_later_ids text[], p_read_at timestamp with time zone, p_discarded_ids text[], p_lead jsonb, p_text text, p_evidence jsonb)
  RETURNS jsonb

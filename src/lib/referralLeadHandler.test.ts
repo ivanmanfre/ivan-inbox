@@ -105,7 +105,8 @@ describe('a verified referral stays open after later replies', () => {
   it('an older-revision draft is redrafted from the stored identity with the whole story, without a new profile search', async () => {
     const cached = { ...verified, revision: REFERRAL_REVISION - 1 }
     const { result, upstream, apifyBodies } = await run([pitch, handoff, discarded, ack, youToo], { server: true, body: { mode: 'referral' }, enrichment: { inbox_referral: cached }, model: judge('go') })
-    expect(apifyBodies).toHaveLength(0)
+    // Only the stored profile is read (its member id is pinned for Create); no search.
+    expect(apifyBodies).toEqual([expect.objectContaining({ publicIdentifiers: ['tomas-weller-test'] })])
     expect(result.referral).toMatchObject({ status: 'verified', revision: REFERRAL_REVISION, draft: redrafted, linkedin_url: verified.linkedin_url })
     const drafting = upstream.find(p => p.includes('Write the first'))!
     // The handoff, every later message and the operator's discarded draft all reach the drafter.
@@ -119,7 +120,7 @@ describe('a verified referral stays open after later replies', () => {
     const vague = row('vague', 'inbound', 'You can reach out to someone else from the studio too', 30)
     const cached = { ...verified, revision: REFERRAL_REVISION }
     const { result, apifyBodies } = await run([pitch, handoff, ack, vague], { server: true, body: { mode: 'referral' }, enrichment: { inbox_referral: cached }, model: judge('go') })
-    expect(apifyBodies).toHaveLength(0)
+    expect(apifyBodies.every(b => Array.isArray((b as { publicIdentifiers?: unknown }).publicIdentifiers))).toBe(true)
     expect(result.referral).toMatchObject({ status: 'verified', input_message_id: HANDOFF, name: 'Tomas Weller', passed_over: ['vague'], later: { through_message_id: 'vague', verdict: 'go' } })
   })
 })
@@ -130,12 +131,13 @@ const withInmail = (verdict = 'go', inmail: Record<string, unknown> = { subject:
   prompt.includes('Write the first LinkedIn InMail') ? inmail : judge(verdict)(prompt)
 
 describe('the ARCH first touch as an InMail', () => {
-  it('a redraft writes the InMail beside the invite note when the seat has credits, without a profile read', async () => {
+  it('a redraft writes the InMail beside the invite note when the seat has credits, pinning the member id it read', async () => {
     const cached = { ...verified, revision: REFERRAL_REVISION - 1 }
-    const { result, upstream, apifyBodies, balanceReads } = await run([pitch, handoff, ack, youToo], { server: true, body: { mode: 'referral' }, enrichment: { inbox_referral: cached }, model: withInmail(), credits: 12 })
+    const tomas = [{ id: 'ACoAA-test-tomas', publicIdentifier: 'tomas-weller-test', firstName: 'Tomas', lastName: 'Weller' }]
+    const { result, upstream, apifyBodies, balanceReads } = await run([pitch, handoff, ack, youToo], { server: true, body: { mode: 'referral' }, enrichment: { inbox_referral: cached }, model: withInmail(), credits: 12, apify: tomas })
     expect(balanceReads).toHaveLength(1)
-    expect(apifyBodies).toHaveLength(0)
-    expect(result.referral).toMatchObject({ draft: redrafted, inmail: { subject: 'ARCH x Northwind', body: inmailBody }, inmail_route: { channel: 'inmail', credits: 12, open_profile: null } })
+    expect(apifyBodies).toEqual([expect.objectContaining({ publicIdentifiers: ['tomas-weller-test'] })])
+    expect(result.referral).toMatchObject({ draft: redrafted, inmail: { subject: 'ARCH x Northwind', body: inmailBody }, inmail_route: { channel: 'inmail', credits: 12, open_profile: null, member_id: 'ACoAA-test-tomas' } })
     const prompt = upstream.find(p => p.includes('Write the first LinkedIn InMail'))!
     expect(prompt).toContain('scale line')
     expect(prompt).toContain('No link of any kind')
@@ -149,6 +151,16 @@ describe('the ARCH first touch as an InMail', () => {
     expect(result.referral.inmail_route).toMatchObject({ channel: 'connection_note', credits: 0, open_profile: false })
     expect(result.referral.inmail_route.why).toContain('no InMail credits')
     expect(upstream.some(p => p.includes('Write the first LinkedIn InMail'))).toBe(false)
+  })
+  it('a profile that cannot be read, or shows someone else, drafts no InMail even with credits', async () => {
+    const cached = { ...verified, revision: REFERRAL_REVISION - 1 }
+    for (const apify of [[], [{ id: 'ACoAA-test-other', publicIdentifier: 'tomas-weller-test', firstName: 'Marta', lastName: 'Example' }]]) {
+      const { result, upstream } = await run([pitch, handoff, ack, youToo], { server: true, body: { mode: 'referral' }, enrichment: { inbox_referral: cached }, model: withInmail(), credits: 12, apify })
+      expect(result.referral.inmail).toBeNull()
+      expect(result.referral.inmail_route).toMatchObject({ channel: 'connection_note' })
+      expect(result.referral.inmail_route.member_id ?? null).toBeNull()
+      expect(upstream.some(p => p.includes('Write the first LinkedIn InMail'))).toBe(false)
+    }
   })
   it('an open profile goes as an InMail even with the credits unreadable', async () => {
     const cached = { ...verified, revision: REFERRAL_REVISION - 1 }
@@ -196,7 +208,7 @@ describe('create referred lead', () => {
     location: { linkedinText: 'Lisbon, Portugal', parsed: { country: 'Portugal', city: 'Lisbon', state: null } } }]
   const body = (draft = verified.draft, linkedin_url = verified.linkedin_url) => ({ mode: 'referral_lead', input_message_id: HANDOFF, draft, linkedin_url, story_key: keyAfter(youToo) })
   it('stages one held invite note through the database function, flagged for a by-hand check', async () => {
-    const { status, result, calls, apifyBodies } = await run([pitch, handoff, ack, youToo], { body: body(), enrichment: { inbox_referral: ready }, apify: profile,
+    const { status, result, calls, apifyBodies } = await run([pitch, handoff, ack, youToo], { body: body(), enrichment: { inbox_referral: ready }, apify: profile, credits: 0,
       rpc: fn => fn === 'inbox_referral_create_lead' ? { status: 'created', lead_prospect_id: '00000000-0000-4000-8000-0000000000aa', message_id: 'm' } : true })
     expect(status).toBe(200)
     expect(result.lead).toMatchObject({ status: 'created' })
@@ -206,7 +218,7 @@ describe('create referred lead', () => {
       p_lead: { linkedin_url: 'https://www.linkedin.com/in/tomas-weller-test', provider_id: 'ACoAA-test-tomas', country: 'Portugal', company: 'Northwind Games' } })
     expect((made.args.p_evidence as { review_note: string }).review_note).toContain('already messaged Tomas by hand on LinkedIn')
   })
-  const inmailReady = { ...ready, inmail: { subject: 'ARCH x Northwind', body: inmailBody }, inmail_route: { channel: 'inmail', credits: 12, open_profile: null, why: 'credits', checked_at: at(31) } }
+  const inmailReady = { ...ready, inmail: { subject: 'ARCH x Northwind', body: inmailBody }, inmail_route: { channel: 'inmail', credits: 12, open_profile: null, why: 'credits', checked_at: at(31), member_id: 'ACoAA-test-tomas' } }
   const inmailBodyReq = (over: Record<string, unknown> = {}) => ({ ...body(inmailBody), channel: 'inmail', subject: 'ARCH x Northwind', note: verified.draft, ...over })
   const created = (fn: string) => fn === 'inbox_referral_create_lead' ? { status: 'created', lead_prospect_id: '00000000-0000-4000-8000-0000000000aa', message_id: 'm' } : true
   it('stages one held InMail when the seat has credits, with the lane, seat and recipient the sender checks', async () => {
@@ -224,6 +236,33 @@ describe('create referred lead', () => {
     expect(status).toBe(409)
     expect(result.inmail_unavailable).toContain('no InMail credits')
     expect(calls.find(c => c.fn === 'inbox_referral_create_lead')).toBeUndefined()
+  })
+  it('a reviewed URL that now resolves to another member with the same first name is refused for both channels (Sol r2)', async () => {
+    const rivera = [{ ...profile[0], id: 'ACoAA-test-rivera', lastName: 'Rivera' }]
+    for (const req of [body(), inmailBodyReq()]) {
+      const got = await run([pitch, handoff, ack, youToo], { body: req, enrichment: { inbox_referral: inmailReady }, apify: rivera, rpc: created, credits: 0 })
+      expect(got.status).toBe(409)
+      expect(got.result.error).toContain('not the member the draft was checked against')
+      expect(got.calls.find(c => c.fn === 'inbox_referral_create_lead')).toBeUndefined()
+    }
+    // An InMail with no pinned member id is never staged.
+    const unpinned = { ...inmailReady, inmail_route: { ...inmailReady.inmail_route, member_id: undefined } }
+    const none = await run([pitch, handoff, ack, youToo], { body: inmailBodyReq(), enrichment: { inbox_referral: unpinned }, apify: profile, rpc: created })
+    expect(none.status).toBe(409)
+    expect(none.calls.find(c => c.fn === 'inbox_referral_create_lead')).toBeUndefined()
+  })
+  it('a note Create when an InMail can go now stages nothing and says so (Sol r2), unless the drafter declined the InMail', async () => {
+    const noteOnly = { ...ready, inmail_route: { channel: 'connection_note', credits: 0, open_profile: false, why: 'none', checked_at: at(31), member_id: 'ACoAA-test-tomas' } }
+    const back = await run([pitch, handoff, ack, youToo], { body: body(), enrichment: { inbox_referral: noteOnly }, apify: profile, rpc: created, credits: 12 })
+    expect(back.status).toBe(409)
+    expect(back.result.inmail_available).toContain('12 Sales Navigator InMail credits')
+    expect(back.calls.find(c => c.fn === 'inbox_referral_create_lead')).toBeUndefined()
+    const late = await run([pitch, handoff, ack, youToo], { body: body(), enrichment: { inbox_referral: inmailReady }, apify: profile, rpc: created, credits: 12 })
+    expect(late.status).toBe(409)
+    const declined = { ...ready, inmail: null, inmail_route: { ...inmailReady.inmail_route } }
+    const kept = await run([pitch, handoff, ack, youToo], { body: body(), enrichment: { inbox_referral: declined }, apify: profile, rpc: created, credits: 12 })
+    expect(kept.status).toBe(200)
+    expect(kept.calls.find(c => c.fn === 'inbox_referral_create_lead')!.args).toMatchObject({ p_channel: 'connection_note' })
   })
   it('a reviewed URL that now shows another person is refused for both channels', async () => {
     const other = [{ ...profile[0], firstName: 'Marta', lastName: 'Example' }]

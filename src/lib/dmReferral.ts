@@ -57,6 +57,11 @@ export type ReferredLeadResult = { status: 'created' | 'linked_existing' | 'exis
   /** What was staged: the InMail or the invite note. */
   channel?: 'inmail' | 'connection_note' }
 /** Create asked for the InMail and none can go now: the reason, so the card shows the invite note for review. */
+/** A note Create found an InMail can go now: the reason, so the card brings the InMail back for review. */
+export const inmailAvailable = (e: unknown): string | null => {
+  const why = (e as { body?: { inmail_available?: unknown } } | null)?.body?.inmail_available
+  return typeof why === 'string' ? why : null
+}
 export const inmailUnavailable = (e: unknown): string | null => {
   const why = (e as { body?: { inmail_unavailable?: unknown } } | null)?.body?.inmail_unavailable
   return typeof why === 'string' ? why : null
