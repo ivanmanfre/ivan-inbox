@@ -28,7 +28,7 @@ async function callDraft(body: Record<string, unknown>, timeout: number): Promis
     body: JSON.stringify(body), signal: AbortSignal.timeout(timeout),
   })
   const result = await response.json()
-  if (!response.ok) throw new Error(result.error || 'Referral research failed. Try again.')
+  if (!response.ok) throw Object.assign(new Error(result.error || 'Referral research failed. Try again.'), { body: result })
   return result
 }
 
@@ -53,9 +53,23 @@ export async function requestDmReferral(t: Thread, retry = false, cached?: unkno
 /* REFERRED LEAD (Ivan 2026-11-20): the verified person becomes an ARCH lead with ONE held invite note on their own
    thread (approved_at and sent_at null). Davorin approves it through the normal Send; this never approves or sends. */
 export const REFERRAL_LEAD_MODEL = 'inbox_referral_lead_v1'
-export type ReferredLeadResult = { status: 'created' | 'linked_existing' | 'exists'; lead_prospect_id: string; stage?: string; sent?: number; drafts?: number }
-export async function createReferredLead(t: Thread, inputMessageId: string, draft: string, linkedinUrl: string, storyKey: string): Promise<ReferredLeadResult> {
-  const result = await callDraft({ prospect_id: t.prospect_id, mode: 'referral_lead', input_message_id: inputMessageId, draft, linkedin_url: linkedinUrl, story_key: storyKey }, 140_000)
+export type ReferredLeadResult = { status: 'created' | 'linked_existing' | 'exists'; lead_prospect_id: string; stage?: string; sent?: number; drafts?: number
+  /** What was staged: the InMail or the invite note. */
+  channel?: 'inmail' | 'connection_note' }
+/** Create asked for the InMail and none can go now: the reason, so the card shows the invite note for review. */
+/** A note Create found an InMail can go now: the reason, so the card brings the InMail back for review. */
+export const inmailAvailable = (e: unknown): string | null => {
+  const why = (e as { body?: { inmail_available?: unknown } } | null)?.body?.inmail_available
+  return typeof why === 'string' ? why : null
+}
+export const inmailUnavailable = (e: unknown): string | null => {
+  const why = (e as { body?: { inmail_unavailable?: unknown } } | null)?.body?.inmail_unavailable
+  return typeof why === 'string' ? why : null
+}
+/** `draft` is the invite note, or with `inmail` the InMail body (the note then rides along as the fallback). */
+export async function createReferredLead(t: Thread, inputMessageId: string, draft: string, linkedinUrl: string, storyKey: string, inmail?: { subject: string; note: string }): Promise<ReferredLeadResult> {
+  const result = await callDraft({ prospect_id: t.prospect_id, mode: 'referral_lead', input_message_id: inputMessageId, draft, linkedin_url: linkedinUrl, story_key: storyKey,
+    ...(inmail ? { channel: 'inmail', subject: inmail.subject, note: inmail.note } : {}) }, 140_000)
   return result.lead as ReferredLeadResult
 }
 export async function dismissReferral(t: Thread, inputMessageId: string): Promise<void> {
