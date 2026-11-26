@@ -83,7 +83,9 @@ const readRpcs = new Set(['inbox_changed_since', 'inbox_interest_cards', 'inbox_
   // The Context sheet's store row (db/302_prospect_store_numbers.sql): STABLE security-definer, no writes.
   'prospect_store_numbers',
   // The Home page's card swap read (content_card_swap_plan): a read RPC, no writes.
-  'content_card_swap_plan'])
+  'content_card_swap_plan',
+  // The thread's "Opened the report" lines (db/20261126b inbox_report_opens): STABLE security-definer, no writes.
+  'inbox_report_opens'])
 const replySourceRpcs = new Set(['inbox_reply_source', 'outreach_reply_sources', 'client_board_reply_source', 'client_board_reply_sources'])
 function missingReplySource(url, method, status, payload) {
   const u = new URL(url)
