@@ -1,4 +1,4 @@
--- Rollback of 20261126c: scan rows go back to place = null.
+-- Rollback of 20261126h: scan rows go back to place = null.
 CREATE OR REPLACE FUNCTION public.inbox_report_opens()
  RETURNS TABLE(prospect_id uuid, report text, at timestamp with time zone, place text)
  LANGUAGE sql

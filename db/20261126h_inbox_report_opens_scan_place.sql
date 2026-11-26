@@ -1,6 +1,6 @@
 -- Scan report opens show a place in the chat line (Ivan 2026-11-26: "we should record that").
 -- scan-open already stores ipwho.is city/country per ip_hash in open_networks (since 2026-11-17); this joins it.
--- Rollback: db/20261126c_inbox_report_opens_scan_place_rollback.sql
+-- Rollback: db/20261126h_inbox_report_opens_scan_place_rollback.sql
 CREATE OR REPLACE FUNCTION public.inbox_report_opens()
  RETURNS TABLE(prospect_id uuid, report text, at timestamp with time zone, place text)
  LANGUAGE sql
