@@ -95,7 +95,7 @@ ${input.text}
  * verified with no draft and the drafter's reason. Throws when the drafter is unavailable, so nothing is saved. */
 export async function redraftReferral(cached: ReferralDraft, author: string, rules: unknown, context: unknown, sb: Db | null = null, slots: (() => Promise<OfferSlot[] | null>) | null = null, lane: InmailLane | null = null): Promise<ReferralDraft> {
   const identity: ReferralDraft = { status: 'verified', input_message_id: cached.input_message_id, name: cached.name, company: cached.company,
-    role: cached.role, linkedin_url: cached.linkedin_url, summary: cached.summary, draft: null, reason: null, sources: cached.sources ?? [] }
+    role: cached.role, linkedin_url: cached.linkedin_url, member_id: cached.member_id ?? null, summary: cached.summary, draft: null, reason: null, sources: cached.sources ?? [] }
   const supplied = (cached.sources ?? []).some(s => s.title === 'LinkedIn profile from the referral')
   const offered = slots ? await slots() : null
   const result = await draftDm(identity, author, rules, context, null, null, 'dm', supplied, offered)

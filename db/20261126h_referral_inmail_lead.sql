@@ -54,11 +54,12 @@ begin
   if slug is null or li_slug(ref ->> 'linkedin_url') is distinct from slug then
     return jsonb_build_object('status', 'error', 'reason', 'The LinkedIn profile does not match the referral.');
   end if;
-  -- Sol r2: the member id pinned when the draft was made is the person reviewed. An InMail needs it; a note, when known.
-  if (p_channel = 'inmail' and nullif(ref -> 'inmail_route' ->> 'member_id', '') is null)
-     or (nullif(ref -> 'inmail_route' ->> 'member_id', '') is not null
-         -- Exact compare (both come from the same profile read): li_member_key() is null for a short or odd id.
-         and (member is null or btrim(ref -> 'inmail_route' ->> 'member_id') is distinct from member)) then
+  -- The member id verified for this person is the one reviewed. An InMail needs it; a note, when it is known.
+  -- Sol r4: the pin is the identity's member_id, recorded only when the handoff was researched (never by a redraft).
+  if (p_channel = 'inmail' and nullif(ref ->> 'member_id', '') is null)
+     or (nullif(ref ->> 'member_id', '') is not null
+         -- Exact compare: li_member_key() is null for a short or odd id.
+         and (member is null or btrim(ref ->> 'member_id') is distinct from member)) then
     return jsonb_build_object('status', 'error', 'reason', 'That LinkedIn profile is not the member the draft was checked against. Refresh the conversation.');
   end if;
   if p_channel is distinct from 'connection_note' and p_channel is distinct from 'inmail' then
@@ -170,6 +171,50 @@ begin
 end $function$;
 revoke all on function public.inbox_referral_create_lead(uuid, uuid, integer, text, text[], timestamp with time zone, text[], jsonb, text, jsonb, text) from public, anon, authenticated;
 grant execute on function public.inbox_referral_create_lead(uuid, uuid, integer, text, text[], timestamp with time zone, text[], jsonb, text, jsonb, text) to service_role;
+
+-- Sol r4: inbox_set_referral_v2 as live (2026-11-26), plus: a same-handoff save keeps the member id first recorded.
+CREATE OR REPLACE FUNCTION public.inbox_set_referral_v2(p_prospect uuid, p_referral jsonb, p_keep_verified boolean, p_expected_input text)
+ RETURNS boolean
+ LANGUAGE plpgsql
+ SET search_path TO 'public'
+AS $function$
+declare
+  cur jsonb;
+  acted jsonb;
+begin
+  select enrichment_data -> 'inbox_referral' into cur from outreach_prospects where id = p_prospect for update;
+  if not found then return false; end if;
+  -- The run started from another handoff than the one stored now: a newer handoff (maybe already dismissed or
+  -- turned into a lead) was saved meanwhile, so this older answer is dropped.
+  if cur ->> 'input_message_id' is distinct from p_expected_input
+     and cur ->> 'input_message_id' is distinct from p_referral ->> 'input_message_id' then
+    return false;
+  end if;
+  if p_keep_verified and coalesce(p_referral ->> 'status', '') <> 'verified'
+     and cur ->> 'input_message_id' = p_referral ->> 'input_message_id'
+     and cur ->> 'revision' = p_referral ->> 'revision'
+     and cur ->> 'status' = 'verified' then
+    return true;
+  end if;
+  acted := case when cur ->> 'input_message_id' = p_referral ->> 'input_message_id'
+    then jsonb_strip_nulls(jsonb_build_object(
+      'lead_prospect_id', cur -> 'lead_prospect_id', 'lead_message_id', cur -> 'lead_message_id',
+      'lead_created_at', cur -> 'lead_created_at', 'lead_result', cur -> 'lead_result', 'dismissed_at', cur -> 'dismissed_at',
+      -- Sol r4: the member verified for this handoff stays pinned; a later save for the same handoff (a redraft, a
+      -- concurrent run) can neither clear nor replace it. An unresolved candidate pins nothing.
+      'member_id', case when cur ->> 'status' = 'verified' then cur -> 'member_id' end))
+    else '{}'::jsonb end;
+  -- A newer handoff replaces this one while its staged invite waits for Send: the invite goes back to review.
+  if cur ->> 'input_message_id' is distinct from p_referral ->> 'input_message_id' and nullif(cur ->> 'lead_message_id', '') is not null then
+    update outreach_messages set approved_at = null, send_blocked_at = now(), send_blocked_reason = 'referral_paused: a newer handoff replaced this referral'
+     where id = (cur ->> 'lead_message_id')::uuid and ai_model = 'inbox_referral_lead_v1' and sent_at is null
+       and (send_blocked_at is null or send_blocked_reason like 'referral_paused:%');
+  end if;
+  update outreach_prospects
+     set enrichment_data = coalesce(enrichment_data, '{}'::jsonb) || jsonb_build_object('inbox_referral', p_referral || acted)
+   where id = p_prospect;
+  return true;
+end $function$;
 
 -- Sol r2: the Send Messages final check for a referral lead row, read-only. It answers {ok:true} only when the row as
 -- stored now still carries this run's claim and an approval, has no block or delivery id, and the referral hold read

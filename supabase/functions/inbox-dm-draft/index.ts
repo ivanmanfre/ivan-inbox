@@ -1,6 +1,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { draftBreaksRules, emailEnvelope, inmailProblem, inmailRoute, inmailText, INVITE_NOTE_LIMIT, laterChecked, laterInbound, openReferral, referralTarget, sameFirstName, storyAfter, storyKey, type ReferralDraft } from './referral.ts'
 import { judgeLater, redraftReferral, researchReferral, REFERRAL_REVISION, type InmailLane } from './research.ts'
+import type { InmailRoute } from './referral.ts'
 import { inmailCredits, seatAccount } from './inmail.ts'
 import { offerSlots } from './slots.ts'
 import { apifyProfileDetails } from './apify.ts'
@@ -185,7 +186,7 @@ Deno.serve(async req => {
         if (!sameFirstName(cached.name, profile.name)) return respond({ error: `That LinkedIn profile now shows ${profile.name}. Check the person before creating the lead.` }, 409)
         // Sol r2: the member id read when the draft was made is the person reviewed; a URL that now resolves to another
         // member (even one with the same first name) gets nothing. The InMail always needs it; the note when it is known.
-        const pinned = cached.inmail_route?.member_id ?? null
+        const pinned = cached.member_id ?? null
         if ((leadInmail && !pinned) || (pinned && pinned !== profile.provider_id)) return respond({ error: 'That LinkedIn profile is not the member the draft was checked against. Refresh the conversation.' }, 409)
         // The lookup takes seconds: a message sent, a reply or a discard meanwhile means the note is no longer the one reviewed.
         const readAt = new Date().toISOString()
@@ -256,21 +257,19 @@ Deno.serve(async req => {
         }
       }
       const pick = referralTarget(conversation, cached, dismissedIds)
-      // ARCH: whether the first touch can go as an InMail (Ivan 2026-11-26). The seat's credit balance first; only when
-      // that is not enough, their profile through Apify (no seat read) for an open profile.
-      // The profile is always read: its member id is pinned on the route, and Create stages only for that member (Sol r2).
+      // ARCH: whether the first touch can go as an InMail (Ivan 2026-11-26): the seat's credit balance, and their profile
+      // through Apify (no seat read) for an open profile and to confirm the URL still shows the verified member.
+      // Sol r4: the member id comes only from the identity verified at research (r.member_id); this read never sets it.
+      // No verified member (a referral researched before it was recorded, or one found by web search alone) gets no InMail.
       const inmailLane: InmailLane | null = client === 'arch' ? async r => {
         const credits = await inmailCredits(sb, client)
+        const note = (why: string): InmailRoute => ({ credits, open_profile: null, channel: 'connection_note', why, checked_at: new Date().toISOString() })
+        if (!r.member_id) return note('Their LinkedIn member was not verified when the referral was researched, so no InMail can go.')
         const slug = r.linkedin_url ? decodeURIComponent(new URL(r.linkedin_url).pathname.split('/').filter(Boolean)[1] ?? '') : ''
         const p = slug ? await apifyProfileDetails(sb, slug).catch(() => null) : null
-        // Sol r3: the member first pinned for this handoff stays pinned across redrafts. A profile that now shows another
-        // member keeps the first pin, so Create refuses both channels until the person is checked again.
-        const prior = cached?.input_message_id === r.input_message_id ? cached.inmail_route?.member_id ?? null : null
-        if (p && prior && p.provider_id !== prior)
-          return { credits, open_profile: null, channel: 'connection_note', why: 'Their LinkedIn profile now belongs to a different member than the one first checked. Check the person before contacting them.', checked_at: new Date().toISOString(), member_id: prior }
-        if (!p || !/^ACoAA/.test(p.provider_id) || !sameFirstName(r.name, p.name))
-          return { credits, open_profile: null, channel: 'connection_note', why: 'Their LinkedIn profile could not be checked, so no InMail can go.', checked_at: new Date().toISOString(), member_id: prior }
-        return { ...inmailRoute(credits, p.open_profile, canon.author), member_id: p.provider_id }
+        if (!p) return note('Their LinkedIn profile could not be checked, so no InMail can go.')
+        if (p.provider_id !== r.member_id) return note('Their LinkedIn profile now belongs to a different member than the one verified. Check the person before contacting them.')
+        return inmailRoute(credits, p.open_profile, canon.author)
       } : null
       // Seats that send email (davorin@, itsmattan@, im@) also get the referred person's verified work email.
       const emailLane = ['ivan', 'arch', 'risedtc'].includes(client), lookupDb = emailLane ? sb : null

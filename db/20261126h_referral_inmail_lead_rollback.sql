@@ -141,4 +141,44 @@ begin
 end $function$;
 revoke all on function public.inbox_referral_create_lead(uuid, uuid, integer, text, text[], timestamp with time zone, text[], jsonb, text, jsonb) from public, anon, authenticated;
 grant execute on function public.inbox_referral_create_lead(uuid, uuid, integer, text, text[], timestamp with time zone, text[], jsonb, text, jsonb) to service_role;
+-- inbox_set_referral_v2 as it was live before 20261126h.
+CREATE OR REPLACE FUNCTION public.inbox_set_referral_v2(p_prospect uuid, p_referral jsonb, p_keep_verified boolean, p_expected_input text)
+ RETURNS boolean
+ LANGUAGE plpgsql
+ SET search_path TO 'public'
+AS $function$
+declare
+  cur jsonb;
+  acted jsonb;
+begin
+  select enrichment_data -> 'inbox_referral' into cur from outreach_prospects where id = p_prospect for update;
+  if not found then return false; end if;
+  -- The run started from another handoff than the one stored now: a newer handoff (maybe already dismissed or
+  -- turned into a lead) was saved meanwhile, so this older answer is dropped.
+  if cur ->> 'input_message_id' is distinct from p_expected_input
+     and cur ->> 'input_message_id' is distinct from p_referral ->> 'input_message_id' then
+    return false;
+  end if;
+  if p_keep_verified and coalesce(p_referral ->> 'status', '') <> 'verified'
+     and cur ->> 'input_message_id' = p_referral ->> 'input_message_id'
+     and cur ->> 'revision' = p_referral ->> 'revision'
+     and cur ->> 'status' = 'verified' then
+    return true;
+  end if;
+  acted := case when cur ->> 'input_message_id' = p_referral ->> 'input_message_id'
+    then jsonb_strip_nulls(jsonb_build_object(
+      'lead_prospect_id', cur -> 'lead_prospect_id', 'lead_message_id', cur -> 'lead_message_id',
+      'lead_created_at', cur -> 'lead_created_at', 'lead_result', cur -> 'lead_result', 'dismissed_at', cur -> 'dismissed_at'))
+    else '{}'::jsonb end;
+  -- A newer handoff replaces this one while its staged invite waits for Send: the invite goes back to review.
+  if cur ->> 'input_message_id' is distinct from p_referral ->> 'input_message_id' and nullif(cur ->> 'lead_message_id', '') is not null then
+    update outreach_messages set approved_at = null, send_blocked_at = now(), send_blocked_reason = 'referral_paused: a newer handoff replaced this referral'
+     where id = (cur ->> 'lead_message_id')::uuid and ai_model = 'inbox_referral_lead_v1' and sent_at is null
+       and (send_blocked_at is null or send_blocked_reason like 'referral_paused:%');
+  end if;
+  update outreach_prospects
+     set enrichment_data = coalesce(enrichment_data, '{}'::jsonb) || jsonb_build_object('inbox_referral', p_referral || acted)
+   where id = p_prospect;
+  return true;
+end $function$;
 commit;

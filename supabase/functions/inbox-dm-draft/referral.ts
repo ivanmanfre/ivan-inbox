@@ -6,6 +6,10 @@ export type ReferralDraft = {
   company: string | null
   role: string | null
   linkedin_url: string | null
+  /** The LinkedIn member id of the profile that verified this person when the handoff was researched (a tagged mention,
+   * an exact search match or the profile the referrer supplied). Set only there; redrafts keep it and never replace it.
+   * Create stages only for this member (Sol r4). */
+  member_id?: string | null
   summary: string | null
   draft: string | null
   reason: string | null
@@ -41,9 +45,7 @@ export type ReferralDraft = {
 }
 export type ReferralInmail = { subject: string; body: string; slot?: { start: string; label: string; day: string } }
 /** An InMail goes when the seat has Sales Navigator credits or the person's profile is open (free, no cap). */
-export type InmailRoute = { channel: 'inmail' | 'connection_note'; credits: number | null; open_profile: boolean | null; why: string; checked_at: string
-  /** The LinkedIn member id behind the reviewed profile URL when the draft was made; Create stages only for this member. */
-  member_id?: string | null }
+export type InmailRoute = { channel: 'inmail' | 'connection_note'; credits: number | null; open_profile: boolean | null; why: string; checked_at: string }
 /** The reviewed person's first name still appears on the profile the URL shows now. */
 export function sameFirstName(reviewed: string | null | undefined, shown: string): boolean {
   const tokens = (x: string) => x.toLowerCase().normalize('NFKD').replace(/\p{M}/gu, '').split(/[^\p{L}\p{N}]+/u).filter(Boolean)
@@ -287,7 +289,7 @@ export function profileIdentity(p: MentionProfile, input: { id: string; company:
     : `${p.name}'s LinkedIn profile lists no current ${input.company ?? 'company'} role${current ? ` (current: ${current})` : ''}.`
   return { atCompany: Boolean(role), identity: {
     status: 'verified', input_message_id: input.id, name: p.name, company: input.company, role: role?.position ?? p.headline,
-    linkedin_url: url, summary, draft: null, reason: null,
+    linkedin_url: url, member_id: p.provider_id, summary, draft: null, reason: null,
     sources: [{ url, title: `${p.name}${p.headline ? ` | ${p.headline}` : ''} | ${via}` }],
   } }
 }

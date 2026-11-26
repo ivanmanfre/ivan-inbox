@@ -237,6 +237,8 @@ describe('referral researcher', () => {
     const result = await researchReferral(db, { id: 'c777', text: 'Please connect with @Tatiana Tabola ', company: 'BP Mobile', referrer: 'Irina Rogachova' }, 'Davorin', [], [], [tatiana])
     expect(result).toMatchObject({ status: 'verified', name: 'Tatiana Tabola', linkedin_url: 'https://www.linkedin.com/in/tatiana-tabola-580688166', acknowledgement: "Thanks Irina, I'll reach out to Tatiana." })
     expect(result.draft).toContain('Hi Tatiana')
+    // The tagged profile's member id is recorded with the verified identity (Sol r4: the only place it is set).
+    expect(result.member_id).toBe('ACoAACecaTAB')
     expect(urls.every(u => u.startsWith('https://proxy.test'))).toBe(true)
   })
 })
