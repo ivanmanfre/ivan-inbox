@@ -38,6 +38,8 @@ export async function apifyProfiles(sb: Db, input: { ids: string[] } | { query: 
 }
 
 export type ProfileDetails = { provider_id: string; public_identifier: string; name: string; headline: string | null
+  /** The given and family names as LinkedIn holds them, kept apart for the identity check (Sol r7). */
+  first_name: string; last_name: string
   location: string | null; country: string | null; city: string | null; state: string | null
   /** LinkedIn Open Profile (anyone can message them free); null when the scraper does not say. */
   open_profile: boolean | null }
@@ -58,7 +60,7 @@ export async function apifyProfileDetails(sb: Db, publicIdentifier: string): Pro
   const p = (Array.isArray(items) ? items : []).find((x: Item & { location?: Loc }) => x?.publicIdentifier?.toLowerCase() === publicIdentifier.toLowerCase()) as (Item & { location?: Loc; openProfile?: unknown }) | undefined
   if (!p?.id || !p.publicIdentifier || !p.firstName) return null
   const text = (s: unknown) => typeof s === 'string' && s.trim() ? s.trim() : null
-  return { provider_id: p.id, public_identifier: p.publicIdentifier, name: `${p.firstName} ${p.lastName ?? ''}`.trim(), headline: text(p.headline),
+  return { provider_id: p.id, public_identifier: p.publicIdentifier, name: `${p.firstName} ${p.lastName ?? ''}`.trim(), first_name: p.firstName, last_name: p.lastName ?? '', headline: text(p.headline),
     location: text(p.location?.linkedinText), country: text(p.location?.parsed?.country), city: text(p.location?.parsed?.city), state: text(p.location?.parsed?.state),
     open_profile: typeof p.openProfile === 'boolean' ? p.openProfile : null }
 }

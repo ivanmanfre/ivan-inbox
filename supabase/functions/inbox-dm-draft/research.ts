@@ -1,4 +1,4 @@
-import { draftBreaksRules, formatReferralDm, inmailProblem, linkedProfiles, linkedReferralProfile, type InmailRoute, type ReferralEmail, type ReferralInmail, matchMention, mentionIdentity, pickSearchMatch, profileIdentity, readLaterVerdict, referralCandidate, sameCompany, verifyReferral, withoutLinks, type Mention, type MentionProfile, type ReferralDraft, type ReferralLater, type ReferralMessage } from './referral.ts'
+import { profileShowsPerson, draftBreaksRules, formatReferralDm, inmailProblem, linkedProfiles, linkedReferralProfile, type InmailRoute, type ReferralEmail, type ReferralInmail, matchMention, mentionIdentity, pickSearchMatch, profileIdentity, readLaterVerdict, referralCandidate, sameCompany, verifyReferral, withoutLinks, type Mention, type MentionProfile, type ReferralDraft, type ReferralLater, type ReferralMessage } from './referral.ts'
 import { askClaude, jsonFrom } from './llm.ts'
 import { apifyProfileDetails, apifyProfiles, type ProfileDetails } from './apify.ts'
 import { findWorkEmail } from './apollo.ts'
@@ -68,9 +68,8 @@ ${input.text}
     const p = slug ? await apifyProfileDetails(sb, slug).catch(() => null) : null
     if (p) {
       suppliedRead = p
-      const want = flat(name).split(' '), got = flat(p.name).split(' ')
-      if (/^ACoAA/.test(p.provider_id) && flat(p.name) === flat(name)) linkedIdentity.member_id = p.provider_id
-      else if (got[0] !== want[0] || !got.includes(want.at(-1)!)) suppliedConflict = p.name
+      if (!profileShowsPerson(name, p)) suppliedConflict = p.name
+      else if (/^ACoAA/.test(p.provider_id) && flat(p.name) === flat(name)) linkedIdentity.member_id = p.provider_id
     }
   }
   // Acknowledging a named handoff needs no capability claim or verified destination profile.

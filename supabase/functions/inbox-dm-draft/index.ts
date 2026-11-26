@@ -1,5 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
-import { draftBreaksRules, emailEnvelope, inmailProblem, inmailRoute, inmailText, INVITE_NOTE_LIMIT, laterChecked, laterInbound, openReferral, referralTarget, sameFirstName, storyAfter, storyKey, type ReferralDraft } from './referral.ts'
+import { profileShowsPerson, draftBreaksRules, emailEnvelope, inmailProblem, inmailRoute, inmailText, INVITE_NOTE_LIMIT, laterChecked, laterInbound, openReferral, referralTarget, sameFirstName, storyAfter, storyKey, type ReferralDraft } from './referral.ts'
 import { judgeLater, redraftReferral, researchReferral, REFERRAL_REVISION, type InmailLane } from './research.ts'
 import type { InmailRoute } from './referral.ts'
 import { inmailCredits, seatAccount } from './inmail.ts'
@@ -187,6 +187,9 @@ Deno.serve(async req => {
         // Sol r2: the member id read when the draft was made is the person reviewed; a URL that now resolves to another
         // member (even one with the same first name) gets nothing. The InMail always needs it; the note when it is known.
         const pinned = cached.member_id ?? null
+        // Sol r7: with no member recorded, the profile must show the named person by given and family name, so a URL that
+        // shows someone else (or a profile research could not read) never stages a touch with another member's id.
+        if (!pinned && !profileShowsPerson(cached.name, profile)) return respond({ error: `That LinkedIn profile shows ${profile.name}. Check the person before creating the lead.` }, 409)
         if ((leadInmail && !pinned) || (pinned && pinned !== profile.provider_id)) return respond({ error: 'That LinkedIn profile is not the member the draft was checked against. Refresh the conversation.' }, 409)
         // The lookup takes seconds: a message sent, a reply or a discard meanwhile means the note is no longer the one reviewed.
         const readAt = new Date().toISOString()

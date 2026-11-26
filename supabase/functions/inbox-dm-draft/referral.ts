@@ -47,6 +47,16 @@ export type ReferralInmail = { subject: string; body: string; slot?: { start: st
 /** An InMail goes when the seat has Sales Navigator credits or the person's profile is open (free, no cap). */
 export type InmailRoute = { channel: 'inmail' | 'connection_note'; credits: number | null; open_profile: boolean | null; why: string; checked_at: string }
 /** The reviewed person's first name still appears on the profile the URL shows now. */
+/** Sol r7: the profile shows the person the handoff names. Their first name is among LinkedIn's given names and, for a
+ * full name, their surname is among the family names. The two fields are compared apart, so a profile with the given
+ * name "Tomas Weller" and the family name "Rivera" is not Tomas Weller. */
+export function profileShowsPerson(named: string | null | undefined, p: { first_name: string; last_name: string }): boolean {
+  const tokens = (x: string) => x.toLowerCase().normalize('NFKD').replace(/\p{M}/gu, '').split(/[^\p{L}\p{N}]+/u).filter(Boolean)
+  const want = tokens(named ?? ''), given = tokens(p.first_name), family = tokens(p.last_name)
+  if (!want.length) return false
+  return given.includes(want[0]) && (want.length < 2 || family.includes(want.at(-1)!))
+}
+
 export function sameFirstName(reviewed: string | null | undefined, shown: string): boolean {
   const tokens = (x: string) => x.toLowerCase().normalize('NFKD').replace(/\p{M}/gu, '').split(/[^\p{L}\p{N}]+/u).filter(Boolean)
   const first = tokens(reviewed ?? '')[0]

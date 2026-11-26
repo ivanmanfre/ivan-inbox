@@ -170,6 +170,17 @@ describe('the ARCH first touch as an InMail', () => {
     expect(got.status).toBe(409)
     expect(got.calls.find(c => c.fn === 'inbox_referral_create_lead')).toBeUndefined()
   })
+  it.each([
+    ['given name carries the surname', 'Tomas Weller', 'Rivera'],
+    ['another surname', 'Tomas', 'Rivera'],
+  ])('an unpinned referral whose profile shows another person (%s) gets no lead staged (Sol r7)', async (_case, firstName, lastName) => {
+    const legacy = { ...verified, revision: REFERRAL_REVISION, story_key: keyAfter(youToo), later: checked('later-1'), member_id: undefined }
+    const other = [{ id: 'ACoAA-test-other', publicIdentifier: 'tomas-weller-test', firstName, lastName, openProfile: true }]
+    const got = await run([pitch, handoff, ack, youToo], { body: { mode: 'referral_lead', input_message_id: HANDOFF, draft: verified.draft, linkedin_url: verified.linkedin_url, story_key: keyAfter(youToo) },
+      enrichment: { inbox_referral: legacy }, apify: other, credits: 12, rpc: () => true })
+    expect(got.status).toBe(409)
+    expect(got.calls.find(c => c.fn === 'inbox_referral_create_lead')).toBeUndefined()
+  })
   it('a legacy unpinned referral: the note Create stages even with credits and an open profile, with no redraft loop (Sol r5)', async () => {
     const legacy = { ...verified, revision: REFERRAL_REVISION, story_key: keyAfter(youToo), later: checked('later-1'), member_id: undefined }
     const open = [{ id: 'ACoAA-test-tomas', publicIdentifier: 'tomas-weller-test', firstName: 'Tomas', lastName: 'Weller', openProfile: true }]
