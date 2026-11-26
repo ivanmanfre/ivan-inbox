@@ -83,7 +83,9 @@ Deno.serve(async req => {
         // attributed (or canceled) already: same meeting id, same prospect + start, or same invite email + start (a cancel
         // can clear the attribution's prospect before the receipt has its meeting id)
         const sameStart = (x: { meeting_start: string }) => Date.parse(x.meeting_start) === Date.parse(r.start_at)
-        if ((r.meeting_id && attributed.has(String(r.meeting_id))) || att.some(x => sameStart(x) && ((r.prospect_id && x.prospect_id === r.prospect_id) || (r.email && String(x.booker_email ?? '').trim().toLowerCase() === r.email.trim().toLowerCase())))) continue
+        if (r.meeting_id) { if (attributed.has(String(r.meeting_id))) continue }   // a known meeting id decides alone (a replacement stays)
+        else if (att.some(x => sameStart(x) && ((r.prospect_id && x.prospect_id === r.prospect_id) || (r.email && String(x.booker_email ?? '').trim().toLowerCase() === r.email.trim().toLowerCase())
+          || (canceled(x.meeting_outcome) && !x.prospect_id && !x.booker_email)))) continue   // Sol r4: an unidentifiable cancel at that start hides it
         rows.push({ start: r.start_at, prospect_id: r.prospect_id, name: null })
       }
       const ids = [...new Set(rows.map(r => r.prospect_id).filter((x): x is string => !!x))], byId = new Map<string, { name: string | null; company: string | null }>()
@@ -143,6 +145,15 @@ Deno.serve(async req => {
         if (newer?.length) return { ok: false, reason: 'They wrote again after this card was made. Read the thread before booking. Nothing was booked.' }
       }
       return { ok: true }
+    },
+    async authorize(requestId, cardId) {
+      const { data, error } = await sb.rpc('inbox_booking_card_authorize', { p_request: requestId, p_card: cardId })
+      if (error) throw Error('The card could not be checked. Nothing was booked.')
+      return { ok: data?.ok === true, reason: typeof data?.reason === 'string' ? data.reason : undefined }
+    },
+    async release(requestId) {
+      const { error } = await sb.rpc('inbox_calendar_release', { p_request: requestId })
+      if (error) throw Error('The booking claim could not be released. Check the owner calendar before trying again.')
     },
     async commit(requestId, cardId, event, meeting, booked) {
       const { data, error } = await sb.rpc('inbox_booking_card_commit', { p_request: requestId, p_card: cardId, p_event: event, p_meeting: meeting, p_booked: booked })

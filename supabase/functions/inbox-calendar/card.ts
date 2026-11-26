@@ -26,6 +26,10 @@ export type CardStore = {
   /** Is the card still the live next step? Its staged confirm unsent, not discarded, still held for this time and email,
    * and no newer message from them since the turn the card answers. */
   current(ctx: Record<string, unknown>, slot: Slot, email: string): Promise<{ ok: boolean; reason?: string }>
+  /** One DB step right before the POST (db inbox_booking_card_authorize): card, reply and newer messages, serialized with Remove. */
+  authorize(requestId: string, cardId: string): Promise<{ ok: boolean; reason?: string }>
+  /** Free a pending claim by request id (works when the card is gone). */
+  release(requestId: string): Promise<void>
 }
 // A 4xx answer to the booking POST means nothing was created: the request may be retried. Anything else is ambiguous.
 export class Rejected extends Error {}
@@ -143,9 +147,10 @@ export async function handleBookCard(input: Record<string, unknown>, store: Card
     const missing = open.fields.filter(f => !(f === 'website' && p.company_domain))
     if (missing.length) throw Error('The booking page needs ' + missing.join(', ') + '. Book by hand.')
   } catch (e) { await store.commit(key, card.id, null, null, null); throw e }
-  let late
-  try { late = await stale() } catch (e) { await store.commit(key, card.id, null, null, null); throw e }
-  if (late) { await store.commit(key, card.id, null, null, null); return late }
+  // Sol r4: the last check is one database step that Remove waits on; a gone or changed card frees the claim by request id
+  let auth
+  try { auth = await store.authorize(key, card.id) } catch (e) { await store.release(key); throw e }
+  if (!auth.ok) { await store.release(key); return { status: 'blocked', existing: 'stale', message: auth.reason ?? 'This card is out of date. Nothing was booked.' } }
 
   let receipt
   try { receipt = await provider.bookSlot(o, secret, slot, { name: p.name, email: to, website: p.company_domain }, tz, typeId) }
