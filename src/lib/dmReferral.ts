@@ -36,7 +36,8 @@ const pending = new Map<string, Promise<ReferralDraft | null>>()
 export async function requestDmReferral(t: Thread, retry = false, cached?: unknown, dismissed: readonly string[] = []): Promise<ReferralDraft | null> {
   const inbound = referralInbound(t, cached, dismissed)
   if (!inbound) return null
-  const stamp = `${t.prospect_id}:${inbound.id}:${retry}`
+  // The seat is part of the key (Sol r4): a request started for another seat never answers this card.
+  const stamp = `${t.client_id}:${t.prospect_id}:${inbound.id}:${retry}`
   const running = pending.get(stamp)
   if (running) return running
   const job = (async () => {
