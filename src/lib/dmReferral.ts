@@ -67,8 +67,9 @@ export const inmailUnavailable = (e: unknown): string | null => {
   return typeof why === 'string' ? why : null
 }
 /** `draft` is the invite note, or with `inmail` the InMail body (the note then rides along as the fallback). */
-export async function createReferredLead(t: Thread, inputMessageId: string, draft: string, linkedinUrl: string, storyKey: string, inmail?: { subject: string; note: string }): Promise<ReferredLeadResult> {
-  const result = await callDraft({ prospect_id: t.prospect_id, mode: 'referral_lead', input_message_id: inputMessageId, draft, linkedin_url: linkedinUrl, story_key: storyKey, seat: t.client_id,
+/** `seat` is the seat the shown draft was written for (Sol r3); Create refuses it unless the conversation is still on that seat. */
+export async function createReferredLead(t: Thread, inputMessageId: string, draft: string, linkedinUrl: string, storyKey: string, seat: string, inmail?: { subject: string; note: string }): Promise<ReferredLeadResult> {
+  const result = await callDraft({ prospect_id: t.prospect_id, mode: 'referral_lead', input_message_id: inputMessageId, draft, linkedin_url: linkedinUrl, story_key: storyKey, seat,
     ...(inmail ? { channel: 'inmail', subject: inmail.subject, note: inmail.note } : {}) }, 140_000)
   return result.lead as ReferredLeadResult
 }

@@ -430,6 +430,10 @@ describe('create referred lead', () => {
     const stale = await run(seatRows('risedtc'), { body: body(verified.draft, verified.linkedin_url, 'risedtc'), enrichment: { inbox_referral: ready }, apify: profile, rpc: created, credits: 23 })
     expect(stale.status).toBe(409)
     expect(stale.calls.find(c => c.fn === 'inbox_referral_create_lead')).toBeUndefined()
+    // Sol r3: another session saved the RISE draft meanwhile, but this card still shows (and sends) the ARCH one.
+    const mounted = await run(seatRows('risedtc'), { body: body(), enrichment: { inbox_referral: { ...ready, seat: 'risedtc' } }, apify: profile, rpc: created, credits: 23 })
+    expect(mounted.status).toBe(409)
+    expect(mounted.calls.find(c => c.fn === 'inbox_referral_create_lead')).toBeUndefined()
   })
   it('a stored draft written for another seat is redrafted in the current seat\'s voice, not served', async () => {
     const { result, upstream } = await run(seatRows('risedtc'), { server: true, body: { mode: 'referral' }, enrichment: { inbox_referral: ready }, model: judge('go'), credits: 0, apify: [{ ...profile[0], openProfile: false }] })

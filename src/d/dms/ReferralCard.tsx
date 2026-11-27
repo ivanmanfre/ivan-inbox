@@ -12,7 +12,8 @@ const inboundStamp = (t: Thread) => t.messages.filter(m => m.direction === 'inbo
 export function ReferralCard({ t, onUseAcknowledgement, onStaged }: { t: Thread; onUseAcknowledgement?: (text: string) => void; onStaged?: () => void }) {
   // The stored referral decides whether a verified handoff stays open after later replies, so read it first.
   const [stored, setStored] = useState<{ key: string; value: unknown; dismissed: string[] } | null>(null)
-  const storedKey = `${t.prospect_id}:${inboundStamp(t)}`
+  // The seat is in every key (Sol r3): a conversation that moves seats drops the old draft, its edits and its Create state.
+  const storedKey = `${t.client_id}:${t.prospect_id}:${inboundStamp(t)}`
   const isLead = t.messages.some(m => m.ai_model === REFERRAL_LEAD_MODEL)
   const eligible = ['ivan', 'arch', 'risedtc'].includes(t.client_id) && !t.spam && !t.blacklisted
   useEffect(() => {
@@ -84,7 +85,7 @@ export function ReferralCard({ t, onUseAcknowledgement, onStaged }: { t: Thread;
   }
   const create = async () => {
     setActing(a => ({ ...a, busy: true, error: null }))
-    try { const lead = await createReferredLead(t, r!.input_message_id, inmail ? inmail.body : noteText, r!.linkedin_url!, r!.story_key ?? '', inmail ? { subject: inmail.subject, note: noteText } : undefined); setActing(a => ({ ...a, busy: false, lead })); onStaged?.() }
+    try { const lead = await createReferredLead(t, r!.input_message_id, inmail ? inmail.body : noteText, r!.linkedin_url!, r!.story_key ?? '', r!.seat ?? '', inmail ? { subject: inmail.subject, note: noteText } : undefined); setActing(a => ({ ...a, busy: false, lead })); onStaged?.() }
     catch (e) {
       const why = inmail ? inmailUnavailable(e) : null
       if (why) { setNoInmail({ stamp, why }); setActing(a => ({ ...a, busy: false, error: null })); return }

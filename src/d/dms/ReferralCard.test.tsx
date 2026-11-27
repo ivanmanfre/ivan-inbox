@@ -151,7 +151,7 @@ describe('verified referral stays open and becomes a lead', () => {
   ])[0]
   const stored = { status: 'verified', input_message_id: HANDOFF, name: 'Tomas Weller', company: 'Northwind Games', role: 'Influencer Manager', summary: 'Influencer Manager at Northwind Games.',
     linkedin_url: 'https://www.linkedin.com/in/tomas-weller-test', draft: 'Hey Tomas\n\nPriya said you run creator campaigns at Northwind.\n\nWhat do you measure them on?', reason: null, sources: [],
-    revision: 13, story_key: 'story-v1', later: { through_message_id: 'later-1', message_ids: ['later-1'], verdict: 'go', quote: null, checked_at: '2026-11-05T12:31:00Z' } }
+    revision: 13, seat: 'arch', story_key: 'story-v1', later: { through_message_id: 'later-1', message_ids: ['later-1'], verdict: 'go', quote: null, checked_at: '2026-11-05T12:31:00Z' } }
   it('a "You too!" after the handoff keeps the card, and Create stages the edited note', async () => {
     readLead.mockResolvedValue({ data: { referral: stored }, error: null })
     fetch.mockResolvedValueOnce({ ok: true, json: async () => ({ referral: stored }) })
@@ -236,7 +236,7 @@ describe('verified referral stays open and becomes a lead', () => {
   })
   it('RISE (Ivan 2026-11-27): the card offers the InMail as Mattan and Create stages a RISE lead', async () => {
     const t = rows(); t.client_id = 'risedtc'
-    const rise = { ...inmailStored, inmail_route: { ...inmailStored.inmail_route, why: "Mattan's seat has 23 Sales Navigator InMail credits." } }
+    const rise = { ...inmailStored, seat: 'risedtc', inmail_route: { ...inmailStored.inmail_route, why: "Mattan's seat has 23 Sales Navigator InMail credits." } }
     readLead.mockResolvedValue({ data: { referral: rise }, error: null })
     fetch.mockResolvedValueOnce({ ok: true, json: async () => ({ referral: rise }) })
       .mockResolvedValueOnce({ ok: true, json: async () => ({ lead: { status: 'created', channel: 'inmail', lead_prospect_id: '00000000-0000-4000-8000-0000000000aa' } }) })
@@ -247,6 +247,17 @@ describe('verified referral stays open and becomes a lead', () => {
     expect(meta).not.toHaveTextContent('Davorin')
     fireEvent.click(screen.getByRole('button', { name: 'Create referred lead' }))
     expect(await screen.findByText(/is now a RISE lead\. The InMail is held/)).toBeInTheDocument()
+    expect(JSON.parse(fetch.mock.calls[1][1].body)).toMatchObject({ seat: 'risedtc' })
+  })
+  it('a card still showing copy drafted for ARCH sends that seat at Create, so a conversation now on RISE refuses it (Sol r3)', async () => {
+    const t = rows(); t.client_id = 'risedtc'
+    readLead.mockResolvedValue({ data: { referral: stored }, error: null })
+    fetch.mockResolvedValueOnce({ ok: true, json: async () => ({ referral: stored }) })
+      .mockResolvedValueOnce({ ok: false, json: async () => ({ error: 'The conversation moved to another seat. Refresh to see the draft for it.' }) })
+    render(<ReferralCard t={t} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Create referred lead' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('moved to another seat')
+    expect(JSON.parse(fetch.mock.calls[1][1].body)).toMatchObject({ seat: 'arch' })
   })
   it('Ivan: the note card offers Create and names Ivan in the by-hand check', async () => {
     const t = rows(); t.client_id = 'ivan'
