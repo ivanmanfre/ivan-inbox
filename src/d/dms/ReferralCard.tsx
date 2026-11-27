@@ -165,8 +165,11 @@ function ReferredFrom({ t }: { t: Thread }) {
   useEffect(() => {
     if (!approved || !row) return
     let current = true
-    void readReferralSendWait(row.id).then(value => { if (current) setWait({ key: approved, value }) }).catch(() => {})
-    return () => { current = false }
+    // Sol r1 #4: the sender may record the wait after the card opened, so it is read again each minute while the note waits.
+    const read = () => void readReferralSendWait(row.id).then(value => { if (current) setWait({ key: approved, value }) }).catch(() => {})
+    read()
+    const timer = window.setInterval(read, 60000)
+    return () => { current = false; window.clearInterval(timer) }
   }, [approved]) // eslint-disable-line react-hooks/exhaustive-deps
   const owner = t.client_id === 'risedtc' ? 'Mattan' : t.client_id === 'arch' ? 'Davorin' : 'Ivan'
   const waitText = approved && wait?.key === approved ? referralWaitText(wait.value, row!.approved_at, owner, t.prospect_name.split(' ')[0] || 'them') : null

@@ -139,9 +139,10 @@ export async function readReferralSendWait(messageId: string): Promise<ReferralS
   return (data as ReferralSendWait | null) ?? null
 }
 
-/** The recorded wait in plain words, or null. Only a wait the sender saw at or after this approval belongs to it. */
+/** The recorded wait in plain words, or null. Only a wait the sender decided for this exact approval belongs to it (Sol r1 #5). */
 export function referralWaitText(wait: ReferralSendWait | null, approvedAt: string | null, owner: string, person: string): string | null {
-  if (!wait || !approvedAt || !(Date.parse(wait.seen_at) >= Date.parse(approvedAt))) return null
+  const decidedFor = typeof wait?.detail?.approved_at === 'string' ? wait.detail.approved_at : null
+  if (!wait || !approvedAt || !decidedFor || Date.parse(decidedFor) !== Date.parse(approvedAt)) return null
   const seat = `${owner}'s seat`
   const why = wait.reason === 'primary_share_floor' ? `Waiting for today's invite limit on ${seat}. Most of today's invites go to the seat's main lead lists first, so this note goes out after more of those are sent.`
     : wait.reason === 'daily_cap' ? `Waiting for today's invite limit on ${seat}: today's invites are used up, so this note goes out on the next day with room.`
