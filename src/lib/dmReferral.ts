@@ -129,3 +129,26 @@ export async function stageReferralEmail(t: Thread, inbound: { id: string; sent_
   })
   if (saveError) throw saveError
 }
+
+/** Why an approved referral invite note has not gone yet, as Send Messages last recorded it (inbox_referral_send_waits).
+ * Today only the RISE invite limit writes one (2026-11-27): the row is released, stays approved, and is tried again. */
+export type ReferralSendWait = { reason: string; detail: Record<string, unknown> | null; seen_at: string }
+export async function readReferralSendWait(messageId: string): Promise<ReferralSendWait | null> {
+  const { data, error } = await supabase.from('inbox_referral_send_waits').select('reason,detail,seen_at').eq('message_id', messageId).maybeSingle()
+  if (error) throw error
+  return (data as ReferralSendWait | null) ?? null
+}
+
+/** The recorded wait in plain words, or null. Only a wait the sender saw at or after this approval belongs to it. */
+export function referralWaitText(wait: ReferralSendWait | null, approvedAt: string | null, owner: string, person: string): string | null {
+  if (!wait || !approvedAt || !(Date.parse(wait.seen_at) >= Date.parse(approvedAt))) return null
+  const seat = `${owner}'s seat`
+  const why = wait.reason === 'primary_share_floor' ? `Waiting for today's invite limit on ${seat}. Most of today's invites go to the seat's main lead lists first, so this note goes out after more of those are sent.`
+    : wait.reason === 'daily_cap' ? `Waiting for today's invite limit on ${seat}: today's invites are used up, so this note goes out on the next day with room.`
+    : wait.reason === 'outside_warsaw_window' ? `Waiting for the invite hours on ${seat}. It goes out when they open.`
+    : wait.reason === 'rise_invite_refused_cooldown' ? `Waiting: LinkedIn refused an invite to ${person} recently, so it is tried again later.`
+    : wait.reason === 'rise_reservation_unavailable' ? `Waiting: the invite limit check on ${seat} did not answer, so it is tried again on the next run.`
+    : `Approved and waiting to send (${wait.reason}).`
+  const at = new Date(wait.seen_at)
+  return `${why} Last checked ${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}.`
+}

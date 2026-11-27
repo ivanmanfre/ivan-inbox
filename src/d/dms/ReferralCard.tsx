@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { Thread } from '../../lib/inbox'
-import { createReferredLead, dismissReferral, drafterEmailRow, inmailAvailable, inmailUnavailable, readStoredReferral, REFERRAL_LEAD_MODEL, referralEmailRow, referralInbound, requestDmReferral, stageReferralEmail, type ReferredLeadResult } from '../../lib/dmReferral'
+import { createReferredLead, dismissReferral, drafterEmailRow, inmailAvailable, inmailUnavailable, readReferralSendWait, readStoredReferral, REFERRAL_LEAD_MODEL, referralEmailRow, referralInbound, referralWaitText, requestDmReferral, stageReferralEmail, type ReferralSendWait, type ReferredLeadResult } from '../../lib/dmReferral'
 import { INMAIL_BODY_LIMIT, INVITE_NOTE_LIMIT, laterChecked, laterInbound, type ReferralDraft, type ReferralEmail } from '../../../supabase/functions/inbox-dm-draft/referral'
 import { ReferredLeadCard } from './ReferredLeadCard'
 import { threadEmailSender } from '../../lib/inbox'
@@ -159,9 +159,21 @@ export function ReferralCard({ t, onUseAcknowledgement, onStaged }: { t: Thread;
 function ReferredFrom({ t }: { t: Thread }) {
   const row = t.messages.find(m => m.ai_model === REFERRAL_LEAD_MODEL)
   const ev = (row?.draft_evidence ?? {}) as { referrer_prospect_id?: string; referrer_name?: string; review_note?: string }
+  // An approved note the sender released unsent (the seat's invite limit) says why it waits (2026-11-27).
+  const approved = row && row.approved_at && !row.sent_at && !row.send_blocked_at ? `${row.id}:${row.approved_at}` : ''
+  const [wait, setWait] = useState<{ key: string; value: ReferralSendWait | null } | null>(null)
+  useEffect(() => {
+    if (!approved || !row) return
+    let current = true
+    void readReferralSendWait(row.id).then(value => { if (current) setWait({ key: approved, value }) }).catch(() => {})
+    return () => { current = false }
+  }, [approved]) // eslint-disable-line react-hooks/exhaustive-deps
+  const owner = t.client_id === 'risedtc' ? 'Mattan' : t.client_id === 'arch' ? 'Davorin' : 'Ivan'
+  const waitText = approved && wait?.key === approved ? referralWaitText(wait.value, row!.approved_at, owner, t.prospect_name.split(' ')[0] || 'them') : null
   return <section className="dm-referral dm-src" aria-label="Referral">
     <h3>Referred by {ev.referrer_prospect_id ? <a className="d-link" href={`#exp/d/dms?thread=${encodeURIComponent(ev.referrer_prospect_id)}`}>{ev.referrer_name || 'a previous lead'}</a> : ev.referrer_name || 'a previous lead'}</h3>
     {row && !row.sent_at && ev.review_note && <p role="note">{ev.review_note}</p>}
+    {waitText && <p role="status">{waitText}</p>}
   </section>
 }
 
