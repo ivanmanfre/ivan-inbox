@@ -1,21 +1,17 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import '@testing-library/jest-dom/vitest'
-import { act, fireEvent, render, screen, waitFor, cleanup } from '@testing-library/react'
+import { act, render, screen, waitFor, cleanup } from '@testing-library/react'
 import { msg, threads } from './fixtures'
 import { ReferralCard } from './ReferralCard'
-import { isConversation } from '../../lib/inbox'
 
 const readLead = vi.hoisted(() => vi.fn())
 vi.mock('../../lib/supabase', () => ({ supabase: { from: () => ({ select: () => ({ eq: () => ({ single: readLead }) }) }), auth: { getSession: async () => ({ data: { session: { access_token: 'owner-token' } } }) } } }))
 const fetch = vi.fn()
-const referral = { status: 'verified', input_message_id: 'handoff', name: 'Ben Patton', company: 'Saint Spritz', role: 'CEO', summary: 'CEO at Saint Spritz.', linkedin_url: 'https://www.linkedin.com/in/ben-patton-9834411aa', draft: 'Hey Ben, Mallory said you handle paid growth at Saint Spritz. Want me to send you the growth scan?', reason: null, sources: [{ title: 'Saint Spritz', url: 'https://www.linkedin.com/company/saint-spritz' }],
-  later: { through_message_id: 'handoff', message_ids: [], verdict: 'go', quote: null, checked_at: '2026-10-05T22:46:00Z' } }
-const thread = () => threads([msg({ id: 'handoff', prospect_id: 'mallory', prospect_name: 'Mallory Vaughan Patton', prospect_company: 'Saint Spritz', client_id: 'risedtc', direction: 'inbound', message_text: 'ben Patton does that side of biz', sent_at: '2026-10-05T22:45:00Z' })])[0]
 
 beforeEach(() => { cleanup(); vi.clearAllMocks(); vi.stubGlobal('fetch', fetch); window.fetch = fetch })
 // Invented fixtures (public repo): a referrer at a made-up studio points the author to a made-up colleague.
-describe('verified referral stays open and becomes a lead', () => {
+describe('a referral card that moves seats', () => {
   const HANDOFF = '0b5a3d0e-1111-4c2a-9a55-000000000001'
   const base = { prospect_id: 'priya', prospect_name: 'Priya Example', prospect_company: 'Northwind Games', client_id: 'arch' }
   const rows = () => threads([
