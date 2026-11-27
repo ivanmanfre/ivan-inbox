@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { apify, claude, db, item } from './referralTestEnv'
-import { researchReferral } from '../../supabase/functions/inbox-dm-draft/research'
+import { otherSurnameAfter, researchReferral } from '../../supabase/functions/inbox-dm-draft/research'
 
 const input = { id: 'in-1', text: 'ben Patton does that side of biz', company: 'Saint Spritz' }
 afterEach(() => vi.unstubAllGlobals())
@@ -160,6 +160,110 @@ describe('referral researcher', () => {
     }
     // The routing got the profile research read (no second read); the unresolved referral was never routed.
     expect(handed).toEqual(['ACoAA-test-oskar'])  // the unresolved runs were never routed
+  })
+  it('backstop under the tie check: another surname written right after the first name (Sol r6)', () => {
+    const real = "Thanks for reaching out. Influencer marketing at Example Labs is handled by my colleague Mira. I'd recommend reaching out to her directly 😊\n "
+    expect(otherSurnameAfter(real, 'Mira', 'Example')).toBe(false)
+    for (const t of ['Contact Mira.Patel', 'Contact Mira (Patel)', 'Contact Mira 👩 Patel', 'Contact Mira - Patel', 'Contact Mira Patel', 'contact mira Patel', 'Mira, Patel handles it'])
+      expect([t, otherSurnameAfter(t, 'Mira', 'Jones')]).toEqual([t, true])
+    for (const t of ['Contact Mira about it', 'talk to Mira Jones', 'Mira. Thanks', 'Mira!', 'handled by Mira, ', 'Mira\nHer LinkedIn'])
+      expect([t, otherSurnameAfter(t, 'Mira', 'Jones')]).toEqual([t, false])
+  })
+  it('a "true" tie verdict is overruled when the message writes another surname after the name (Sol r6)', async () => {
+    const link = 'https://www.linkedin.com/in/mira-example-test/'
+    vi.stubGlobal('fetch', async (url: string, init: RequestInit) => {
+      if (url.includes('api.apify.com')) return apify([{ id: 'ACoAA-test-mira', publicIdentifier: 'mira-example-test', firstName: 'Mira', lastName: 'Example' }])
+      const prompt = JSON.parse(String(init.body)).messages[0].content as string
+      if (prompt.includes('"same_person"')) return claude(JSON.stringify({ same_person: true, quote: 'Mira' }))
+      return prompt.includes('Determine whether') ? claude(JSON.stringify({ name: 'Mira', linkedin_url: link }))
+        : claude(JSON.stringify({ paragraphs: ['Hey Mira', 'Rhea suggested I reach out.', 'Are you open to an intro chat?'] }))
+    })
+    const result = await researchReferral(db, { id: 'x', text: 'Contact Mira.Patel about it. ' + link, company: 'Example Labs', referrer: 'Rhea Example' }, 'Davorin', [], [])
+    expect(result.status).toBe('unresolved')
+    expect(result.member_id ?? null).toBeNull()
+  })
+  describe('first-name-only handoff with one supplied profile (Anastasia -> Maria, 2026-11-27)', () => {
+    const link = 'https://www.linkedin.com/in/mira-example-test/'
+    const handoff = "Thanks for reaching out. Influencer marketing at Example Labs is handled by my colleague Mira. I'd recommend reaching out to her directly " + link
+    type Opts = { text?: string; referrer?: string; first?: string; last?: string; id?: string; apifyItems?: unknown[]; tie?: unknown; tieThrows?: boolean }
+    const run = async (opts: Opts = {}) => {
+      const calls: string[] = [], routed: unknown[] = [], tiePrompts: string[] = []
+      const lane = async (r: { member_id?: string | null }) => { routed.push(r.member_id ?? null); return { channel: 'inmail' as const, credits: 3, open_profile: null, why: 'test', checked_at: '' } }
+      vi.stubGlobal('fetch', async (url: string, init: RequestInit) => {
+        if (url.includes('api.apify.com')) { calls.push('apify'); return apify(opts.apifyItems ?? [{ id: opts.id ?? 'ACoAA-test-mira', publicIdentifier: 'mira-example-test', firstName: opts.first ?? 'Mira', lastName: opts.last ?? 'Example' }]) }
+        if (url.includes('api.apollo.io')) { calls.push('apollo'); return new Response(JSON.stringify({ person: { linkedin_url: link, email: 'mira@examplelabs.test', email_status: 'verified', organization: { name: 'Example Labs' } } })) }
+        const prompt = JSON.parse(String(init.body)).messages[0].content as string
+        if (prompt.includes('"same_person"')) {
+          calls.push('tie'); tiePrompts.push(prompt)
+          if (opts.tieThrows) throw new Error('proxy down')
+          return claude(JSON.stringify(opts.tie ?? { same_person: true, quote: 'my colleague Mira' }))
+        }
+        calls.push(prompt.includes('Determine whether') ? 'extract' : prompt.includes('LinkedIn InMail') ? 'inmail' : prompt.includes('first email') ? 'email' : 'note')
+        return prompt.includes('Determine whether') ? claude(JSON.stringify({ name: 'Mira', linkedin_url: link }))
+          : claude(JSON.stringify({ subject: 'ARCH x Example Labs', paragraphs: ['Hey Mira', 'Rhea suggested I reach out to you about influencer marketing.', 'Are you open to an intro chat?'] }))
+      })
+      const result = await researchReferral(db, { id: 'mira-referral', text: opts.text ?? handoff, company: 'Example Labs', referrer: opts.referrer ?? 'Rhea Example' }, 'Davorin', [], [], [], { inmail: lane, emailLane: true })
+      return { result, calls, routed, tiePrompts }
+    }
+    it('reads the profile, has the model tie it to the message, pins the member, and drafts the email and the InMail too', async () => {
+      const { result, calls, routed, tiePrompts } = await run()
+      expect(result).toMatchObject({ status: 'verified', member_id: 'ACoAA-test-mira', linkedin_url: 'https://www.linkedin.com/in/mira-example-test' })
+      expect(result.draft).toContain('Hey Mira')
+      expect(result.email?.to).toBe('mira@examplelabs.test')
+      expect(result.inmail?.body).toContain('Hey Mira')
+      expect(result.email_reason ?? null).toBeNull()
+      expect(routed).toEqual(['ACoAA-test-mira'])
+      expect(calls.filter(c => c === 'apify')).toHaveLength(1)
+      expect(calls).toContain('apollo')
+      expect(tiePrompts[0]).toContain('"Mira Example"')
+    })
+    it.each([
+      ['another first name on the profile', { first: 'Nora' }],
+      ['no usable member id', { id: 'legacy-mira' }],
+      ['the model says the message names someone else', { text: 'Contact Mira.Patel about it. ' + link, tie: { same_person: false, quote: 'Mira.Patel' } }],
+      ['the model quotes words that are not in the message', { tie: { same_person: true, quote: 'talk to Mira Example' } }],
+      ['the quote does not name the person', { tie: { same_person: true, quote: 'my colleague' } }],
+      ['the model answer is not a plain true', { tie: { same_person: 'yes', quote: 'my colleague Mira' } }],
+      ['the tie check fails', { tieThrows: true }],
+      ['the referrer has the same first name', { referrer: 'Mira Example' }],
+      ['the profile cannot be read', { apifyItems: [] }],
+    ])('stays for the operator when %s: no pin, no email, no InMail', async (_label, opts) => {
+      const { result, calls, routed } = await run(opts as Opts)
+      expect(result.status).toBe('unresolved')
+      expect(result.draft ?? null).toBeNull()
+      expect(result.member_id ?? null).toBeNull()
+      expect(result.email ?? null).toBeNull()
+      expect(result.inmail ?? null).toBeNull()
+      expect(routed).toEqual([])
+      expect(calls).not.toContain('apollo')
+    })
+    it('starts no optional step that could run past the deadline and offers a retry (Sol r3-r5)', async () => {
+      // Each Date.now() read moves 40 s: the lookup still fits, the email draft and the InMail do not.
+      let now = 0
+      const clock = vi.spyOn(Date, 'now').mockImplementation(() => (now += 40_000))
+      try {
+        const { result, calls, routed } = await run()
+        expect(result).toMatchObject({ status: 'verified', member_id: 'ACoAA-test-mira', email: null })
+        expect(result.draft).toContain('Hey Mira')
+        expect(result.email_reason).toMatch(/Retry research/)
+        expect(result.inmail ?? null).toBeNull()
+        expect(routed).toEqual([])
+        expect(calls).not.toContain('email')
+      } finally { clock.mockRestore() }
+    })
+    it('never defers an email to an address the handoff gave (Sol r5)', async () => {
+      let now = 0
+      const clock = vi.spyOn(Date, 'now').mockImplementation(() => (now += 200_000))
+      try {
+        const text = 'Influencer marketing here is handled by my colleague Mira, mira@examplelabs.test ' + link
+        const { result, calls } = await run({ text, tie: { same_person: true, quote: 'my colleague Mira' } })
+        expect(result.status).toBe('verified')
+        expect(result.email?.to).toBe('mira@examplelabs.test')
+        expect(calls).not.toContain('apollo')
+        expect(result.inmail ?? null).toBeNull()
+        expect(result.email_reason).toMatch(/Retry research/)
+      } finally { clock.mockRestore() }
+    })
   })
   it('drafts for the profile the referrer supplied even when the title is unknown', async () => {
     const link = 'https://www.linkedin.com/in/vladimir-golovanov/'
