@@ -54,7 +54,7 @@ export function otherSurnameAfter(text: string, first: string, lastName: string)
  * can finish before this point of the run, each counted at its own timeout, so the prewarm request (150 s) keeps room for
  * the hold check and the save. A skipped step is left for Retry research, which the card offers. An email to an address
  * the handoff gave is never deferred (Sol r5: a retry would otherwise look the person up again and could change it). */
-export const FIRST_NAME_OPTIONAL_UNTIL_MS = 100_000
+export const FIRST_NAME_OPTIONAL_UNTIL_MS = 110_000
 const LEFT_FOR_RETRY = 'The email lookup or InMail was left for later so this could finish in time. Retry research.'
 
 export async function researchReferral(sb: Db, input: Input, author: string, rules: unknown, context: unknown, mentions: Mention[] = [], opts: { emailLane?: boolean; lookup?: EmailLookup | null; slots?: () => Promise<OfferSlot[] | null>; inmail?: InmailLane | null } = {}): Promise<ReferralDraft> {
@@ -164,7 +164,7 @@ ${input.text}
       if (!email) email_reason = 'The email draft could not be written. Retry research.'
     }
     // ARCH: the first touch goes as an InMail when one can go (Ivan 2026-11-26); the invite note stays the fallback.
-    const inmail = opts.inmail && fits(80_000) ? await inmailFor({ ...referral, name: referral.name ?? name }, opts.inmail, author, rules, context, agencyFor, !taggedProfile && !!linkedIdentity, offered, suppliedRead) : {}
+    const inmail = opts.inmail && fits(10_000) ? await inmailFor({ ...referral, name: referral.name ?? name }, opts.inmail, author, rules, context, agencyFor, !taggedProfile && !!linkedIdentity, offered, suppliedRead, () => fits(60_000)) : {}
     if (deferred && !email_reason) email_reason = LEFT_FOR_RETRY
     return { ...referral, ...inmail, name: referral.name ?? name, acknowledgement, revision: REFERRAL_REVISION,
       offer_verified_at: input.offer && (referral.draft || referral.candidate) ? input.offerVerifiedAt ?? null : null,
@@ -313,11 +313,13 @@ export type InmailLane = (r: ReferralDraft, known?: ProfileDetails | null) => Pr
 
 /** The InMail first touch and its route, for a verified person with a note draft. When no InMail can go, only the
  * route is stored (the card shows the invite note and why). A drafter decline or a broken draft stores no InMail. */
-async function inmailFor(r: ReferralDraft, lane: InmailLane, author: string, rules: unknown, context: unknown, agencyFor: string | null, supplied: boolean, slots: OfferSlot[] | null, known: ProfileDetails | null = null): Promise<{ inmail: ReferralInmail | null; inmail_route: InmailRoute | null }> {
+async function inmailFor(r: ReferralDraft, lane: InmailLane, author: string, rules: unknown, context: unknown, agencyFor: string | null, supplied: boolean, slots: OfferSlot[] | null, known: ProfileDetails | null = null, canDraft: () => boolean = () => true): Promise<{ inmail: ReferralInmail | null; inmail_route: InmailRoute | null }> {
   if (r.status !== 'verified' || !r.draft) return { inmail: null, inmail_route: null }
   let route: InmailRoute
   try { route = await lane(r, known) } catch { return { inmail: null, inmail_route: null } }
   if (route.channel !== 'inmail') return { inmail: null, inmail_route: route }
+  // The route read is cheap (credits, the profile already read); only the draft waits for time (first-name path).
+  if (!canDraft()) return { inmail: null, inmail_route: route }
   const identity = { status: r.status, name: r.name, company: r.company, role: r.role, linkedin_url: r.linkedin_url, summary: r.summary, sources: r.sources }
   const inmail = await draftDm(identity, author, rules, context, null, agencyFor, 'inmail', supplied, slots).then(res => referralInmail(res, slots)).catch(() => null)
   return { inmail, inmail_route: route }
