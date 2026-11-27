@@ -8,7 +8,7 @@ import { storyKey } from '../../supabase/functions/inbox-dm-draft/referral'
 // Invented fixtures only (public repo): a made-up studio, referrer and referred person.
 const PROSPECT = '61d768d6-5bf9-4777-8eb7-cf6c0b38ae75'
 const HANDOFF = '0b5a3d0e-1111-4c2a-9a55-000000000001'
-const slugs = ['rise-company-facts', 'rise-reply-voice-core', 'rise-reply-exemplars', 'arch-company-facts', 'arch-reply-voice-core', 'arch-icp-outreach', 'arch-reply-exemplars', 'forbidden-language', 'anti-ai-patterns-outreach-playbook']
+const slugs = ['author-voice', 'ivan-reply-voice-core', 'ivan-company-facts', 'ivan-reply-exemplars', 'rise-company-facts', 'rise-reply-voice-core', 'rise-reply-exemplars', 'arch-company-facts', 'arch-reply-voice-core', 'arch-icp-outreach', 'arch-reply-exemplars', 'forbidden-language', 'anti-ai-patterns-outreach-playbook']
 const base = { client_id: 'arch', prospect_name: 'Priya Example', prospect_company: 'Northwind Games', channel: 'linkedin', message_type: 'dm', prospect_stage: 'dm_sent', prospect_blacklisted: false, approved_at: null, send_blocked_reason: null, ai_model: null }
 const at = (min: number) => new Date(Date.UTC(2026, 10, 5, 12, min)).toISOString()
 const row = (id: string, direction: string, text: string, min: number, extra: Record<string, unknown> = {}) => ({ ...base, id, direction, message_text: text, sent_at: at(min), created_at: at(min), ...extra })
@@ -17,7 +17,7 @@ const handoff = row(HANDOFF, 'inbound', 'You could contact Tomas Weller, he is t
 const ack = row('ack', 'outbound', "Thanks Priya, I'll reach out to Tomas directly.", 20)
 const youToo = row('later-1', 'inbound', 'You too!', 30)
 const discarded = row('old-draft', 'outbound', 'Hey Priya, could you introduce me to Tomas?', 15, { sent_at: null, send_blocked_reason: 'discarded_in_inbox' })
-const verified = { status: 'verified', input_message_id: HANDOFF, name: 'Tomas Weller', company: 'Northwind Games', role: 'Influencer Manager',
+const verified = { status: 'verified', seat: 'arch', input_message_id: HANDOFF, name: 'Tomas Weller', company: 'Northwind Games', role: 'Influencer Manager',
   linkedin_url: 'https://www.linkedin.com/in/tomas-weller-test', member_id: 'ACoAA-test-tomas', summary: 'Tomas Weller is Influencer Manager at Northwind Games.', reason: null,
   draft: 'Hey Tomas\n\nPriya said you are the person for creator campaigns at Northwind.\n\nAre you running them in-house or with an agency?',
   sources: [{ url: 'https://www.linkedin.com/in/tomas-weller-test', title: 'Tomas Weller | LinkedIn profile search' }], acknowledgement: "Thanks Priya, I'll reach out to Tomas." }
@@ -165,7 +165,7 @@ describe('the ARCH first touch as an InMail', () => {
   })
   it('a referral left unresolved (its supplied profile showed another person) gets no lead staged (Sol r6)', async () => {
     const unresolved = { ...verified, status: 'unresolved', revision: REFERRAL_REVISION, story_key: keyAfter(youToo), later: checked('later-1'), member_id: undefined }
-    const got = await run([pitch, handoff, ack, youToo], { body: { mode: 'referral_lead', input_message_id: HANDOFF, draft: verified.draft, linkedin_url: verified.linkedin_url, story_key: keyAfter(youToo) },
+    const got = await run([pitch, handoff, ack, youToo], { body: { mode: 'referral_lead', input_message_id: HANDOFF, draft: verified.draft, linkedin_url: verified.linkedin_url, story_key: keyAfter(youToo), seat: 'arch' },
       enrichment: { inbox_referral: unresolved }, credits: 12, rpc: () => true })
     expect(got.status).toBe(409)
     expect(got.calls.find(c => c.fn === 'inbox_referral_create_lead')).toBeUndefined()
@@ -181,7 +181,7 @@ describe('the ARCH first touch as an InMail', () => {
   ])('an unpinned referral whose profile shows another person (%s) gets no lead staged (Sol r7/r8/r9)', async (_case, name, firstName, lastName) => {
     const legacy = { ...verified, name, revision: REFERRAL_REVISION, story_key: keyAfter(youToo), later: checked('later-1'), member_id: undefined }
     const other = [{ id: 'ACoAA-test-other', publicIdentifier: 'tomas-weller-test', firstName, lastName, openProfile: true }]
-    const got = await run([pitch, handoff, ack, youToo], { body: { mode: 'referral_lead', input_message_id: HANDOFF, draft: verified.draft, linkedin_url: verified.linkedin_url, story_key: keyAfter(youToo) },
+    const got = await run([pitch, handoff, ack, youToo], { body: { mode: 'referral_lead', input_message_id: HANDOFF, draft: verified.draft, linkedin_url: verified.linkedin_url, story_key: keyAfter(youToo), seat: 'arch' },
       enrichment: { inbox_referral: legacy }, apify: other, credits: 12, rpc: () => true })
     expect(got.status).toBe(409)
     expect(got.calls.find(c => c.fn === 'inbox_referral_create_lead')).toBeUndefined()
@@ -189,7 +189,7 @@ describe('the ARCH first touch as an InMail', () => {
   it('a legacy unpinned referral: the note Create stages even with credits and an open profile, with no redraft loop (Sol r5)', async () => {
     const legacy = { ...verified, revision: REFERRAL_REVISION, story_key: keyAfter(youToo), later: checked('later-1'), member_id: undefined }
     const open = [{ id: 'ACoAA-test-tomas', publicIdentifier: 'tomas-weller-test', firstName: 'Tomas', lastName: 'Weller', openProfile: true }]
-    const got = await run([pitch, handoff, ack, youToo], { body: { mode: 'referral_lead', input_message_id: HANDOFF, draft: verified.draft, linkedin_url: verified.linkedin_url, story_key: keyAfter(youToo) },
+    const got = await run([pitch, handoff, ack, youToo], { body: { mode: 'referral_lead', input_message_id: HANDOFF, draft: verified.draft, linkedin_url: verified.linkedin_url, story_key: keyAfter(youToo), seat: 'arch' },
       enrichment: { inbox_referral: legacy }, apify: open, credits: 12, rpc: fn => fn === 'inbox_referral_create_lead' ? { status: 'created', lead_prospect_id: '00000000-0000-4000-8000-0000000000aa', message_id: 'm' } : true })
     expect(got.status).toBe(200)
     expect(got.result.inmail_available).toBeUndefined()
@@ -226,11 +226,35 @@ describe('the ARCH first touch as an InMail', () => {
       expect(result.referral.draft).toBe(redrafted)
     }
   })
-  it('other seats never read credits or draft an InMail', async () => {
-    const rise = [pitch, handoff, ack, youToo].map(r => ({ ...r, client_id: 'risedtc' }))
-    const { result, balanceReads } = await run(rise, { server: true, body: { mode: 'referral' }, enrichment: { inbox_referral: { ...verified, revision: REFERRAL_REVISION - 1 } }, model: withInmail(), credits: 9 })
+})
+
+// Ivan 2026-11-27 ("if its referral yeah"): the referral InMail on every referral seat, in that seat's own voice and rules.
+const seatRows = (client: string) => [pitch, handoff, ack, youToo].map(r => ({ ...r, client_id: client }))
+const tomasProfile = [{ id: 'ACoAA-test-tomas', publicIdentifier: 'tomas-weller-test', firstName: 'Tomas', lastName: 'Weller' }]
+const seatInmail = "Hey Tomas\n\nPriya pointed me to you for paid growth at Northwind Games.\n\nI'm Mattan, co-founder of an example agency. We run paid for brands like Example Co.\n\nAre you open to an intro chat sometime next week?"
+describe('the referral InMail on the RISE and Ivan seats', () => {
+  it.each([['risedtc', 'Mattan'], ['ivan', 'Ivan Manfredi']])('%s: the seat\'s credits are read and the InMail is written as %s, with none of the ARCH lane lines', async (client, author) => {
+    const cached = { ...verified, revision: REFERRAL_REVISION - 1 }
+    const { result, upstream, balanceReads } = await run(seatRows(client), { server: true, body: { mode: 'referral' }, enrichment: { inbox_referral: cached }, model: withInmail('go', { subject: 'Acme x Northwind', paragraphs: seatInmail.split('\n\n'), reason: null }), credits: 9, apify: tomasProfile })
+    expect(balanceReads).toHaveLength(1)
+    expect(result.referral).toMatchObject({ inmail: { subject: 'Acme x Northwind', body: seatInmail }, inmail_route: { channel: 'inmail', credits: 9 }, member_id: 'ACoAA-test-tomas' })
+    expect(result.referral.inmail_route.why).toContain(`${author}'s seat has 9`)
+    const prompt = upstream.find(p => p.includes('Write the first LinkedIn InMail'))!
+    expect(prompt).toContain(`Write the first LinkedIn InMail ${author} sends`)
+    for (const arch of ['Surfshark', 'subscription-brands lane', 'scale line', 'UGC', "I'm Davorin", 'ARCH x']) expect(prompt).not.toContain(arch)
+    expect(prompt).toContain('one client result the client rules print and approve')
+    // Every drafted copy of the referral on this seat keeps the ARCH lane lines out (the note too).
+    for (const p of upstream.filter(x => x.includes('Write the first'))) expect(p).not.toContain('Surfshark')
+  })
+  it('the ARCH InMail prompt keeps its own lane, case study and scale line', async () => {
+    const { upstream } = await run([pitch, handoff, ack, youToo], { server: true, body: { mode: 'referral' }, enrichment: { inbox_referral: { ...verified, revision: REFERRAL_REVISION - 1 } }, model: withInmail(), credits: 12, apify: tomasProfile })
+    const prompt = upstream.find(p => p.includes('Write the first LinkedIn InMail'))!
+    for (const arch of ['For Surfshark that meant 500 influencers and 1,000 activations across 15 countries."', 'subscription-brands lane', 'scale line', 'UGC', "I'm Davorin, founder of ARCH", '"ARCH x Brewco UK"']) expect(prompt).toContain(arch)
+  })
+  it('a studio seat (Anna) still gets no referral research at all', async () => {
+    const { status, balanceReads } = await run(seatRows('anna'), { server: true, body: { mode: 'referral' }, enrichment: { inbox_referral: { ...verified, revision: REFERRAL_REVISION - 1 } }, model: withInmail(), credits: 9 })
+    expect(status).toBe(409)
     expect(balanceReads).toHaveLength(0)
-    expect(result.referral.inmail ?? null).toBeNull()
   })
 })
 
@@ -255,7 +279,7 @@ describe('create referred lead', () => {
   const ready = { ...verified, revision: REFERRAL_REVISION, story_key: keyAfter(youToo), later: checked('later-1') }
   const profile = [{ id: 'ACoAA-test-tomas', publicIdentifier: 'tomas-weller-test', firstName: 'Tomas', lastName: 'Weller', headline: 'Influencer Manager',
     location: { linkedinText: 'Lisbon, Portugal', parsed: { country: 'Portugal', city: 'Lisbon', state: null } } }]
-  const body = (draft = verified.draft, linkedin_url = verified.linkedin_url) => ({ mode: 'referral_lead', input_message_id: HANDOFF, draft, linkedin_url, story_key: keyAfter(youToo) })
+  const body = (draft = verified.draft, linkedin_url = verified.linkedin_url, seat = 'arch') => ({ mode: 'referral_lead', input_message_id: HANDOFF, draft, linkedin_url, story_key: keyAfter(youToo), seat })
   it('stages one held invite note through the database function, flagged for a by-hand check', async () => {
     const { status, result, calls, apifyBodies } = await run([pitch, handoff, ack, youToo], { body: body(), enrichment: { inbox_referral: ready }, apify: profile, credits: 0,
       rpc: fn => fn === 'inbox_referral_create_lead' ? { status: 'created', lead_prospect_id: '00000000-0000-4000-8000-0000000000aa', message_id: 'm' } : true })
@@ -313,14 +337,15 @@ describe('create referred lead', () => {
       expect(got.calls.find(c => c.fn === 'inbox_referral_create_lead')).toBeUndefined()
     }
   })
-  it('an open profile with no sender seat: the note stages, with no InMail ping-pong (Sol r3)', async () => {
+  it('an open profile with no sender seat: no InMail, and the note waits for a readable seat (Sol r3; 2026-11-27 seat pin)', async () => {
     const open = [{ ...profile[0], openProfile: true }]
     const inm = await run([pitch, handoff, ack, youToo], { body: inmailBodyReq(), enrichment: { inbox_referral: inmailReady }, apify: open, rpc: created, credits: 0, noSeat: true })
     expect(inm.status).toBe(409)
     expect(inm.result.inmail_unavailable).toContain('sender seat')
     const note = await run([pitch, handoff, ack, youToo], { body: body(), enrichment: { inbox_referral: inmailReady }, apify: open, rpc: created, credits: 0, noSeat: true })
-    expect(note.status).toBe(200)
-    expect(note.calls.find(c => c.fn === 'inbox_referral_create_lead')!.args).toMatchObject({ p_channel: 'connection_note' })
+    expect(note.status).toBe(503)
+    expect(note.result.inmail_available).toBeUndefined()
+    expect(note.calls.find(c => c.fn === 'inbox_referral_create_lead')).toBeUndefined()
   })
   it('a note Create when an InMail can go now stages nothing and says so (Sol r2), unless the drafter declined the InMail', async () => {
     const noteOnly = { ...ready, inmail_route: { channel: 'connection_note', credits: 0, open_profile: false, why: 'none', checked_at: at(31) } }
@@ -378,10 +403,56 @@ describe('create referred lead', () => {
     expect((await run([pitch, handoff, ack, youToo], { body: { ...body(), story_key: 'older-story' }, enrichment: { inbox_referral: ready } })).status).toBe(409)
     // The card reviewed another person than the one stored now.
     expect((await run([pitch, handoff, ack, youToo], { body: body(verified.draft, 'https://www.linkedin.com/in/someone-else-test'), enrichment: { inbox_referral: ready } })).status).toBe(409)
-    const rise = [pitch, handoff, ack, youToo].map(r => ({ ...r, client_id: 'risedtc' }))
-    const other = await run(rise, { body: body(), enrichment: { inbox_referral: ready } })
-    expect(other.status).toBe(409)
-    expect(other.calls.find(c => c.fn === 'inbox_referral_create_lead')).toBeUndefined()
+    // A seat with no referral lane (a studio seat, SwishDM) never creates one.
+    for (const client of ['anna', 'swishdm']) {
+      const other = await run(seatRows(client), { body: body(), enrichment: { inbox_referral: ready }, apify: profile, rpc: created })
+      expect(other.status).toBe(409)
+      expect(other.calls.find(c => c.fn === 'inbox_referral_create_lead')).toBeUndefined()
+    }
+  })
+  it('RISE: stages one held InMail on the RISE lane, from the RISE seat, with Mattan in the review note', async () => {
+    const { status, result, calls, balanceReads } = await run(seatRows('risedtc'), { body: inmailBodyReq({ seat: 'risedtc' }), enrichment: { inbox_referral: { ...inmailReady, seat: 'risedtc' } }, apify: profile, rpc: created, credits: 23 })
+    expect(status).toBe(200)
+    expect(result.lead).toMatchObject({ status: 'created', channel: 'inmail' })
+    expect(balanceReads).toHaveLength(1)
+    const made = calls.find(c => c.fn === 'inbox_referral_create_lead')!
+    expect(made.args).toMatchObject({ p_channel: 'inmail', p_evidence: { delivery_lane: 'risedtc_referral_inmail', inmail_api: 'sales_navigator', inmail_provider_id: 'ACoAA-test-tomas', sender_account_id: 'config-value', seat: 'risedtc' } })
+    const note = (made.args.p_evidence as { review_note: string }).review_note
+    expect(note).toContain('Check whether Mattan already messaged Tomas')
+    expect(note).not.toContain('Davorin')
+  })
+  it('a conversation that moved seats after the card was drafted stages nothing (Sol r2)', async () => {
+    // The card showed ARCH copy; the referrer is on the RISE seat now.
+    const moved = await run(seatRows('risedtc'), { body: body(), enrichment: { inbox_referral: ready }, apify: profile, rpc: created, credits: 23 })
+    expect(moved.status).toBe(409)
+    expect(moved.calls.find(c => c.fn === 'inbox_referral_create_lead')).toBeUndefined()
+    // The card shows RISE but the stored copy was drafted for ARCH.
+    const stale = await run(seatRows('risedtc'), { body: body(verified.draft, verified.linkedin_url, 'risedtc'), enrichment: { inbox_referral: ready }, apify: profile, rpc: created, credits: 23 })
+    expect(stale.status).toBe(409)
+    expect(stale.calls.find(c => c.fn === 'inbox_referral_create_lead')).toBeUndefined()
+    // Sol r3: another session saved the RISE draft meanwhile, but this card still shows (and sends) the ARCH one.
+    const mounted = await run(seatRows('risedtc'), { body: body(), enrichment: { inbox_referral: { ...ready, seat: 'risedtc' } }, apify: profile, rpc: created, credits: 23 })
+    expect(mounted.status).toBe(409)
+    expect(mounted.calls.find(c => c.fn === 'inbox_referral_create_lead')).toBeUndefined()
+  })
+  it('a stored draft written for another seat is redrafted in the current seat\'s voice, not served', async () => {
+    const { result, upstream } = await run(seatRows('risedtc'), { server: true, body: { mode: 'referral' }, enrichment: { inbox_referral: ready }, model: judge('go'), credits: 0, apify: [{ ...profile[0], openProfile: false }] })
+    expect(upstream.find(p => p.includes('Write the first LinkedIn DM'))).toContain('Write the first LinkedIn DM Mattan sends')
+    expect(result.referral.seat).toBe('risedtc')
+  })
+  it('Ivan: no credits and a closed profile, the invite note is staged with Ivan in the review note', async () => {
+    const closed = [{ ...profile[0], openProfile: false }]
+    const { status, calls } = await run(seatRows('ivan'), { body: body(verified.draft, verified.linkedin_url, 'ivan'), enrichment: { inbox_referral: { ...ready, seat: 'ivan' } }, apify: closed, rpc: created, credits: 0 })
+    expect(status).toBe(200)
+    const made = calls.find(c => c.fn === 'inbox_referral_create_lead')!
+    expect(made.args).toMatchObject({ p_channel: 'connection_note', p_text: verified.draft, p_evidence: { seat: 'ivan', sender_account_id: 'config-value' } })
+    expect((made.args.p_evidence as { review_note: string }).review_note).toContain('if Ivan Manfredi is already connected to Tomas')
+  })
+  it('Ivan: an open profile goes as a free InMail on the Ivan lane', async () => {
+    const open = [{ ...profile[0], openProfile: true }]
+    const { status, calls } = await run(seatRows('ivan'), { body: inmailBodyReq({ seat: 'ivan' }), enrichment: { inbox_referral: { ...inmailReady, seat: 'ivan' } }, apify: open, rpc: created, credits: 0 })
+    expect(status).toBe(200)
+    expect(calls.find(c => c.fn === 'inbox_referral_create_lead')!.args).toMatchObject({ p_channel: 'inmail', p_evidence: { delivery_lane: 'ivan_referral_inmail', inmail_route: { open_profile: true } } })
   })
   it('a dismissal closes the card through the database function', async () => {
     const { result, calls } = await run([pitch, handoff], { body: { mode: 'referral_dismiss', input_message_id: HANDOFF }, enrichment: { inbox_referral: ready } })

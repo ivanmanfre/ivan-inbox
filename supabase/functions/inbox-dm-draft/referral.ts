@@ -38,7 +38,10 @@ export type ReferralDraft = {
   lead_message_id?: string
   /** The free calendar day the invite note asks for (Ivan 2026-11-26). */
   slot?: { start: string; label: string; day: string } | null
-  /** ARCH: the first touch as an InMail (subject + the fuller intro) when one can go (Ivan 2026-11-26). */
+  /** The seat (client) this copy was drafted for. A conversation now on another seat is redrafted, and Create refuses
+   * copy drafted for another seat (Sol r2, 2026-11-27). */
+  seat?: string
+  /** The first touch as an InMail (subject + the fuller intro) when one can go (Ivan 2026-11-26, every seat 11-27). */
   inmail?: ReferralInmail | null
   /** Whether that InMail can go, read when it was drafted; Create reads it again. */
   inmail_route?: InmailRoute | null

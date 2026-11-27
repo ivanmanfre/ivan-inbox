@@ -25,6 +25,10 @@ const CANON: Record<string, { author: string; slugs: string[] }> = {
   leah: { author: LEAH_AUTHOR, slugs: STUDIO_REPLY_SLUGS },
 }
 
+/** Seats whose referral card can create the referred lead with one held first touch (an InMail when one can go, else
+ * the invite note), sent from that seat only (Ivan 2026-11-27: "if its referral yeah", every referral lane). */
+const REFERRAL_LEAD_SEATS = ['ivan', 'arch', 'risedtc']
+
 /** An appended offer line is good for 72 h after verification (the sequencer's bound). No offer, no expiry. */
 const offerFresh = (at: unknown) => at == null || (typeof at === 'string' && Date.now() - Date.parse(at) < 72 * 3600_000)
 
@@ -57,8 +61,8 @@ Deno.serve(async req => {
   let id: string
   let referralMode = false, retryReferral = false, annaMode: string | null = null
   // Operator actions on a verified referral card. Signed-in owner only; the cron never takes them.
-  let referralAction: 'referral_lead' | 'referral_dismiss' | null = null, actionMessage = '', leadNote = '', leadUrl = '', leadStory = ''
-  // An InMail first touch (ARCH): the reviewed subject and body, plus the invite note that goes if no InMail can.
+  let referralAction: 'referral_lead' | 'referral_dismiss' | null = null, actionMessage = '', leadNote = '', leadUrl = '', leadStory = '', leadSeat = ''
+  // An InMail first touch: the reviewed subject and body, plus the invite note that goes if no InMail can.
   let leadInmail: { subject: string; body: string } | null = null
   const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
   try {
@@ -78,6 +82,8 @@ Deno.serve(async req => {
         // The profile the operator reviewed: a research save in between (another person) never receives this note.
         leadUrl = body.linkedin_url
         leadStory = typeof body.story_key === 'string' ? body.story_key : ''
+        // The seat the card showed (Sol r2): the copy goes only from that seat, and only while the conversation is still on it.
+        leadSeat = typeof body.seat === 'string' ? body.seat : ''
         if (body.channel === 'inmail') {
           if (typeof body.subject !== 'string' || typeof body.note !== 'string') throw new Error()
           leadInmail = { subject: body.subject.replace(/\s+/g, ' ').trim(), body: leadNote }
@@ -158,9 +164,10 @@ Deno.serve(async req => {
           return ok === true ? respond({ dismissed: true }) : respond({ error: 'The referral changed. Refresh the conversation.' }, 409)
         }
         if (!openReferral(cached)) return respond({ error: 'The referral changed. Refresh the conversation.' }, 409)
-        // ARCH only: the referred person becomes an ARCH lead with ONE held first touch. Davorin approves it
-        // through the normal Send; nothing here approves or sends.
-        if (client !== 'arch') return respond({ error: 'Referred leads can be created for ARCH conversations only.' }, 409)
+        // The referred person becomes a lead on the referrer's own seat with ONE held first touch. The seat owner approves
+        // it through the normal Send; nothing here approves or sends.
+        if (!REFERRAL_LEAD_SEATS.includes(client)) return respond({ error: 'Referred leads cannot be created for this seat.' }, 409)
+        if (leadSeat !== client || cached.seat !== client) return respond({ error: 'The conversation moved to another seat. Refresh to see the draft for it.' }, 409)
         if (leadUrl !== cached.linkedin_url) return respond({ error: 'The referral changed. Refresh the conversation.' }, 409)
         // The note the operator reviewed was drafted from the conversation as it stands now.
         if (cached.story_key !== keyFor(cached.input_message_id) || leadStory !== cached.story_key) return respond({ error: 'The conversation changed. Refresh to see the current draft.' }, 409)
@@ -208,8 +215,12 @@ Deno.serve(async req => {
         // The InMail goes only when it can go now: credits on the seat, or their profile is open (read just above).
         // Otherwise the invite note the operator also saw goes instead, and the answer says why.
         // One check for both branches (Sol r3): the route now, the seat it would go from, and a member id that takes an InMail.
-        const route = client === 'arch' ? inmailRoute(await inmailCredits(sb, client), profile.open_profile, canon.author) : null
-        const sender = route?.channel === 'inmail' ? await seatAccount(sb, client) : null
+        const route = REFERRAL_LEAD_SEATS.includes(client) ? inmailRoute(await inmailCredits(sb, client), profile.open_profile, canon.author) : null
+        // Sol r1 (2026-11-27): every first touch, the note too, names the seat it must go from (the referrer's own);
+        // the database and the sender both check it, so a lead moved to another seat never gets this copy.
+        const account = await seatAccount(sb, client)
+        if (!account && !leadInmail) return respond({ error: 'The sender seat could not be read. Try again.' }, 503)
+        const sender = route?.channel === 'inmail' ? account : null
         // Sol r5: an InMail needs the verified member too, so an unpinned (legacy) referral keeps its note path.
         const canInmail = Boolean(route?.channel === 'inmail' && sender && /^ACoAA/.test(profile.provider_id) && pinned === profile.provider_id)
         const asInmail = Boolean(leadInmail && canInmail)
@@ -223,7 +234,7 @@ Deno.serve(async req => {
         // card brings the InMail back (or redrafts it) for review. A drafter that declined the InMail keeps the note.
         if (!leadInmail && canInmail && !(cached.inmail_route?.channel === 'inmail' && !cached.inmail))
           return respond({ error: `An InMail can go now: ${route!.why} Review it before creating the lead.`, inmail_available: route!.why }, 409)
-        const byHand = `Check whether Davorin already messaged ${first} by hand on LinkedIn: messages sent outside the system are not in this inbox.`
+        const byHand = `Check whether ${canon.author} already messaged ${first} by hand on LinkedIn: messages sent outside the system are not in this inbox.`
         const { data: made, error: makeError } = await sb.rpc('inbox_referral_create_lead', {
           p_referrer: id, p_input_message: actionMessage, p_revision: REFERRAL_REVISION, p_expected_url: leadUrl, p_later_ids: later.map(m => m.id), p_read_at: readAt, p_discarded_ids: nowDiscarded.map(m => m.id),
           p_lead: { linkedin_url: `https://www.linkedin.com/in/${profile.public_identifier}`, provider_id: profile.provider_id,
@@ -236,11 +247,11 @@ Deno.serve(async req => {
             ? { referred_name: cached.name, referrer_name: rows[0].prospect_name, linkedin_url: cached.linkedin_url, sent_as: 'inmail',
               drafted_text: inmailText(cached.inmail!.subject, cached.inmail!.body), fallback_note: leadNote,
               // The Send Messages referral InMail lane reads these: the seat it must go from and the one recipient.
-              delivery_lane: 'arch_referral_inmail', inmail_api: 'sales_navigator', inmail_subject: leadInmail!.subject,
-              inmail_provider_id: profile.provider_id, sender_account_id: sender, inmail_route: route, no_sequence_enrollment: true,
-              review_note: `${byHand} This goes out as a LinkedIn InMail (${route!.open_profile ? 'free: their profile is open' : 'one Sales Navigator credit'}). If Davorin already has a conversation with ${first}, the sender holds it for review; if he is connected to ${first}, discard it and message ${first} directly.` }
-            : { referred_name: cached.name, referrer_name: rows[0].prospect_name, linkedin_url: cached.linkedin_url, drafted_text: cached.draft, sent_as: 'connection_note',
-              review_note: `${byHand} This goes out as a connection invite with the note above; if Davorin is already connected to ${first}, discard it and message ${first} directly.` },
+              delivery_lane: `${client}_referral_inmail`, inmail_api: 'sales_navigator', inmail_subject: leadInmail!.subject,
+              inmail_provider_id: profile.provider_id, sender_account_id: sender, seat: client, inmail_route: route, no_sequence_enrollment: true,
+              review_note: `${byHand} This goes out as a LinkedIn InMail (${route!.open_profile ? 'free: their profile is open' : 'one Sales Navigator credit'}). If ${canon.author} already has a conversation with ${first}, the sender holds it for review; if ${canon.author} is connected to ${first}, discard it and message ${first} directly.` }
+            : { referred_name: cached.name, referrer_name: rows[0].prospect_name, linkedin_url: cached.linkedin_url, drafted_text: cached.draft, sent_as: 'connection_note', seat: client, sender_account_id: account,
+              review_note: `${byHand} This goes out as a connection invite with the note above; if ${canon.author} is already connected to ${first}, discard it and message ${first} directly.` },
         })
         if (makeError) throw makeError
         return made?.status === 'created' || made?.status === 'linked_existing' || made?.status === 'exists'
@@ -263,11 +274,11 @@ Deno.serve(async req => {
         }
       }
       const pick = referralTarget(conversation, cached, dismissedIds)
-      // ARCH: whether the first touch can go as an InMail (Ivan 2026-11-26): the seat's credit balance, and their profile
+      // Whether the first touch can go as an InMail (Ivan 2026-11-26 ARCH, 2026-11-27 every referral seat): the seat's credit balance, and their profile
       // through Apify (no seat read) for an open profile and to confirm the URL still shows the verified member.
       // Sol r4: the member id comes only from the identity verified at research (r.member_id); this read never sets it.
       // No verified member (a referral researched before it was recorded, or one found by web search alone) gets no InMail.
-      const inmailLane: InmailLane | null = client === 'arch' ? async (r, known) => {
+      const inmailLane: InmailLane | null = REFERRAL_LEAD_SEATS.includes(client) ? async (r, known) => {
         const credits = await inmailCredits(sb, client)
         const note = (why: string): InmailRoute => ({ credits, open_profile: null, channel: 'connection_note', why, checked_at: new Date().toISOString() })
         if (!r.member_id) return note('Their LinkedIn member was not verified when the referral was researched, so no InMail can go.')
@@ -301,6 +312,8 @@ Deno.serve(async req => {
         && (r.status !== 'verified' || r.story_key === keyFor(msgId))
         // The time the email offers must still be a day out; an older one is redrafted with a fresh calendar read.
         && ![r.email?.slot, r.slot, r.inmail?.slot].some(x => x && Date.parse(x.start) < Date.now() + 24 * 3600000)
+        // Drafted for this seat (Sol r2): a conversation moved to another seat gets its own author's copy.
+        && r.seat === client
       const anchor = openReferral(cached) ? inboundRows.find(m => m.id === cached.input_message_id) : undefined
       if (!retryReferral && current(cached, target.id)) { referral = cached!; changed = false }
       else if (cached?.input_message_id === target.id && openReferral(cached)) referral = { ...await redraftReferral(cached, canon.author, prompts, story(target.id), lookupDb, slots, inmailLane), story_key: keyFor(target.id) }
@@ -346,12 +359,13 @@ Deno.serve(async req => {
       // Only an explicit retry replaces it. A referred lead or a dismissal recorded meanwhile is kept.
       // p_expected_input: the handoff this run started from. A different handoff saved meanwhile (and maybe already
       // dismissed or turned into a lead) is never overwritten by this older run.
+      referral = { ...referral, seat: client }
       const { data: saved, error: saveError } = await sb.rpc('inbox_set_referral_v2', { p_prospect: id, p_referral: { ...referral, researched_at: new Date().toISOString() }, p_keep_verified: !retryReferral, p_expected_input: cached?.input_message_id ?? null })
       if (saveError) throw saveError
       if (saved !== true) return respond({ error: 'The contact changed while saving research. Try again.' }, 409)
       const { data: latest } = await sb.from('outreach_prospects').select('referral:enrichment_data->inbox_referral').eq('id', id).single()
       const kept = latest?.referral as ReferralDraft | null | undefined
-      if (kept?.input_message_id === target.id && kept?.revision === REFERRAL_REVISION && (kept?.status === 'verified' || referral.status !== 'verified') && offerFresh(kept.offer_verified_at)) return respond({ referral: kept })
+      if (kept?.input_message_id === target.id && kept?.revision === REFERRAL_REVISION && kept?.seat === client && (kept?.status === 'verified' || referral.status !== 'verified') && offerFresh(kept.offer_verified_at)) return respond({ referral: kept })
       return respond({ referral })
     }
     // Sent invitations establish first-touch provenance. Counters and unsent drafts do not.

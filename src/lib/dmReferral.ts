@@ -36,7 +36,8 @@ const pending = new Map<string, Promise<ReferralDraft | null>>()
 export async function requestDmReferral(t: Thread, retry = false, cached?: unknown, dismissed: readonly string[] = []): Promise<ReferralDraft | null> {
   const inbound = referralInbound(t, cached, dismissed)
   if (!inbound) return null
-  const stamp = `${t.prospect_id}:${inbound.id}:${retry}`
+  // The seat is part of the key (Sol r4): a request started for another seat never answers this card.
+  const stamp = `${t.client_id}:${t.prospect_id}:${inbound.id}:${retry}`
   const running = pending.get(stamp)
   if (running) return running
   const job = (async () => {
@@ -67,8 +68,9 @@ export const inmailUnavailable = (e: unknown): string | null => {
   return typeof why === 'string' ? why : null
 }
 /** `draft` is the invite note, or with `inmail` the InMail body (the note then rides along as the fallback). */
-export async function createReferredLead(t: Thread, inputMessageId: string, draft: string, linkedinUrl: string, storyKey: string, inmail?: { subject: string; note: string }): Promise<ReferredLeadResult> {
-  const result = await callDraft({ prospect_id: t.prospect_id, mode: 'referral_lead', input_message_id: inputMessageId, draft, linkedin_url: linkedinUrl, story_key: storyKey,
+/** `seat` is the seat the shown draft was written for (Sol r3); Create refuses it unless the conversation is still on that seat. */
+export async function createReferredLead(t: Thread, inputMessageId: string, draft: string, linkedinUrl: string, storyKey: string, seat: string, inmail?: { subject: string; note: string }): Promise<ReferredLeadResult> {
+  const result = await callDraft({ prospect_id: t.prospect_id, mode: 'referral_lead', input_message_id: inputMessageId, draft, linkedin_url: linkedinUrl, story_key: storyKey, seat,
     ...(inmail ? { channel: 'inmail', subject: inmail.subject, note: inmail.note } : {}) }, 140_000)
   return result.lead as ReferredLeadResult
 }
