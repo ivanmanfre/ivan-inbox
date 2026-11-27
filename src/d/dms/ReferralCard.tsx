@@ -65,9 +65,12 @@ export function ReferralCard({ t, onUseAcknowledgement, onStaged }: { t: Thread;
   const paused = open && !unchecked && r!.later?.verdict !== 'go' ? r!.later : null
   // While paused or unread, nothing that reaches the person is offered (no copy, no email, no lead).
   const blocked = Boolean(paused || unchecked)
-  const canCreate = t.client_id === 'arch' && r?.status === 'verified' && !leadId && !r.dismissed_at && !!r.draft && !paused && !unchecked
+  // Every referral seat stages its own referred lead (Ivan 2026-11-27); the first touch goes from that seat only.
+  const owner = t.client_id === 'swishdm' ? 'Jonathan' : t.client_id === 'risedtc' ? 'Mattan' : t.client_id === 'arch' ? 'Davorin' : 'Ivan'
+  const seatName = t.client_id === 'risedtc' ? 'RISE' : t.client_id === 'arch' ? 'ARCH' : 'Ivan'
+  const canCreate = ['ivan', 'arch', 'risedtc'].includes(t.client_id) && r?.status === 'verified' && !leadId && !r.dismissed_at && !!r.draft && !paused && !unchecked
   const noteText = note?.stamp === stamp ? note.text : contact?.draft ?? ''
-  // ARCH (Ivan 2026-11-26): the first touch goes as an InMail when one can go; the note is the fallback.
+  // Ivan 2026-11-26 (ARCH), 2026-11-27 (every referral seat): the first touch goes as an InMail when one can go; the note is the fallback.
   const late = noInmail?.stamp === stamp ? noInmail.why : null
   const route = canCreate ? late ? { ...(r!.inmail_route ?? { credits: null, open_profile: null, checked_at: '' }), channel: 'connection_note' as const, why: late } : r!.inmail_route ?? null : null
   const asInmail = canCreate && !!r!.inmail && route?.channel === 'inmail'
@@ -102,8 +105,8 @@ export function ReferralCard({ t, onUseAcknowledgement, onStaged }: { t: Thread;
     {!result && <p role="status">Researching the referred person and preparing a DM for review…</p>}
     {result?.error && <p role="alert">{result.error}</p>}
     {r?.status === 'unresolved' && !r.lead_prospect_id && <p>{r.reason || 'The referred person needs clarification.'}</p>}
-    {acting.lead?.status === 'created' && <p role="status">{r?.name} is now an ARCH lead. {acting.lead.channel === 'inmail' ? 'The InMail' : 'The invite note'} is held in their conversation until Send.</p>}
-    {acting.lead?.status === 'linked_existing' && <p role="status">{r?.name} was already an ARCH lead, so nothing new was staged. Linked.</p>}
+    {acting.lead?.status === 'created' && <p role="status">{r?.name} is now {seatName === 'ARCH' ? 'an' : 'a'} {seatName} lead. {acting.lead.channel === 'inmail' ? 'The InMail' : 'The invite note'} is held in their conversation until Send.</p>}
+    {acting.lead?.status === 'linked_existing' && <p role="status">{r?.name} was already {seatName === 'ARCH' ? 'an' : 'a'} {seatName} lead, so nothing new was staged. Linked.</p>}
     {leadId && <a className="d-link" href={`#exp/d/dms?thread=${encodeURIComponent(leadId)}`}>Open referred lead</a>}
     {paused && <p role="status"><b>Paused.</b> {referrer} wrote later: “{paused.quote}”{paused.verdict === 'redirect' ? ' They point to someone else now.' : ''}</p>}
     {unchecked && <p role="status">{later.length ? `${referrer} wrote again after the handoff` : 'The handoff'} has not been read for a hold yet. Retry research to read it.</p>}
@@ -113,14 +116,14 @@ export function ReferralCard({ t, onUseAcknowledgement, onStaged }: { t: Thread;
       <p>{contact.summary}</p>
       {inmail ? <>
         <h4>InMail to {person}</h4>
-        <p className="dm-meta">Draft from Davorin. It goes out as a LinkedIn InMail ({inmail.body.trim().length}/{INMAIL_BODY_LIMIT}): {route!.why} Check whether Davorin already messaged {person} by hand first.</p>
+        <p className="dm-meta">Draft from {owner}. It goes out as a LinkedIn InMail ({inmail.body.trim().length}/{INMAIL_BODY_LIMIT}): {route!.why} Check whether {owner} already messaged {person} by hand first.</p>
         <label className="dm-email-field"><span className="dm-email-field-name">Subject</span><input aria-label={`InMail subject for ${contact.name}`} value={inmail.subject} onChange={e => editInmail({ subject: e.target.value })} disabled={acting.busy} /></label>
         <textarea aria-label={`InMail draft for ${contact.name}`} value={inmail.body} onChange={e => editInmail({ body: e.target.value })} rows={8} disabled={acting.busy} />
         <details><summary>Invite note if no InMail can go ({noteText.length}/{INVITE_NOTE_LIMIT})</summary>
           <textarea aria-label={`Fallback invite note for ${contact.name}`} value={noteText} onChange={e => setNote({ stamp, text: e.target.value })} rows={4} disabled={acting.busy} />
         </details>
       </> : <>
-        <p className="dm-meta">Draft from {t.client_id === 'swishdm' ? 'Jonathan' : t.client_id === 'risedtc' ? 'Mattan' : t.client_id === 'arch' ? 'Davorin' : 'Ivan'}. {canCreate ? `It goes out as a LinkedIn invite note (${noteText.length}/${INVITE_NOTE_LIMIT})${route?.channel === 'connection_note' ? ` because no InMail can go: ${route.why.replace(/\.$/, '')}` : route ? ' because the InMail draft could not be written' : ''}. Check whether Davorin already messaged ${person} by hand first.` : 'Review it on LinkedIn. Connection status has not been checked.'}</p>
+        <p className="dm-meta">Draft from {owner}. {canCreate ? `It goes out as a LinkedIn invite note (${noteText.length}/${INVITE_NOTE_LIMIT})${route?.channel === 'connection_note' ? ` because no InMail can go: ${route.why.replace(/\.$/, '')}` : route ? ' because the InMail draft could not be written' : ''}. Check whether ${owner} already messaged ${person} by hand first.` : 'Review it on LinkedIn. Connection status has not been checked.'}</p>
         <textarea aria-label={`DM draft for ${contact.name}`} readOnly={!canCreate} value={canCreate ? noteText : contact.draft ?? ''} onChange={e => setNote({ stamp, text: e.target.value })} rows={5} disabled={acting.busy} />
       </>}
       <div className="dm-referral-actions">

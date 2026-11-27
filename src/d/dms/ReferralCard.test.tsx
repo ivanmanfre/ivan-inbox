@@ -234,13 +234,27 @@ describe('verified referral stays open and becomes a lead', () => {
     expect(screen.queryByRole('button', { name: 'Copy DM' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Not contacting Tomas' })).toBeInTheDocument()
   })
-  it('other lanes keep Copy DM only', async () => {
+  it('RISE (Ivan 2026-11-27): the card offers the InMail as Mattan and Create stages a RISE lead', async () => {
     const t = rows(); t.client_id = 'risedtc'
+    const rise = { ...inmailStored, inmail_route: { ...inmailStored.inmail_route, why: "Mattan's seat has 23 Sales Navigator InMail credits." } }
+    readLead.mockResolvedValue({ data: { referral: rise }, error: null })
+    fetch.mockResolvedValueOnce({ ok: true, json: async () => ({ referral: rise }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ lead: { status: 'created', channel: 'inmail', lead_prospect_id: '00000000-0000-4000-8000-0000000000aa' } }) })
+    render(<ReferralCard t={t} />)
+    await screen.findByRole('textbox', { name: 'InMail draft for Tomas Weller' })
+    const meta = screen.getByText(/Draft from Mattan\. It goes out as a LinkedIn InMail/)
+    expect(meta).toHaveTextContent('Check whether Mattan already messaged Tomas')
+    expect(meta).not.toHaveTextContent('Davorin')
+    fireEvent.click(screen.getByRole('button', { name: 'Create referred lead' }))
+    expect(await screen.findByText(/is now a RISE lead\. The InMail is held/)).toBeInTheDocument()
+  })
+  it('Ivan: the note card offers Create and names Ivan in the by-hand check', async () => {
+    const t = rows(); t.client_id = 'ivan'
     readLead.mockResolvedValue({ data: { referral: stored }, error: null })
     fetch.mockResolvedValue({ ok: true, json: async () => ({ referral: stored }) })
     render(<ReferralCard t={t} />)
-    await screen.findByRole('button', { name: 'Copy DM' })
-    expect(screen.queryByRole('button', { name: 'Create referred lead' })).not.toBeInTheDocument()
+    await screen.findByRole('button', { name: 'Create referred lead' })
+    expect(screen.getByText(/Check whether Ivan already messaged Tomas/)).toBeInTheDocument()
   })
   it('a dismissed or linked referral does not come back after a later reply', async () => {
     readLead.mockResolvedValue({ data: { referral: { ...stored, dismissed_at: '2026-11-06T09:00:00Z' } }, error: null })
