@@ -163,7 +163,7 @@ describe('verified referral stays open and becomes a lead', () => {
     fireEvent.change(box, { target: { value: 'Hey Tomas, Priya pointed me your way.' } })
     fireEvent.click(screen.getByRole('button', { name: 'Create referred lead' }))
     expect(await screen.findByRole('link', { name: 'Open referred lead' })).toHaveAttribute('href', '#exp/d/dms?thread=00000000-0000-4000-8000-0000000000aa')
-    expect(JSON.parse(fetch.mock.calls[1][1].body)).toEqual({ prospect_id: 'priya', mode: 'referral_lead', input_message_id: HANDOFF, draft: 'Hey Tomas, Priya pointed me your way.', linkedin_url: 'https://www.linkedin.com/in/tomas-weller-test', story_key: 'story-v1' })
+    expect(JSON.parse(fetch.mock.calls[1][1].body)).toEqual({ prospect_id: 'priya', mode: 'referral_lead', input_message_id: HANDOFF, draft: 'Hey Tomas, Priya pointed me your way.', linkedin_url: 'https://www.linkedin.com/in/tomas-weller-test', story_key: 'story-v1', seat: 'arch' })
     expect(staged).toHaveBeenCalled()
     expect(screen.queryByRole('button', { name: /^send|^approve/i })).not.toBeInTheDocument()
   })
@@ -184,7 +184,7 @@ describe('verified referral stays open and becomes a lead', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Create referred lead' }))
     expect(await screen.findByText(/The InMail is held in their conversation until Send/)).toBeInTheDocument()
     expect(JSON.parse(fetch.mock.calls[1][1].body)).toEqual({ prospect_id: 'priya', mode: 'referral_lead', input_message_id: HANDOFF, draft: inmailStored.inmail.body,
-      linkedin_url: 'https://www.linkedin.com/in/tomas-weller-test', story_key: 'story-v1', channel: 'inmail', subject: 'ARCH x Northwind Games', note: stored.draft })
+      linkedin_url: 'https://www.linkedin.com/in/tomas-weller-test', story_key: 'story-v1', seat: 'arch', channel: 'inmail', subject: 'ARCH x Northwind Games', note: stored.draft })
   })
   it('when no InMail can go, the card keeps the invite note and says why; a fallback at Create is reported', async () => {
     const noteOnly = { ...stored, inmail: null, inmail_route: { channel: 'connection_note', credits: 0, open_profile: false, why: "Davorin's seat has no InMail credits left and their profile is not open.", checked_at: '2026-11-05T12:31:00Z' } }

@@ -68,7 +68,7 @@ export const inmailUnavailable = (e: unknown): string | null => {
 }
 /** `draft` is the invite note, or with `inmail` the InMail body (the note then rides along as the fallback). */
 export async function createReferredLead(t: Thread, inputMessageId: string, draft: string, linkedinUrl: string, storyKey: string, inmail?: { subject: string; note: string }): Promise<ReferredLeadResult> {
-  const result = await callDraft({ prospect_id: t.prospect_id, mode: 'referral_lead', input_message_id: inputMessageId, draft, linkedin_url: linkedinUrl, story_key: storyKey,
+  const result = await callDraft({ prospect_id: t.prospect_id, mode: 'referral_lead', input_message_id: inputMessageId, draft, linkedin_url: linkedinUrl, story_key: storyKey, seat: t.client_id,
     ...(inmail ? { channel: 'inmail', subject: inmail.subject, note: inmail.note } : {}) }, 140_000)
   return result.lead as ReferredLeadResult
 }

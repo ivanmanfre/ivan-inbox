@@ -131,7 +131,7 @@ describe('server referral warm-up', () => {
     expect(result.referral).toMatchObject({ status: 'verified', draft: dm, offer_verified_at: null })
   })
   it('a cached current-revision result is served without research', async () => {
-    const cached = { status: 'verified', input_message_id: 'handoff', revision: REFERRAL_REVISION, name: 'Larissa Vieira', story_key: '',
+    const cached = { status: 'verified', input_message_id: 'handoff', revision: REFERRAL_REVISION, seat: 'arch', name: 'Larissa Vieira', story_key: '',
       later: { through_message_id: 'handoff', message_ids: [], verdict: 'go', quote: null, checked_at: '2026-10-08T15:30:00Z' } }
     const { result, upstream, saved } = await draft([sentInvite, handoff], null, { ...server, body: { mode: 'referral' }, enrichment: { inbox_referral: cached } })
     expect(result.referral).toEqual(cached)
@@ -145,7 +145,7 @@ describe('server referral warm-up', () => {
     expect(result.referral).toMatchObject({ status: 'verified', revision: REFERRAL_REVISION })
   })
   it('a verified result saved meanwhile is never overwritten by a weaker one', async () => {
-    const kept = { status: 'verified', input_message_id: 'handoff', revision: REFERRAL_REVISION, name: 'Larissa Vieira' }
+    const kept = { status: 'verified', input_message_id: 'handoff', revision: REFERRAL_REVISION, seat: 'arch', name: 'Larissa Vieira' }
     const failing = (url: string, body: { messages?: { content: string }[] }) => url.includes('api.apify.com') ? [] : stages(url, body)
     const { result, saved } = await draft([sentInvite, handoff], null, { ...server, body: { mode: 'referral' }, fetch: failing, latest: kept })
     expect(result.referral).toEqual(kept)

@@ -93,6 +93,7 @@ begin
   -- Sol r1 (2026-11-27): the seat the caller reviewed the copy on is the referrer's seat now, and the row names that
   -- seat's own account for either channel (Send Messages refuses a row whose seat or account no longer matches).
   if p_evidence ->> 'seat' is distinct from tenant
+     or nullif(btrim(p_evidence ->> 'sender_account_id'), '') is null
      or (p_channel = 'connection_note' and p_evidence ->> 'sender_account_id' is distinct from (select value from integration_config where key = tenant || '_unipile_account_id')) then
     return jsonb_build_object('status', 'error', 'reason', 'The referral changed seats. Refresh the conversation.');
   end if;
