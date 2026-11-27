@@ -90,6 +90,12 @@ begin
   if p_channel = 'connection_note' and (nullif(btrim(p_text), '') is null or length(btrim(p_text)) > 300) then
     return jsonb_build_object('status', 'error', 'reason', 'The invite note must be 1 to 300 characters.');
   end if;
+  -- Sol r1 (2026-11-27): the seat the caller reviewed the copy on is the referrer's seat now, and the row names that
+  -- seat's own account for either channel (Send Messages refuses a row whose seat or account no longer matches).
+  if p_evidence ->> 'seat' is distinct from tenant
+     or (p_channel = 'connection_note' and p_evidence ->> 'sender_account_id' is distinct from (select value from integration_config where key = tenant || '_unipile_account_id')) then
+    return jsonb_build_object('status', 'error', 'reason', 'The referral changed seats. Refresh the conversation.');
+  end if;
   -- 2026-11-26 (Ivan): the first touch goes as an InMail when one can go. The row carries what the Send Messages
   -- referral InMail lane checks: "Subject: ...", a blank line, the body; the ARCH seat; the one recipient.
   if p_channel = 'inmail' and (
@@ -114,7 +120,7 @@ begin
     from outreach_prospects p left join outreach_campaigns c on c.id = p.campaign_id
    where li_slug(p.linkedin_url) = slug
       or (member is not null and (li_member_key(p.linkedin_profile_id) = li_member_key(member) or li_member_key(p.linkedin_url) = li_member_key(member)))
-   order by (coalesce(c.client_id, 'ivan') = tenant) desc, p.created_at
+   order by (coalesce(c.client_id, 'ivan') = tenant) desc, (c.client_id is null), p.created_at
    limit 1;
   if found then
     -- Same slug but a different known member id: not provably the same person.

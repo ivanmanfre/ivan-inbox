@@ -213,7 +213,11 @@ Deno.serve(async req => {
         // Otherwise the invite note the operator also saw goes instead, and the answer says why.
         // One check for both branches (Sol r3): the route now, the seat it would go from, and a member id that takes an InMail.
         const route = REFERRAL_LEAD_SEATS.includes(client) ? inmailRoute(await inmailCredits(sb, client), profile.open_profile, canon.author) : null
-        const sender = route?.channel === 'inmail' ? await seatAccount(sb, client) : null
+        // Sol r1 (2026-11-27): every first touch, the note too, names the seat it must go from (the referrer's own);
+        // the database and the sender both check it, so a lead moved to another seat never gets this copy.
+        const account = await seatAccount(sb, client)
+        if (!account && !leadInmail) return respond({ error: 'The sender seat could not be read. Try again.' }, 503)
+        const sender = route?.channel === 'inmail' ? account : null
         // Sol r5: an InMail needs the verified member too, so an unpinned (legacy) referral keeps its note path.
         const canInmail = Boolean(route?.channel === 'inmail' && sender && /^ACoAA/.test(profile.provider_id) && pinned === profile.provider_id)
         const asInmail = Boolean(leadInmail && canInmail)
@@ -241,9 +245,9 @@ Deno.serve(async req => {
               drafted_text: inmailText(cached.inmail!.subject, cached.inmail!.body), fallback_note: leadNote,
               // The Send Messages referral InMail lane reads these: the seat it must go from and the one recipient.
               delivery_lane: `${client}_referral_inmail`, inmail_api: 'sales_navigator', inmail_subject: leadInmail!.subject,
-              inmail_provider_id: profile.provider_id, sender_account_id: sender, inmail_route: route, no_sequence_enrollment: true,
+              inmail_provider_id: profile.provider_id, sender_account_id: sender, seat: client, inmail_route: route, no_sequence_enrollment: true,
               review_note: `${byHand} This goes out as a LinkedIn InMail (${route!.open_profile ? 'free: their profile is open' : 'one Sales Navigator credit'}). If ${canon.author} already has a conversation with ${first}, the sender holds it for review; if ${canon.author} is connected to ${first}, discard it and message ${first} directly.` }
-            : { referred_name: cached.name, referrer_name: rows[0].prospect_name, linkedin_url: cached.linkedin_url, drafted_text: cached.draft, sent_as: 'connection_note',
+            : { referred_name: cached.name, referrer_name: rows[0].prospect_name, linkedin_url: cached.linkedin_url, drafted_text: cached.draft, sent_as: 'connection_note', seat: client, sender_account_id: account,
               review_note: `${byHand} This goes out as a connection invite with the note above; if ${canon.author} is already connected to ${first}, discard it and message ${first} directly.` },
         })
         if (makeError) throw makeError

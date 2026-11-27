@@ -337,14 +337,15 @@ describe('create referred lead', () => {
       expect(got.calls.find(c => c.fn === 'inbox_referral_create_lead')).toBeUndefined()
     }
   })
-  it('an open profile with no sender seat: the note stages, with no InMail ping-pong (Sol r3)', async () => {
+  it('an open profile with no sender seat: no InMail, and the note waits for a readable seat (Sol r3; 2026-11-27 seat pin)', async () => {
     const open = [{ ...profile[0], openProfile: true }]
     const inm = await run([pitch, handoff, ack, youToo], { body: inmailBodyReq(), enrichment: { inbox_referral: inmailReady }, apify: open, rpc: created, credits: 0, noSeat: true })
     expect(inm.status).toBe(409)
     expect(inm.result.inmail_unavailable).toContain('sender seat')
     const note = await run([pitch, handoff, ack, youToo], { body: body(), enrichment: { inbox_referral: inmailReady }, apify: open, rpc: created, credits: 0, noSeat: true })
-    expect(note.status).toBe(200)
-    expect(note.calls.find(c => c.fn === 'inbox_referral_create_lead')!.args).toMatchObject({ p_channel: 'connection_note' })
+    expect(note.status).toBe(503)
+    expect(note.result.inmail_available).toBeUndefined()
+    expect(note.calls.find(c => c.fn === 'inbox_referral_create_lead')).toBeUndefined()
   })
   it('a note Create when an InMail can go now stages nothing and says so (Sol r2), unless the drafter declined the InMail', async () => {
     const noteOnly = { ...ready, inmail_route: { channel: 'connection_note', credits: 0, open_profile: false, why: 'none', checked_at: at(31) } }
@@ -415,7 +416,7 @@ describe('create referred lead', () => {
     expect(result.lead).toMatchObject({ status: 'created', channel: 'inmail' })
     expect(balanceReads).toHaveLength(1)
     const made = calls.find(c => c.fn === 'inbox_referral_create_lead')!
-    expect(made.args).toMatchObject({ p_channel: 'inmail', p_evidence: { delivery_lane: 'risedtc_referral_inmail', inmail_api: 'sales_navigator', inmail_provider_id: 'ACoAA-test-tomas', sender_account_id: 'config-value' } })
+    expect(made.args).toMatchObject({ p_channel: 'inmail', p_evidence: { delivery_lane: 'risedtc_referral_inmail', inmail_api: 'sales_navigator', inmail_provider_id: 'ACoAA-test-tomas', sender_account_id: 'config-value', seat: 'risedtc' } })
     const note = (made.args.p_evidence as { review_note: string }).review_note
     expect(note).toContain('Check whether Mattan already messaged Tomas')
     expect(note).not.toContain('Davorin')
@@ -425,7 +426,7 @@ describe('create referred lead', () => {
     const { status, calls } = await run(seatRows('ivan'), { body: body(), enrichment: { inbox_referral: ready }, apify: closed, rpc: created, credits: 0 })
     expect(status).toBe(200)
     const made = calls.find(c => c.fn === 'inbox_referral_create_lead')!
-    expect(made.args).toMatchObject({ p_channel: 'connection_note', p_text: verified.draft })
+    expect(made.args).toMatchObject({ p_channel: 'connection_note', p_text: verified.draft, p_evidence: { seat: 'ivan', sender_account_id: 'config-value' } })
     expect((made.args.p_evidence as { review_note: string }).review_note).toContain('if Ivan Manfredi is already connected to Tomas')
   })
   it('Ivan: an open profile goes as a free InMail on the Ivan lane', async () => {
