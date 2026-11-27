@@ -189,6 +189,8 @@ Deno.serve(async req => {
         const pinned = cached.member_id ?? null
         // Sol r7: with no member recorded, the profile must show the named person by given and family name, so a URL that
         // shows someone else (or a profile research could not read) never stages a touch with another member's id.
+        // Sol r1 (2026-11-27): a first name alone matches anyone with that first name, so it needs the member pinned at research.
+        if (!pinned && !/\s/.test((cached.name ?? '').trim())) return respond({ error: 'No LinkedIn member was confirmed for this first name. Retry research before creating the lead.' }, 409)
         if (!pinned && !profileShowsPerson(cached.name, profile)) return respond({ error: `That LinkedIn profile shows ${profile.name}. Check the person before creating the lead.` }, 409)
         if ((leadInmail && !pinned) || (pinned && pinned !== profile.provider_id)) return respond({ error: 'That LinkedIn profile is not the member the draft was checked against. Refresh the conversation.' }, 409)
         // The lookup takes seconds: a message sent, a reply or a discard meanwhile means the note is no longer the one reviewed.
@@ -306,7 +308,7 @@ Deno.serve(async req => {
         // No offer line in a referral first touch (Ivan 2026-11-04: the Preply list stacked on a pitch read
         // as a sell to someone who never heard of us). A short intro of the company and a soft ask close it (2026-11-26).
         referral = { ...await researchReferral(sb, { id: target.id, text: target.message_text, company: rows[0].prospect_company, referrer: rows[0].prospect_name, referrerUrl: prospect.linkedin_url }, canon.author, prompts, story(target.id), await readMentions(sb, target.id),
-          { emailLane, lookup: cached?.input_message_id === target.id ? cached.email_lookup ?? null : null, slots: slots ?? undefined, inmail: inmailLane }), story_key: keyFor(target.id) }
+          { emailLane, lookup: cached?.input_message_id === target.id ? cached?.email_lookup ?? null : null, slots: slots ?? undefined, inmail: inmailLane }), story_key: keyFor(target.id) }
         // A newer reply that only looks like a handoff ("you can reach out to someone else there") names nobody
         // verifiable: the open referral stands and its card stays.
         if (referral.status !== 'verified' && anchor && anchor.id !== target.id) {
